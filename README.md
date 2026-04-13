@@ -143,4 +143,4 @@ The current release checklist lives in [docs/release-checklist.md](/home/melashr
 
 ## LICENCE
 
-This project is source-available and not open source (yet). So the current licence is All rights reserved. This will update to a more permissive licence before the first tagged release.
+The project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
