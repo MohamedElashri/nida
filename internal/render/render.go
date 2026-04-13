@@ -253,10 +253,16 @@ func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) stri
 	}
 	pageTitle := template.HTMLEscapeString(title)
 	description := template.HTMLEscapeString(cfg.Description)
+	language := template.HTMLEscapeString(defaultLanguage(cfg.Language))
+	direction := template.HTMLEscapeString(config.DocumentDirection(cfg.Language))
 
 	var b strings.Builder
 	b.WriteString("<!doctype html>\n")
-	b.WriteString("<html lang=\"en\">\n")
+	b.WriteString("<html lang=\"")
+	b.WriteString(language)
+	b.WriteString("\" dir=\"")
+	b.WriteString(direction)
+	b.WriteString("\">\n")
 	b.WriteString("<head>\n")
 	b.WriteString("  <meta charset=\"utf-8\">\n")
 	b.WriteString("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
@@ -288,6 +294,13 @@ func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) stri
 	b.WriteString("</body>\n")
 	b.WriteString("</html>\n")
 	return b.String()
+}
+
+func defaultLanguage(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "en"
+	}
+	return value
 }
 
 func canonicalURL(baseURL, route string) string {

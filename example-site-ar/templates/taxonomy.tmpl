@@ -1,0 +1,26 @@
+{{- define "taxonomy" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  {{- if .Term.Name }}
+  <section class="taxonomy">
+    <h1>{{ .Term.Name }}</h1>
+    <ul class="post-list">
+      {{ range .Pages }}
+      <li class="post-list-item">
+        <h2><a href="{{ .URL }}">{{ .Title }}</a></h2>
+        <p class="post-meta">{{ formatDate .Date }}</p>
+        <p>{{ .Description }}</p>
+      </li>
+      {{ end }}
+    </ul>
+  </section>
+  {{- else }}
+  <section class="taxonomy">
+    <h1>{{ .Title }}</h1>
+    <ul class="term-list">
+      {{ range .Terms }}
+      <li><a href="{{ .URL }}">{{ .Name }}</a></li>
+      {{ end }}
+    </ul>
+  </section>
+  {{- end }}
+{{- end }}

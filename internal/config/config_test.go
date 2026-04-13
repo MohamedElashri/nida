@@ -112,3 +112,22 @@ func TestLoadReportsMissingConfig(t *testing.T) {
 		t.Fatalf("expected missing config error, got %v", err)
 	}
 }
+
+func TestDocumentDirection(t *testing.T) {
+	tests := []struct {
+		language string
+		want     string
+	}{
+		{language: "", want: "ltr"},
+		{language: "en", want: "ltr"},
+		{language: "ar", want: "rtl"},
+		{language: "ar-SA", want: "rtl"},
+		{language: "fa_IR", want: "rtl"},
+	}
+
+	for _, test := range tests {
+		if got := DocumentDirection(test.language); got != test.want {
+			t.Fatalf("DocumentDirection(%q) = %q, want %q", test.language, got, test.want)
+		}
+	}
+}

@@ -3,6 +3,7 @@ SHELL := /bin/zsh
 GO ?= go
 SITE ?= ./example-site
 EXAMPLE_SITE ?= ./example-site
+ARABIC_EXAMPLE_SITE ?= ./example-site-ar
 BINARY ?= nida
 COVERAGE_FILE ?= coverage.out
 
@@ -11,7 +12,7 @@ export GOMODCACHE := $(CURDIR)/.gomodcache
 export GOPROXY := file:///home/melashri/go/pkg/mod/cache/download
 export GOSUMDB := off
 
-.PHONY: help dev build rebuild test test-cover serve site-build example-build example-serve clean fmt tidy check
+.PHONY: help dev build rebuild test test-cover serve site-build example-build example-serve arabic-example-build arabic-example-serve clean fmt tidy check
 
 help:
 	@printf "Available targets:\n"
@@ -23,6 +24,8 @@ help:
 	@printf "  make site-build   Build nida against SITE=%s\n" "$(SITE)"
 	@printf "  make example-build Build the example website\n"
 	@printf "  make example-serve Serve the example website locally\n"
+	@printf "  make arabic-example-build Build the Arabic example website\n"
+	@printf "  make arabic-example-serve Serve the Arabic example website locally\n"
 	@printf "  make fmt          Format Go code\n"
 	@printf "  make tidy         Sync go.mod/go.sum\n"
 	@printf "  make check        Run fmt, test, and site build\n"
@@ -52,6 +55,12 @@ example-build:
 example-serve:
 	$(GO) run ./cmd/nida serve --site $(EXAMPLE_SITE)
 
+arabic-example-build:
+	$(GO) run ./cmd/nida build --site $(ARABIC_EXAMPLE_SITE)
+
+arabic-example-serve:
+	$(GO) run ./cmd/nida serve --site $(ARABIC_EXAMPLE_SITE)
+
 fmt:
 	$(GO) fmt ./...
 
@@ -68,3 +77,4 @@ clean:
 	rm -rf .gocache .gomodcache
 	find $(SITE)/public -mindepth 1 ! -name .gitkeep -exec rm -rf {} +
 	find $(EXAMPLE_SITE)/public -mindepth 1 ! -name .gitkeep -exec rm -rf {} +
+	find $(ARABIC_EXAMPLE_SITE)/public -mindepth 1 ! -name .gitkeep -exec rm -rf {} +

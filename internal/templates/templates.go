@@ -81,12 +81,13 @@ func (s Set) Execute(name string, data any) (string, error) {
 
 func funcMap() template.FuncMap {
 	return template.FuncMap{
-		"formatDate": formatDate,
-		"safeHTML":   safeHTML,
-		"join":       strings.Join,
-		"default":    defaultString,
-		"slugify":    content.DeriveSlug,
-		"title":      strings.Title,
+		"formatDate":        formatDate,
+		"safeHTML":          safeHTML,
+		"join":              strings.Join,
+		"default":           defaultString,
+		"slugify":           content.DeriveSlug,
+		"title":             strings.Title,
+		"documentDirection": config.DocumentDirection,
 	}
 }
 

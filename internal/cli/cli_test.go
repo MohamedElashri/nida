@@ -23,6 +23,22 @@ func TestBuildLoadsConfigFromSiteRoot(t *testing.T) {
 	}
 }
 
+func TestBuildLoadsArabicExampleSite(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	code := run(stdout, stderr, []string{
+		"build",
+		"--site", filepath.Join("..", "..", "example-site-ar"),
+	})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "rendered=") {
+		t.Fatalf("expected build summary in output, got %q", stdout.String())
+	}
+}
+
 func TestLoadCommandConfigAppliesServeOverrides(t *testing.T) {
 	cfg, _, err := loadCommandConfig(commandOptions{
 		siteRoot: filepath.Join("..", "..", "example-site"),

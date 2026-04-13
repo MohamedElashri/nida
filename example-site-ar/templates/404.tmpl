@@ -1,0 +1,9 @@
+{{- define "404" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  <section class="article article-page">
+    <p class="lede">404</p>
+    <h1>الصفحة غير موجودة</h1>
+    <p>الصفحة التي تبحث عنها غير موجودة أو تم نقلها.</p>
+    <p><a href="{{ .HomeURL }}">العودة إلى الرئيسية</a></p>
+  </section>
+{{- end }}

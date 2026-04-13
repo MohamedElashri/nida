@@ -1,0 +1,15 @@
+{{- define "list" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  <section class="archive">
+    <h1>الأرشيف</h1>
+    <ul class="post-list">
+      {{ range .Pages }}
+      <li class="post-list-item">
+        <h2><a href="{{ .URL }}">{{ .Title }}</a></h2>
+        <p class="post-meta">{{ formatDate .Date }}</p>
+        <p>{{ .Description }}</p>
+      </li>
+      {{ end }}
+    </ul>
+  </section>
+{{- end }}

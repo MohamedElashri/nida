@@ -1,0 +1,20 @@
+{{- define "index" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  <section class="hero">
+    <h1>{{ .Config.Title }}</h1>
+    <p class="hero-copy">{{ .Config.Description }}</p>
+  </section>
+
+  <section class="home-section">
+    <h2>أحدث المقالات</h2>
+    <ul class="post-list">
+      {{ range .Pages }}
+      <li class="post-list-item">
+        <h3><a href="{{ .URL }}">{{ .Title }}</a></h3>
+        <p class="post-meta">{{ formatDate .Date }}</p>
+        <p>{{ .Description }}</p>
+      </li>
+      {{ end }}
+    </ul>
+  </section>
+{{- end }}

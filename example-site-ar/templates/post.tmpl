@@ -1,0 +1,13 @@
+{{- define "post" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  <article class="article">
+    <h1>{{ .Page.Title }}</h1>
+    <p class="post-meta">{{ formatDate .Page.Date }}</p>
+    <p class="lede">{{ .Page.Description }}</p>
+    <div class="article-meta">
+      {{ if .Page.Tags }}<p><strong>الوسوم:</strong> {{ join .Page.Tags "، " }}</p>{{ end }}
+      {{ if .Page.Categories }}<p><strong>التصنيفات:</strong> {{ join .Page.Categories "، " }}</p>{{ end }}
+    </div>
+    <div class="prose">{{ safeHTML .Page.BodyHTML }}</div>
+  </article>
+{{- end }}

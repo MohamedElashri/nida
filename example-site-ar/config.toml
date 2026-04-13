@@ -1,0 +1,41 @@
+base_url = "https://arabic.nida.blog"
+title = "مدونة نداء"
+description = "مثال عربي بسيط لموقع مبني باستخدام nida."
+language = "ar"
+author = "Mohamed Elashri"
+
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+output_dir = "public"
+
+posts_dir = "posts"
+pages_dir = "pages"
+
+paginate = 10
+drafts = false
+syntax_theme = "github"
+
+[taxonomies]
+tags = false
+categories = false
+
+[rss]
+enabled = true
+filename = "rss.xml"
+limit = 20
+
+[sitemap]
+enabled = true
+filename = "sitemap.xml"
+
+[server]
+host = "127.0.0.1"
+port = 2906
+livereload = true
+
+[permalinks]
+posts = "/posts/{slug}/"
+pages = "/{slug}/"
+tags = "/tags/{slug}/"
+categories = "/categories/{slug}/"

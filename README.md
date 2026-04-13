@@ -17,6 +17,7 @@ It keeps the workflow simple:
 * generates `rss.xml`
 * generates `sitemap.xml`
 * serves a local development site with rebuilds
+* supports RTL document rendering for languages like Arabic
 
 ## Quick Start
 
@@ -67,6 +68,7 @@ site/
 ## Example Site
 
 A complete example project lives in [example-site](/home/melashri/projects/nida/example-site).
+An Arabic RTL example also lives in [example-site-ar](/home/melashri/projects/nida/example-site-ar).
 
 Useful files:
 
@@ -75,11 +77,17 @@ Useful files:
 * templates: [example-site/templates/base.tmpl](/home/melashri/projects/nida/example-site/templates/base.tmpl:1)
 * custom 404 template: [example-site/templates/404.tmpl](/home/melashri/projects/nida/example-site/templates/404.tmpl:1)
 * styles: [example-site/static/site.css](/home/melashri/projects/nida/example-site/static/site.css:1)
+* Arabic example config: [example-site-ar/config.toml](/home/melashri/projects/nida/example-site-ar/config.toml:1)
 
 Optional theme template:
 
 * add `templates/404.tmpl` to customize the generated `/404.html`
 * if no `404.tmpl` exists, `nida` emits a built-in fallback page automatically
+
+RTL support:
+
+* set `language = "ar"` in `config.toml` for an Arabic site
+* theme templates can use `{{ documentDirection .Config.Language }}` to switch between `ltr` and `rtl`
 
 ## Development
 
@@ -91,6 +99,8 @@ The repository includes a `Makefile`:
 * `make serve`
 * `make example-build`
 * `make example-serve`
+* `make arabic-example-build`
+* `make arabic-example-serve`
 * `make check`
 * `make clean`
 

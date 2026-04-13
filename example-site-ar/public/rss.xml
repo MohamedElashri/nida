@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>مدونة نداء</title>
+    <link>https://arabic.nida.blog</link>
+    <description>مثال عربي بسيط لموقع مبني باستخدام nida.</description>
+    <language>ar</language>
+    <item>
+      <title>إطلاق nida</title>
+      <link>https://arabic.nida.blog/posts/launching-nida-ar/</link>
+      <guid isPermaLink="true">https://arabic.nida.blog/posts/launching-nida-ar/</guid>
+      <pubDate>Mon, 13 Apr 2026 09:30:00 +0000</pubDate>
+      <description>نظرة أولى على أسلوب النشر الذي بُني عليه nida.</description>
+    </item>
+    <item>
+      <title>تصميم واجهة أوامر بسيطة</title>
+      <link>https://arabic.nida.blog/posts/simple-cli-design/</link>
+      <guid isPermaLink="true">https://arabic.nida.blog/posts/simple-cli-design/</guid>
+      <pubDate>Sun, 12 Apr 2026 14:00:00 +0000</pubDate>
+      <description>لماذا يحافظ nida على واجهة أوامر صغيرة وواضحة.</description>
+    </item>
+    <item>
+      <title>الكتابة للويب المفتوح</title>
+      <link>https://arabic.nida.blog/posts/writing-for-the-open-web-ar/</link>
+      <guid isPermaLink="true">https://arabic.nida.blog/posts/writing-for-the-open-web-ar/</guid>
+      <pubDate>Sat, 11 Apr 2026 18:15:00 +0000</pubDate>
+      <description>ملاحظة قصيرة حول أهمية المخرجات البسيطة وطويلة العمر.</description>
+    </item>
+  </channel>
+</rss>

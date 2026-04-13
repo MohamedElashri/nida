@@ -1,8 +1,10 @@
 package templates
 
 import (
+	"html/template"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MohamedElashri/nida/internal/config"
@@ -40,6 +42,29 @@ func TestLoadMissingBaseTemplate(t *testing.T) {
 	}
 }
 
+func TestDocumentDirectionTemplateHelper(t *testing.T) {
+	got, err := executeTemplateText(`{{ documentDirection . }}`, "ar")
+	if err != nil {
+		t.Fatalf("execute template helper: %v", err)
+	}
+	if got != "rtl" {
+		t.Fatalf("expected rtl, got %q", got)
+	}
+}
+
 func osMkdirAll(path string, mode uint32) error {
 	return os.MkdirAll(path, os.FileMode(mode))
+}
+
+func executeTemplateText(text string, data any) (string, error) {
+	tmpl, err := template.New("test").Funcs(funcMap()).Parse(text)
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+	if err := tmpl.Execute(&b, data); err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }

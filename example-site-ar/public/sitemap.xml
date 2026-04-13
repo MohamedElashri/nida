@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://arabic.nida.blog/</loc>
+  </url>
+  <url>
+    <loc>https://arabic.nida.blog/404.html</loc>
+  </url>
+  <url>
+    <loc>https://arabic.nida.blog/about/</loc>
+    <lastmod>2026-04-13</lastmod>
+  </url>
+  <url>
+    <loc>https://arabic.nida.blog/colophon/</loc>
+    <lastmod>2026-04-13</lastmod>
+  </url>
+  <url>
+    <loc>https://arabic.nida.blog/posts/</loc>
+  </url>
+  <url>
+    <loc>https://arabic.nida.blog/posts/launching-nida-ar/</loc>
+    <lastmod>2026-04-13</lastmod>
+  </url>
+  <url>
+    <loc>https://arabic.nida.blog/posts/simple-cli-design/</loc>
+    <lastmod>2026-04-12</lastmod>
+  </url>
+  <url>
+    <loc>https://arabic.nida.blog/posts/writing-for-the-open-web-ar/</loc>
+    <lastmod>2026-04-11</lastmod>
+  </url>
+</urlset>
