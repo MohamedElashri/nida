@@ -16,7 +16,7 @@ It keeps the workflow simple:
 * generates a default `404.html` page, with optional theme override
 * generates `rss.xml`
 * generates `sitemap.xml`
-* serves a local development site with rebuilds
+* serves a local development site with watch mode and livereload
 * supports RTL document rendering for languages like Arabic
 
 ## Quick Start
@@ -108,9 +108,9 @@ The repository includes a `Makefile`:
 
 Current behavior:
 
-* watch mode uses polling
-* rebuilds are full rebuilds
-* `livereload` exists in config but is not implemented yet
+* watch mode uses native filesystem events on Linux, with polling fallback where event watching is unavailable
+* serve mode updates output incrementally: asset-only changes sync assets, while content/template/config changes rewrite only the outputs that changed
+* `server.livereload` is implemented for local development and auto-refreshes the browser after successful rebuilds
 
 ## License
 

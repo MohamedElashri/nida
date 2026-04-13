@@ -56,3 +56,10 @@ func TestDiffDetectsChangesAndDeletions(t *testing.T) {
 		}
 	}
 }
+
+func TestRunRequiresOnChange(t *testing.T) {
+	err := Run(t.Context(), Options{})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}

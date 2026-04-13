@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
 )
@@ -52,6 +53,55 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 
 		return copyFile(path, target)
 	})
+}
+
+func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) error {
+	absSiteRoot, err := filepath.Abs(siteRoot)
+	if err != nil {
+		return fmt.Errorf("resolve site root %q: %w", siteRoot, err)
+	}
+
+	staticRoot := filepath.Join(absSiteRoot, cfg.StaticDir)
+	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
+	staticPrefix := filepath.ToSlash(strings.Trim(cfg.StaticDir, "/")) + "/"
+
+	for _, changedPath := range changedPaths {
+		normalized := filepath.ToSlash(strings.TrimSpace(changedPath))
+		if !strings.HasPrefix(normalized, staticPrefix) {
+			continue
+		}
+
+		rel := strings.TrimPrefix(normalized, staticPrefix)
+		if strings.TrimSpace(rel) == "" {
+			continue
+		}
+
+		source := filepath.Join(staticRoot, filepath.FromSlash(rel))
+		target := filepath.Join(outputRoot, filepath.FromSlash(rel))
+
+		info, err := os.Stat(source)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if removeErr := os.Remove(target); removeErr != nil && !os.IsNotExist(removeErr) {
+					return fmt.Errorf("remove stale asset %q: %w", target, removeErr)
+				}
+				continue
+			}
+			return fmt.Errorf("stat static asset %q: %w", source, err)
+		}
+		if info.IsDir() {
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return fmt.Errorf("create output directory for %q: %w", target, err)
+			}
+			continue
+		}
+
+		if err := copyFile(source, target); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func copyFile(src, dst string) error {

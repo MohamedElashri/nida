@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/MohamedElashri/nida/internal/assets"
 	"github.com/MohamedElashri/nida/internal/config"
@@ -35,6 +34,13 @@ type commandOptions struct {
 	configPath string
 	drafts     bool
 	port       int
+}
+
+type buildResult struct {
+	cfg   config.SiteConfig
+	path  string
+	state site.State
+	pages []render.Page
 }
 
 func run(stdout, stderr io.Writer, args []string) int {
@@ -98,17 +104,17 @@ func parseServeFlags(args []string) (commandOptions, error) {
 }
 
 func runBuild(stdout, stderr io.Writer, opts commandOptions) int {
-	cfg, path, state, pages, err := buildSite(opts)
+	result, err := buildSite(opts)
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "nida build: config=%s drafts=%t output=%s posts=%d pages=%d routes=%d rendered=%d\n", path, cfg.Drafts, cfg.OutputDir, len(state.Index.Posts), len(state.Index.Pages), len(state.Index.RouteRegistry), len(pages))
+	_, _ = fmt.Fprintf(stdout, "nida build: config=%s drafts=%t output=%s posts=%d pages=%d routes=%d rendered=%d\n", result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.Posts), len(result.state.Index.Pages), len(result.state.Index.RouteRegistry), len(result.pages))
 	return 0
 }
 
 func runServe(stdout, stderr io.Writer, opts commandOptions) int {
-	cfg, path, state, pages, err := buildSite(opts)
+	current, err := buildSite(opts)
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
@@ -116,37 +122,35 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	outputDir := filepath.Join(opts.siteRoot, cfg.OutputDir)
-	instance, err := server.Start(ctx, outputDir, cfg.Server.Host, cfg.Server.Port)
+	outputDir := filepath.Join(opts.siteRoot, current.cfg.OutputDir)
+	instance, err := server.Start(ctx, outputDir, current.cfg.Server.Host, current.cfg.Server.Port, current.cfg.Server.Livereload)
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "nida serve: config=%s drafts=%t host=%s port=%d routes=%d rendered=%d address=%s\n", path, cfg.Drafts, cfg.Server.Host, cfg.Server.Port, len(state.Index.RouteRegistry), len(pages), instance.Address)
+	_, _ = fmt.Fprintf(stdout, "nida serve: config=%s drafts=%t host=%s port=%d routes=%d rendered=%d address=%s\n", current.path, current.cfg.Drafts, current.cfg.Server.Host, current.cfg.Server.Port, len(current.state.Index.RouteRegistry), len(current.pages), instance.Address)
 
 	var rebuildMu sync.Mutex
 	go func() {
 		err := watcher.Run(ctx, watcher.Options{
 			SiteRoot:  opts.siteRoot,
-			OutputDir: cfg.OutputDir,
-			Interval:  time.Second,
+			OutputDir: current.cfg.OutputDir,
 			OnChange: func(paths []string) {
 				rebuildMu.Lock()
 				defer rebuildMu.Unlock()
 
 				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild triggered by %s\n", strings.Join(paths, ", "))
-				nextCfg, _, nextState, nextPages, buildErr := buildSite(opts)
+				next, mode, buildErr := rebuildSite(opts, current, paths)
 				if buildErr != nil {
 					_, _ = fmt.Fprintf(stderr, "error: rebuild failed: %v\n", buildErr)
 					return
 				}
-				if nextCfg.Server.Host != cfg.Server.Host || nextCfg.Server.Port != cfg.Server.Port {
-					_, _ = fmt.Fprintf(stdout, "nida serve: config changed server address to %s:%d; restart required to apply\n", nextCfg.Server.Host, nextCfg.Server.Port)
+				if next.cfg.Server.Host != current.cfg.Server.Host || next.cfg.Server.Port != current.cfg.Server.Port {
+					_, _ = fmt.Fprintf(stdout, "nida serve: config changed server address to %s:%d; restart required to apply\n", next.cfg.Server.Host, next.cfg.Server.Port)
 				}
-				cfg = nextCfg
-				state = nextState
-				pages = nextPages
-				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild complete posts=%d pages=%d routes=%d rendered=%d\n", len(state.Index.Posts), len(state.Index.Pages), len(state.Index.RouteRegistry), len(pages))
+				current = next
+				instance.Reload()
+				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild complete mode=%s posts=%d pages=%d routes=%d rendered=%d\n", mode, len(current.state.Index.Posts), len(current.state.Index.Pages), len(current.state.Index.RouteRegistry), len(current.pages))
 			},
 			OnError: func(err error) {
 				_, _ = fmt.Fprintf(stderr, "error: watcher snapshot failed: %v\n", err)
@@ -163,20 +167,20 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 	return 0
 }
 
-func buildSite(opts commandOptions) (config.SiteConfig, string, site.State, []render.Page, error) {
+func buildSite(opts commandOptions) (buildResult, error) {
 	cfg, path, err := loadCommandConfig(opts)
 	if err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 
 	state, err := site.Load(opts.siteRoot, cfg)
 	if err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 
 	pages, err := render.RenderSite(opts.siteRoot, cfg, state)
 	if err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 
 	artifacts := make([]output.Artifact, 0, 2)
@@ -187,35 +191,35 @@ func buildSite(opts commandOptions) (config.SiteConfig, string, site.State, []re
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
 	}
 	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, artifacts); err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 
 	if err := output.WriteSite(opts.siteRoot, cfg, pages); err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 	feedOutput, err := feeds.Generate(cfg, state.Index)
 	if err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 	if feedOutput != nil {
 		if err := output.WriteFile(opts.siteRoot, cfg, feedOutput.Filename, feedOutput.Content); err != nil {
-			return config.SiteConfig{}, "", site.State{}, nil, err
+			return buildResult{}, err
 		}
 	}
 	sitemapOutput, err := sitemap.Generate(cfg, state, pages)
 	if err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 	if sitemapOutput != nil {
 		if err := output.WriteFile(opts.siteRoot, cfg, sitemapOutput.Filename, sitemapOutput.Content); err != nil {
-			return config.SiteConfig{}, "", site.State{}, nil, err
+			return buildResult{}, err
 		}
 	}
 	if err := assets.Copy(opts.siteRoot, cfg); err != nil {
-		return config.SiteConfig{}, "", site.State{}, nil, err
+		return buildResult{}, err
 	}
 
-	return cfg, path, state, pages, nil
+	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
 }
 
 func loadCommandConfig(opts commandOptions) (config.SiteConfig, string, error) {

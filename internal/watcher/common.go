@@ -11,11 +11,11 @@ import (
 )
 
 type Options struct {
-	SiteRoot  string
-	OutputDir string
-	Interval  time.Duration
-	OnChange  func([]string)
-	OnError   func(error)
+	SiteRoot     string
+	OutputDir    string
+	PollInterval time.Duration
+	OnChange     func([]string)
+	OnError      func(error)
 }
 
 type fileState struct {
@@ -27,16 +27,24 @@ func Run(ctx context.Context, opts Options) error {
 	if opts.OnChange == nil {
 		return fmt.Errorf("watcher OnChange callback is required")
 	}
-	if opts.Interval <= 0 {
-		opts.Interval = time.Second
+	if opts.PollInterval <= 0 {
+		opts.PollInterval = time.Second
 	}
 
+	if err := runEventWatcher(ctx, opts); err == nil {
+		return nil
+	}
+
+	return runPollingWatcher(ctx, opts)
+}
+
+func runPollingWatcher(ctx context.Context, opts Options) error {
 	previous, err := snapshot(opts.SiteRoot, opts.OutputDir)
 	if err != nil {
 		return err
 	}
 
-	ticker := time.NewTicker(opts.Interval)
+	ticker := time.NewTicker(opts.PollInterval)
 	defer ticker.Stop()
 
 	for {

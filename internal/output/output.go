@@ -25,6 +25,15 @@ func WriteSite(siteRoot string, cfg config.SiteConfig, pages []render.Page) erro
 		return err
 	}
 
+	return WritePages(siteRoot, cfg, pages)
+}
+
+func WritePages(siteRoot string, cfg config.SiteConfig, pages []render.Page) error {
+	outputDir, err := outputDirectory(siteRoot, cfg)
+	if err != nil {
+		return err
+	}
+
 	sorted := append([]render.Page(nil), pages...)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].URL < sorted[j].URL
@@ -43,6 +52,41 @@ func WriteSite(siteRoot string, cfg config.SiteConfig, pages []render.Page) erro
 		}
 	}
 
+	return nil
+}
+
+func RemovePages(siteRoot string, cfg config.SiteConfig, routes []string) error {
+	outputDir, err := outputDirectory(siteRoot, cfg)
+	if err != nil {
+		return err
+	}
+
+	for _, route := range routes {
+		targetPath, err := pagePath(outputDir, route)
+		if err != nil {
+			return fmt.Errorf("resolve output path for %q: %w", route, err)
+		}
+		if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove rendered page %q: %w", targetPath, err)
+		}
+	}
+
+	return nil
+}
+
+func RemoveFile(siteRoot string, cfg config.SiteConfig, relativePath string) error {
+	outputDir, err := outputDirectory(siteRoot, cfg)
+	if err != nil {
+		return err
+	}
+	if relativePath == "" {
+		return fmt.Errorf("relative output path is required")
+	}
+
+	targetPath := filepath.Join(outputDir, filepath.FromSlash(relativePath))
+	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove output file %q: %w", targetPath, err)
+	}
 	return nil
 }
 
