@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MohamedElashri/nida/internal/buildinfo"
 )
 
 func TestBuildLoadsConfigFromSiteRoot(t *testing.T) {
@@ -81,5 +83,55 @@ func TestBuildReportsConfigErrors(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "error: load config") {
 		t.Fatalf("expected config error, got %q", stderr.String())
+	}
+}
+
+func TestVersionReportsBuildMetadata(t *testing.T) {
+	originalVersion := buildinfo.Version
+	originalCommit := buildinfo.Commit
+	originalDate := buildinfo.Date
+	originalBuiltBy := buildinfo.BuiltBy
+	t.Cleanup(func() {
+		buildinfo.Version = originalVersion
+		buildinfo.Commit = originalCommit
+		buildinfo.Date = originalDate
+		buildinfo.BuiltBy = originalBuiltBy
+	})
+
+	buildinfo.Version = "v0.1.0"
+	buildinfo.Commit = "abc1234"
+	buildinfo.Date = "2026-04-13T10:00:00Z"
+	buildinfo.BuiltBy = "test"
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	code := run(stdout, stderr, []string{"version"})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "nida version v0.1.0") {
+		t.Fatalf("expected version in output, got %q", output)
+	}
+	if !strings.Contains(output, "commit=abc1234") {
+		t.Fatalf("expected commit in output, got %q", output)
+	}
+	if !strings.Contains(output, "builtBy=test") {
+		t.Fatalf("expected builtBy in output, got %q", output)
+	}
+}
+
+func TestHelpIncludesVersionCommand(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	code := run(stdout, stderr, []string{"help"})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "nida version") {
+		t.Fatalf("expected version command in help, got %q", stdout.String())
 	}
 }

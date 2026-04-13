@@ -21,6 +21,19 @@ Release only when the documented behavior matches the shipped behavior for:
 * `go build ./...` passes
 * `go run ./cmd/nida build --site ./example-site` succeeds
 * `go run ./cmd/nida serve --site ./example-site` starts successfully on the documented default port or an explicitly chosen override
+* `go run ./cmd/nida version` reports the expected version metadata for the release candidate build
+
+## Publishing Workflow
+
+Tagged releases use GitHub Actions and GoReleaser.
+
+Expected release behavior:
+
+* push a tag matching `v*`
+* CI runs tests and example-site verification before packaging
+* GitHub Releases receives platform archives plus `checksums.txt`
+* archives contain the `nida` binary, `README.md`, and `LICENSE`
+* example sites are not included in release archives
 
 ## Versioning
 

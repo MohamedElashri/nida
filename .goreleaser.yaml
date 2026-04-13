@@ -1,0 +1,74 @@
+version: 2
+
+project_name: nida
+
+before:
+  hooks:
+    - go test ./...
+    - go build ./...
+    - go run ./cmd/nida build --site ./example-site
+
+builds:
+  - id: nida
+    main: ./cmd/nida
+    binary: nida
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/MohamedElashri/nida/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/MohamedElashri/nida/internal/buildinfo.Commit={{ .Commit }}
+      - -X github.com/MohamedElashri/nida/internal/buildinfo.Date={{ .Date }}
+      - -X github.com/MohamedElashri/nida/internal/buildinfo.BuiltBy=goreleaser
+
+archives:
+  - id: nida
+    ids:
+      - nida
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else if eq .Arch "arm64" }}arm64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: MohamedElashri
+    name: nida

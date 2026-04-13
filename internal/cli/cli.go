@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/MohamedElashri/nida/internal/assets"
+	"github.com/MohamedElashri/nida/internal/buildinfo"
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/output"
@@ -62,6 +63,9 @@ func run(stdout, stderr io.Writer, args []string) int {
 			return writeCommandError(stderr, err)
 		}
 		return runServe(stdout, stderr, opts)
+	case "version", "--version":
+		writeVersion(stdout)
+		return 0
 	case "-h", "--help", "help":
 		writeUsage(stdout)
 		return 0
@@ -253,9 +257,15 @@ func writeUsage(w io.Writer) {
 	_, _ = io.WriteString(w, `Usage:
   nida serve [--site PATH] [--config PATH] [--drafts] [--port PORT]
   nida build [--site PATH] [--config PATH] [--drafts]
+  nida version
 
 Commands:
   serve   Build, watch, and serve the local site
   build   Build the site into the configured output directory
+  version Show nida build and version information
 `)
+}
+
+func writeVersion(w io.Writer) {
+	_, _ = fmt.Fprintln(w, buildinfo.Summary())
 }

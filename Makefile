@@ -6,6 +6,11 @@ EXAMPLE_SITE ?= ./example-site
 ARABIC_EXAMPLE_SITE ?= ./example-site-ar
 BINARY ?= nida
 COVERAGE_FILE ?= coverage.out
+VERSION ?= dev
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || printf "unknown")
+DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILT_BY ?= local
+LDFLAGS := -X github.com/MohamedElashri/nida/internal/buildinfo.Version=$(VERSION) -X github.com/MohamedElashri/nida/internal/buildinfo.Commit=$(COMMIT) -X github.com/MohamedElashri/nida/internal/buildinfo.Date=$(DATE) -X github.com/MohamedElashri/nida/internal/buildinfo.BuiltBy=$(BUILT_BY)
 
 export GOCACHE := $(CURDIR)/.gocache
 export GOMODCACHE := $(CURDIR)/.gomodcache
@@ -33,7 +38,7 @@ help:
 	@printf "  make clean        Remove build and cache artifacts\n"
 
 build:
-	$(GO) build -o $(BINARY) ./cmd/nida
+	$(GO) build -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/nida
 
 rebuild: clean build
 

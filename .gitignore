@@ -5,7 +5,8 @@ plan.md
 /.gomodcache/
 /nida
 /coverage.out
+/dist/
 /example-site/public/*
 !/example-site/public/.gitkeep
 blog*
-public/*
+*/public/*

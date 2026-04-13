@@ -45,6 +45,16 @@ Default local address:
 http://127.0.0.1:2906
 ```
 
+## Install
+
+Install the latest tagged release with Go:
+
+```bash
+go install github.com/MohamedElashri/nida/cmd/nida@latest
+```
+
+Or download a prebuilt binary archive from GitHub Releases.
+
 ## Commands
 
 ```bash
@@ -103,6 +113,19 @@ The repository includes a `Makefile`:
 * `make arabic-example-serve`
 * `make check`
 * `make clean`
+
+## Releases
+
+Tagged releases are built from Git tags matching `v*` with GitHub Actions and GoReleaser.
+
+Release artifacts include:
+
+* the `nida` binary for each supported platform
+* `README.md`
+* `LICENSE`
+* `checksums.txt`
+
+The bundled example sites are used for release verification, but they are not packaged into binary archives.
 
 ## Notes
 
