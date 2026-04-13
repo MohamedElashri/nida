@@ -7,3 +7,4 @@ plan.md
 /coverage.out
 /example-site/public/*
 !/example-site/public/.gitkeep
+blog*

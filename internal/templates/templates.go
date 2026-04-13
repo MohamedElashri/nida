@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"html/template"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -26,33 +27,58 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 	}
 
 	templateRoot := filepath.Join(absSiteRoot, cfg.TemplateDir)
-	basePath := filepath.Join(templateRoot, baseTemplateFile)
-	if _, err := os.Stat(basePath); err != nil {
+	if _, err := os.Stat(filepath.Join(templateRoot, baseTemplateFile)); err != nil {
 		if os.IsNotExist(err) {
 			return Set{}, fmt.Errorf("load templates from %q: missing required %s", templateRoot, baseTemplateFile)
 		}
 		return Set{}, fmt.Errorf("load templates from %q: %w", templateRoot, err)
 	}
 
-	entries, err := os.ReadDir(templateRoot)
+	var shared []string
+	entries := map[string]string{}
+	err = filepath.WalkDir(templateRoot, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() || filepath.Ext(path) != ".tmpl" {
+			return nil
+		}
+
+		relative, err := filepath.Rel(templateRoot, path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if relative == baseTemplateFile || strings.Contains(relative, "/") {
+			shared = append(shared, path)
+			return nil
+		}
+
+		name := strings.TrimSuffix(relative, filepath.Ext(relative))
+		if name == "base" {
+			shared = append(shared, path)
+			return nil
+		}
+		entries[name] = path
+		return nil
+	})
 	if err != nil {
 		return Set{}, fmt.Errorf("read template directory %q: %w", templateRoot, err)
 	}
 
+	slices.Sort(shared)
 	set := Set{templates: map[string]*template.Template{}}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if entry.Name() == baseTemplateFile || filepath.Ext(entry.Name()) != ".tmpl" {
-			continue
-		}
-
-		name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-		path := filepath.Join(templateRoot, entry.Name())
-		tmpl, err := template.New("base").Funcs(funcMap()).ParseFiles(basePath, path)
-		if err != nil {
-			return Set{}, fmt.Errorf("parse template %q: %w", path, err)
+	for name, entry := range entries {
+		files := append(append([]string(nil), shared...), entry)
+		tmpl := template.New("root").Funcs(funcMap())
+		for _, file := range files {
+			data, err := os.ReadFile(file)
+			if err != nil {
+				return Set{}, fmt.Errorf("read template %q: %w", file, err)
+			}
+			if _, err := tmpl.Parse(string(data)); err != nil {
+				return Set{}, fmt.Errorf("parse template %q: %w", file, err)
+			}
 		}
 		set.templates[name] = tmpl
 	}
@@ -75,18 +101,18 @@ func (s Set) Execute(name string, data any) (string, error) {
 	if err := tmpl.ExecuteTemplate(&b, name, data); err != nil {
 		return "", fmt.Errorf("execute template %q: %w", name, err)
 	}
-
 	return b.String(), nil
 }
 
 func funcMap() template.FuncMap {
 	return template.FuncMap{
 		"formatDate":        formatDate,
+		"formatDateWith":    formatDateWith,
 		"safeHTML":          safeHTML,
+		"safeCSS":           safeCSS,
 		"join":              strings.Join,
 		"default":           defaultString,
 		"slugify":           content.DeriveSlug,
-		"title":             strings.Title,
 		"documentDirection": config.DocumentDirection,
 	}
 }
@@ -98,8 +124,19 @@ func formatDate(value time.Time) string {
 	return value.Format("2006-01-02")
 }
 
+func formatDateWith(value time.Time, format string) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.Format(strftimeToGoLayout(format))
+}
+
 func safeHTML(value string) template.HTML {
 	return template.HTML(value)
+}
+
+func safeCSS(value string) template.CSS {
+	return template.CSS(value)
 }
 
 func defaultString(value, fallback string) string {
@@ -116,4 +153,22 @@ func AvailableNames(set Set) []string {
 	}
 	slices.Sort(names)
 	return names
+}
+
+func strftimeToGoLayout(format string) string {
+	if strings.TrimSpace(format) == "" {
+		return "2006-01-02"
+	}
+	replacer := strings.NewReplacer(
+		"%Y", "2006",
+		"%m", "01",
+		"%d", "02",
+		"%b", "Jan",
+		"%B", "January",
+		"%H", "15",
+		"%M", "04",
+		"%S", "05",
+		"%+", time.RFC3339,
+	)
+	return replacer.Replace(format)
 }

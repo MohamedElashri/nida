@@ -2,38 +2,14 @@ package render
 
 import (
 	"fmt"
-	"html/template"
-	"net/url"
-	"path"
+	"strconv"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
-	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/taxonomies"
 	"github.com/MohamedElashri/nida/internal/templates"
 )
-
-type Page struct {
-	URL          string
-	CanonicalURL string
-	TemplateName string
-	Title        string
-	Content      string
-}
-
-type templateContext struct {
-	Title        string
-	HomeURL      string
-	CanonicalURL string
-	Config       config.SiteConfig
-	Index        site.SiteIndex
-	Page         content.Item
-	Pages        []content.Item
-	Terms        []taxonomies.Term
-	Taxonomy     taxonomies.Collection
-	Term         taxonomies.Term
-}
 
 func RenderSite(siteRoot string, cfg config.SiteConfig, state site.State) ([]Page, error) {
 	set, err := templates.Load(siteRoot, cfg)
@@ -48,99 +24,38 @@ func RenderSite(siteRoot string, cfg config.SiteConfig, state site.State) ([]Pag
 		}
 	}
 
-	pages := make([]Page, 0, len(state.Index.Posts)+len(state.Index.Pages)+2)
-
-	homePage, err := renderTemplate(set, "index", templateContext{
-		Title:        cfg.Title,
-		HomeURL:      "/",
-		CanonicalURL: canonicalURL(cfg.BaseURL, "/"),
-		Config:       cfg,
-		Index:        state.Index,
-		Pages:        state.Index.RecentPosts,
-	})
+	theme, err := buildTheme(siteRoot, cfg)
 	if err != nil {
 		return nil, err
 	}
-	pages = append(pages, Page{
-		URL:          "/",
-		CanonicalURL: canonicalURL(cfg.BaseURL, "/"),
-		TemplateName: "index",
-		Title:        cfg.Title,
-		Content:      homePage,
-	})
 
-	for _, item := range state.Index.Posts {
-		out, err := renderTemplate(set, "post", templateContext{
-			Title:        item.Title,
-			HomeURL:      "/",
-			CanonicalURL: state.Index.CanonicalLookup[item.URL],
-			Config:       cfg,
-			Index:        state.Index,
-			Page:         item,
-		})
-		if err != nil {
-			return nil, err
-		}
-		pages = append(pages, Page{
-			URL:          item.URL,
-			CanonicalURL: state.Index.CanonicalLookup[item.URL],
-			TemplateName: "post",
-			Title:        item.Title,
-			Content:      out,
-		})
+	pages := make([]Page, 0, len(state.Index.Posts)+len(state.Index.Pages)+len(state.Index.Sections)+4)
+
+	home, err := renderHomePage(set, cfg, theme, state)
+	if err != nil {
+		return nil, err
 	}
+	pages = append(pages, home)
 
-	for _, item := range state.Index.Pages {
-		out, err := renderTemplate(set, "page", templateContext{
-			Title:        item.Title,
-			HomeURL:      "/",
-			CanonicalURL: state.Index.CanonicalLookup[item.URL],
-			Config:       cfg,
-			Index:        state.Index,
-			Page:         item,
-		})
-		if err != nil {
-			return nil, err
-		}
-		pages = append(pages, Page{
-			URL:          item.URL,
-			CanonicalURL: state.Index.CanonicalLookup[item.URL],
-			TemplateName: "page",
-			Title:        item.Title,
-			Content:      out,
-		})
+	contentPages, err := renderContentPages(set, cfg, theme, state)
+	if err != nil {
+		return nil, err
 	}
+	pages = append(pages, contentPages...)
 
-	if set.Has("list") {
-		out, err := renderTemplate(set, "list", templateContext{
-			Title:        "Posts",
-			HomeURL:      "/",
-			CanonicalURL: canonicalURL(cfg.BaseURL, "/posts/"),
-			Config:       cfg,
-			Index:        state.Index,
-			Pages:        state.Index.Posts,
-		})
-		if err != nil {
-			return nil, err
-		}
-		pages = append(pages, Page{
-			URL:          "/posts/",
-			CanonicalURL: canonicalURL(cfg.BaseURL, "/posts/"),
-			TemplateName: "list",
-			Title:        "Posts",
-			Content:      out,
-		})
+	sectionPages, err := renderSectionPages(set, cfg, theme, state)
+	if err != nil {
+		return nil, err
 	}
+	pages = append(pages, sectionPages...)
 
-	if set.Has("taxonomy") {
-		taxonomyPages, err := renderTaxonomyPages(set, cfg, state.Index)
-		if err != nil {
-			return nil, err
-		}
-		pages = append(pages, taxonomyPages...)
+	taxonomyPages, err := renderTaxonomyPages(set, cfg, theme, state.Index)
+	if err != nil {
+		return nil, err
 	}
+	pages = append(pages, taxonomyPages...)
 
-	notFoundPage, err := renderNotFoundPage(set, cfg, state.Index)
+	notFoundPage, err := renderNotFoundPage(set, cfg, theme, state.Index)
 	if err != nil {
 		return nil, err
 	}
@@ -149,43 +64,208 @@ func RenderSite(siteRoot string, cfg config.SiteConfig, state site.State) ([]Pag
 	return pages, nil
 }
 
-func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, index site.SiteIndex) ([]Page, error) {
-	pages := make([]Page, 0)
-	for _, collection := range []taxonomies.Collection{index.Tags, index.Categories} {
-		if collection.Name == "" {
-			continue
+func renderHomePage(set templates.Set, cfg config.SiteConfig, theme Theme, state site.State) (Page, error) {
+	title := cfg.Title
+	description := cfg.Description
+	if state.Index.RootSection != nil {
+		if strings.TrimSpace(state.Index.RootSection.Title) != "" {
+			title = state.Index.RootSection.Title
 		}
+		if strings.TrimSpace(state.Index.RootSection.Description) != "" {
+			description = state.Index.RootSection.Description
+		}
+	}
 
-		landing, err := renderTemplate(set, "taxonomy", templateContext{
-			Title:        strings.Title(collection.Name),
+	out, err := renderTemplate(set, "index", templateContext{
+		Title:        title,
+		Description:  description,
+		HomeURL:      "/",
+		CanonicalURL: canonicalURL(cfg.BaseURL, "/"),
+		Config:       cfg,
+		Theme:        theme,
+		Index:        state.Index,
+		Pages:        latestItems(state.Index.Posts, config.MainSections(cfg), 5),
+		Section:      derefSection(state.Index.RootSection),
+		Robots:       "noai, noimageai",
+	})
+	if err != nil {
+		return Page{}, err
+	}
+
+	return Page{
+		URL:          "/",
+		CanonicalURL: canonicalURL(cfg.BaseURL, "/"),
+		TemplateName: "index",
+		Title:        title,
+		Content:      out,
+	}, nil
+}
+
+func renderContentPages(set templates.Set, cfg config.SiteConfig, theme Theme, state site.State) ([]Page, error) {
+	pages := make([]Page, 0, len(state.Index.Posts)+len(state.Index.Pages))
+
+	for _, item := range state.Index.Posts {
+		templateName := templateForItem(set, state.Index, item, "post")
+		out, err := renderTemplate(set, templateName, templateContext{
+			Title:        item.Title,
+			Description:  firstNonEmpty(item.Description, cfg.Description),
 			HomeURL:      "/",
-			CanonicalURL: collection.CanonicalURL,
+			CanonicalURL: state.Index.CanonicalLookup[item.URL],
 			Config:       cfg,
-			Index:        index,
-			Terms:        collection.Terms,
-			Taxonomy:     collection,
+			Theme:        theme,
+			Index:        state.Index,
+			Page:         item,
+			Section:      state.Index.SectionLookup[item.SectionPath],
+			Robots:       "noai, noimageai",
 		})
 		if err != nil {
 			return nil, err
 		}
 		pages = append(pages, Page{
-			URL:          collection.URL,
-			CanonicalURL: collection.CanonicalURL,
-			TemplateName: "taxonomy",
-			Title:        strings.Title(collection.Name),
-			Content:      landing,
+			URL:          item.URL,
+			CanonicalURL: state.Index.CanonicalLookup[item.URL],
+			TemplateName: templateName,
+			Title:        item.Title,
+			Content:      out,
 		})
+	}
 
+	for _, item := range state.Index.Pages {
+		templateName := templateForItem(set, state.Index, item, "page")
+		out, err := renderTemplate(set, templateName, templateContext{
+			Title:        item.Title,
+			Description:  firstNonEmpty(item.Description, cfg.Description),
+			HomeURL:      "/",
+			CanonicalURL: state.Index.CanonicalLookup[item.URL],
+			Config:       cfg,
+			Theme:        theme,
+			Index:        state.Index,
+			Page:         item,
+			Section:      state.Index.SectionLookup[item.SectionPath],
+			Robots:       "noai, noimageai",
+		})
+		if err != nil {
+			return nil, err
+		}
+		pages = append(pages, Page{
+			URL:          item.URL,
+			CanonicalURL: state.Index.CanonicalLookup[item.URL],
+			TemplateName: templateName,
+			Title:        item.Title,
+			Content:      out,
+		})
+	}
+
+	return pages, nil
+}
+
+func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, state site.State) ([]Page, error) {
+	pages := make([]Page, 0, len(state.Index.Sections))
+
+	for _, section := range state.Index.Sections {
+		if section.SectionPath == "" {
+			continue
+		}
+
+		templateName := templateForSection(set, section)
+
+		perPage := section.PaginateBy
+		if perPage <= 0 {
+			perPage = cfg.Paginate
+		}
+		if perPage <= 0 {
+			perPage = 10
+		}
+
+		totalPages := max(1, (len(section.Pages)+perPage-1)/perPage)
+		for pageNum := 1; pageNum <= totalPages; pageNum++ {
+			start := (pageNum - 1) * perPage
+			end := min(start+perPage, len(section.Pages))
+			route := section.URL
+			if pageNum > 1 {
+				route = strings.TrimSuffix(section.URL, "/") + "/page/" + strconv.Itoa(pageNum) + "/"
+			}
+			paginator := buildPaginator(section.URL, pageNum, totalPages, section.Pages[start:end])
+			out, err := renderTemplate(set, templateName, templateContext{
+				Title:        section.Title,
+				Description:  firstNonEmpty(section.Description, cfg.Description),
+				HomeURL:      "/",
+				CanonicalURL: canonicalURL(cfg.BaseURL, route),
+				Config:       cfg,
+				Theme:        theme,
+				Index:        state.Index,
+				Section:      section,
+				Pages:        section.Pages[start:end],
+				Paginator:    paginator,
+				Robots:       "noai, noimageai",
+			})
+			if err != nil {
+				return nil, err
+			}
+			pages = append(pages, Page{
+				URL:          route,
+				CanonicalURL: canonicalURL(cfg.BaseURL, route),
+				TemplateName: templateName,
+				Title:        section.Title,
+				Content:      out,
+			})
+		}
+	}
+
+	return pages, nil
+}
+
+func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, index site.SiteIndex) ([]Page, error) {
+	pages := make([]Page, 0)
+	listTemplate := pickExistingTemplate(set, "taxonomy_list", "taxonomy")
+	singleTemplate := pickExistingTemplate(set, "taxonomy_single", "taxonomy")
+
+	for _, collection := range []taxonomies.Collection{index.Tags, index.Categories} {
+		if collection.Name == "" {
+			continue
+		}
+
+		if listTemplate != "" {
+			landing, err := renderTemplate(set, listTemplate, templateContext{
+				Title:        strings.Title(collection.Name),
+				Description:  strings.Title(collection.Name),
+				HomeURL:      "/",
+				CanonicalURL: collection.CanonicalURL,
+				Config:       cfg,
+				Theme:        theme,
+				Index:        index,
+				Terms:        collection.Terms,
+				Taxonomy:     collection,
+				Robots:       "noai, noimageai",
+			})
+			if err != nil {
+				return nil, err
+			}
+			pages = append(pages, Page{
+				URL:          collection.URL,
+				CanonicalURL: collection.CanonicalURL,
+				TemplateName: listTemplate,
+				Title:        strings.Title(collection.Name),
+				Content:      landing,
+			})
+		}
+
+		if singleTemplate == "" {
+			continue
+		}
 		for _, term := range collection.Terms {
-			out, err := renderTemplate(set, "taxonomy", templateContext{
+			out, err := renderTemplate(set, singleTemplate, templateContext{
 				Title:        term.Name,
+				Description:  term.Name,
 				HomeURL:      "/",
 				CanonicalURL: term.CanonicalURL,
 				Config:       cfg,
+				Theme:        theme,
 				Index:        index,
 				Pages:        term.Items,
 				Taxonomy:     collection,
 				Term:         term,
+				Robots:       "noai, noimageai",
 			})
 			if err != nil {
 				return nil, err
@@ -193,7 +273,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, index site.Si
 			pages = append(pages, Page{
 				URL:          term.URL,
 				CanonicalURL: term.CanonicalURL,
-				TemplateName: "taxonomy",
+				TemplateName: singleTemplate,
 				Title:        term.Name,
 				Content:      out,
 			})
@@ -213,17 +293,19 @@ func renderTemplate(set templates.Set, name string, data templateContext) (strin
 	return out, nil
 }
 
-func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, index site.SiteIndex) (Page, error) {
+func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme, index site.SiteIndex) (Page, error) {
 	title := "Page not found"
 	canonical := canonicalURL(cfg.BaseURL, "/404.html")
-
 	if set.Has("404") {
 		out, err := renderTemplate(set, "404", templateContext{
 			Title:        title,
+			Description:  cfg.Description,
 			HomeURL:      "/",
 			CanonicalURL: canonical,
 			Config:       cfg,
+			Theme:        theme,
 			Index:        index,
+			Robots:       "noindex, noai, noimageai",
 		})
 		if err != nil {
 			return Page{}, err
@@ -236,7 +318,6 @@ func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, index site.Sit
 			Content:      out,
 		}, nil
 	}
-
 	return Page{
 		URL:          "/404.html",
 		CanonicalURL: canonical,
@@ -247,70 +328,21 @@ func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, index site.Sit
 }
 
 func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) string {
-	siteTitle := template.HTMLEscapeString(cfg.Title)
-	if strings.TrimSpace(siteTitle) == "" {
-		siteTitle = "Site"
+	pageTitle := title
+	if strings.TrimSpace(cfg.Title) != "" {
+		pageTitle = title + " | " + cfg.Title
 	}
-	pageTitle := template.HTMLEscapeString(title)
-	description := template.HTMLEscapeString(cfg.Description)
-	language := template.HTMLEscapeString(defaultLanguage(cfg.Language))
-	direction := template.HTMLEscapeString(config.DocumentDirection(cfg.Language))
+	language := defaultLanguage(cfg.Language)
+	direction := config.DocumentDirection(cfg.Language)
 
 	var b strings.Builder
 	b.WriteString("<!doctype html>\n")
-	b.WriteString("<html lang=\"")
-	b.WriteString(language)
-	b.WriteString("\" dir=\"")
-	b.WriteString(direction)
-	b.WriteString("\">\n")
-	b.WriteString("<head>\n")
-	b.WriteString("  <meta charset=\"utf-8\">\n")
-	b.WriteString("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
-	b.WriteString("  <title>")
-	b.WriteString(pageTitle)
-	b.WriteString(" | ")
-	b.WriteString(siteTitle)
-	b.WriteString("</title>\n")
-	b.WriteString("  <meta name=\"robots\" content=\"noindex\">\n")
-	if canonicalURL != "" {
-		b.WriteString("  <link rel=\"canonical\" href=\"")
-		b.WriteString(template.HTMLEscapeString(canonicalURL))
-		b.WriteString("\">\n")
-	}
-	if description != "" {
-		b.WriteString("  <meta name=\"description\" content=\"")
-		b.WriteString(description)
-		b.WriteString("\">\n")
-	}
-	b.WriteString("</head>\n")
-	b.WriteString("<body>\n")
-	b.WriteString("  <main>\n")
-	b.WriteString("    <h1>")
-	b.WriteString(pageTitle)
-	b.WriteString("</h1>\n")
-	b.WriteString("    <p>The page you requested could not be found.</p>\n")
-	b.WriteString("    <p><a href=\"/\">Return to the homepage</a></p>\n")
-	b.WriteString("  </main>\n")
-	b.WriteString("</body>\n")
-	b.WriteString("</html>\n")
+	b.WriteString(`<html lang="` + language + `" dir="` + direction + `">`)
+	b.WriteString("<head>")
+	b.WriteString(`<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">`)
+	b.WriteString(`<title>` + pageTitle + `</title>`)
+	b.WriteString(`<meta name="robots" content="noindex">`)
+	b.WriteString(`<link rel="canonical" href="` + canonicalURL + `">`)
+	b.WriteString("</head><body><main><h1>Page not found</h1><p>The page you requested could not be found.</p><p><a href=\"/\">Return to the homepage</a></p></main></body></html>\n")
 	return b.String()
-}
-
-func defaultLanguage(value string) string {
-	if strings.TrimSpace(value) == "" {
-		return "en"
-	}
-	return value
-}
-
-func canonicalURL(baseURL, route string) string {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return route
-	}
-	base.Path = path.Join(base.Path, route)
-	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
-	}
-	return base.String()
 }

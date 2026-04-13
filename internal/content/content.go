@@ -14,14 +14,16 @@ import (
 )
 
 const (
-	TypePost = "post"
-	TypePage = "page"
+	TypePost    = "post"
+	TypePage    = "page"
+	TypeSection = "section"
 )
 
 type Item struct {
 	SourcePath     string
 	RelativePath   string
 	Type           string
+	SectionPath    string
 	RawFrontMatter string
 	BodyMarkdown   string
 	BodyHTML       string
@@ -33,6 +35,10 @@ type Item struct {
 	Draft          bool
 	Tags           []string
 	Categories     []string
+	Template       string
+	PageTemplate   string
+	PaginateBy     int
+	Extra          map[string]any
 }
 
 func Discover(siteRoot string, cfg config.SiteConfig) ([]Item, error) {
@@ -42,19 +48,10 @@ func Discover(siteRoot string, cfg config.SiteConfig) ([]Item, error) {
 	}
 
 	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
-	items := make([]Item, 0)
-
-	postItems, err := discoverType(contentRoot, cfg.PostsDir, TypePost)
+	items, err := discoverAll(contentRoot, cfg)
 	if err != nil {
 		return nil, err
 	}
-	pageItems, err := discoverType(contentRoot, cfg.PagesDir, TypePage)
-	if err != nil {
-		return nil, err
-	}
-
-	items = append(items, postItems...)
-	items = append(items, pageItems...)
 
 	slices.SortFunc(items, func(a, b Item) int {
 		return strings.Compare(a.RelativePath, b.RelativePath)
@@ -63,13 +60,12 @@ func Discover(siteRoot string, cfg config.SiteConfig) ([]Item, error) {
 	return items, nil
 }
 
-func discoverType(contentRoot, typeDir, itemType string) ([]Item, error) {
-	root := filepath.Join(contentRoot, typeDir)
+func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Item, error) {
 	entries := make([]string, 0)
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+	err := filepath.WalkDir(contentRoot, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			if path == root && os.IsNotExist(walkErr) {
+			if path == contentRoot && os.IsNotExist(walkErr) {
 				return fs.SkipDir
 			}
 			return walkErr
@@ -86,14 +82,14 @@ func discoverType(contentRoot, typeDir, itemType string) ([]Item, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("discover %s content under %q: %w", itemType, root, err)
+		return nil, fmt.Errorf("discover content under %q: %w", contentRoot, err)
 	}
 
 	slices.Sort(entries)
 
 	items := make([]Item, 0, len(entries))
 	for _, path := range entries {
-		item, err := loadItem(contentRoot, path, itemType)
+		item, err := loadItem(contentRoot, path, classifyItem(contentRoot, path, cfg))
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +117,12 @@ func loadItem(contentRoot, sourcePath, itemType string) (Item, error) {
 
 	meta := normalizeMetadata(doc.Metadata)
 	slug := meta.Slug
-	if slug == "" {
+	if itemType == TypeSection {
+		slug = DeriveSlug(filepath.Base(filepath.Dir(sourcePath)))
+		if relativePath == "_index.md" {
+			slug = ""
+		}
+	} else if slug == "" {
 		slug = DeriveSlug(filepath.Base(sourcePath))
 	}
 
@@ -129,6 +130,7 @@ func loadItem(contentRoot, sourcePath, itemType string) (Item, error) {
 		SourcePath:     sourcePath,
 		RelativePath:   filepath.ToSlash(relativePath),
 		Type:           itemType,
+		SectionPath:    sectionPath(filepath.ToSlash(relativePath), itemType),
 		RawFrontMatter: doc.RawFrontMatter,
 		BodyMarkdown:   doc.BodyMarkdown,
 		Title:          meta.Title,
@@ -138,6 +140,10 @@ func loadItem(contentRoot, sourcePath, itemType string) (Item, error) {
 		Draft:          meta.Draft,
 		Tags:           meta.Tags,
 		Categories:     meta.Categories,
+		Template:       meta.Template,
+		PageTemplate:   meta.PageTemplate,
+		PaginateBy:     meta.PaginateBy,
+		Extra:          meta.Extra,
 	}, nil
 }
 
@@ -145,9 +151,46 @@ func normalizeMetadata(meta frontmatter.Metadata) frontmatter.Metadata {
 	meta.Title = strings.TrimSpace(meta.Title)
 	meta.Description = strings.TrimSpace(meta.Description)
 	meta.Slug = DeriveSlug(meta.Slug)
+	meta.Template = strings.TrimSpace(meta.Template)
+	meta.PageTemplate = strings.TrimSpace(meta.PageTemplate)
 	meta.Tags = normalizeStringList(meta.Tags)
 	meta.Categories = normalizeStringList(meta.Categories)
 	return meta
+}
+
+func classifyItem(contentRoot, sourcePath string, cfg config.SiteConfig) string {
+	relativePath, err := filepath.Rel(contentRoot, sourcePath)
+	if err != nil {
+		return TypePost
+	}
+
+	normalized := filepath.ToSlash(relativePath)
+	if filepath.Base(sourcePath) == "_index.md" {
+		return TypeSection
+	}
+	if matchesContentDir(normalized, cfg.PagesDir) {
+		return TypePage
+	}
+	return TypePost
+}
+
+func sectionPath(relativePath, itemType string) string {
+	dir := filepath.ToSlash(filepath.Dir(relativePath))
+	if dir == "." {
+		dir = ""
+	}
+	if itemType == TypeSection {
+		return dir
+	}
+	return dir
+}
+
+func matchesContentDir(relativePath, dir string) bool {
+	dir = strings.Trim(filepath.ToSlash(dir), "/")
+	if dir == "" {
+		return false
+	}
+	return relativePath == dir || strings.HasPrefix(relativePath, dir+"/")
 }
 
 func normalizeStringList(values []string) []string {

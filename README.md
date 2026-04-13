@@ -67,17 +67,17 @@ site/
 
 ## Example Site
 
-A complete example project lives in [example-site](/home/melashri/projects/nida/example-site).
-An Arabic RTL example also lives in [example-site-ar](/home/melashri/projects/nida/example-site-ar).
+A complete example project lives in [example-site](./example-site).
+An Arabic RTL example also lives in [example-site-ar](./example-site-ar).
 
 Useful files:
 
-* config: [example-site/config.toml](/home/melashri/projects/nida/example-site/config.toml:1)
-* content: [example-site/content/posts/launching-nida.md](/home/melashri/projects/nida/example-site/content/posts/launching-nida.md:1)
-* templates: [example-site/templates/base.tmpl](/home/melashri/projects/nida/example-site/templates/base.tmpl:1)
-* custom 404 template: [example-site/templates/404.tmpl](/home/melashri/projects/nida/example-site/templates/404.tmpl:1)
-* styles: [example-site/static/site.css](/home/melashri/projects/nida/example-site/static/site.css:1)
-* Arabic example config: [example-site-ar/config.toml](/home/melashri/projects/nida/example-site-ar/config.toml:1)
+* config: [example-site/config.toml](./example-site/config.toml:1)
+* content: [example-site/content/posts/launching-nida.md](./example-site/content/posts/launching-nida.md:1)
+* templates: [example-site/templates/base.tmpl](./example-site/templates/base.tmpl:1)
+* custom 404 template: [example-site/templates/404.tmpl](./example-site/templates/404.tmpl:1)
+* styles: [example-site/static/site.css](./example-site/static/site.css:1)
+* Arabic example config: [example-site-ar/config.toml](./example-site-ar/config.toml:1)
 
 Optional theme template:
 
@@ -114,4 +114,4 @@ Current behavior:
 
 ## License
 
-MIT. See [LICENSE](/home/melashri/projects/nida/LICENSE).
+MIT. See [LICENSE](./LICENSE).

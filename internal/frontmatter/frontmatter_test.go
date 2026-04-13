@@ -34,7 +34,7 @@ slug = "hello"
 }
 
 func TestSplitMissingOpeningDelimiter(t *testing.T) {
-	_, _, err := Split([]byte("title = \"oops\""))
+	_, _, _, err := Split([]byte("title = \"oops\""))
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -44,7 +44,7 @@ func TestSplitMissingOpeningDelimiter(t *testing.T) {
 }
 
 func TestSplitMissingClosingDelimiter(t *testing.T) {
-	_, _, err := Split([]byte(`+++
+	_, _, _, err := Split([]byte(`+++
 title = "oops"
 `))
 	if err == nil {
