@@ -1,34 +1,20 @@
 {{- define "index" -}}{{ template "base" . }}{{- end }}
 {{- define "content" }}
   <section class="hero">
-    <p class="eyebrow">Example site</p>
-    <h1>A small publishing system with a clear shape.</h1>
+    <h1>{{ .Config.Title }}</h1>
     <p class="hero-copy">{{ .Config.Description }}</p>
   </section>
 
-  <section class="section-grid">
-    <div class="section-card">
-      <h2>Recent posts</h2>
-      <ul class="post-list">
-        {{ range .Pages }}
-        <li class="post-list-item">
-          <p class="post-meta">{{ formatDate .Date }}</p>
-          <h3><a href="{{ .URL }}">{{ .Title }}</a></h3>
-          <p>{{ .Description }}</p>
-        </li>
-        {{ end }}
-      </ul>
-    </div>
-
-    <aside class="section-card section-card-accent">
-      <h2>Built in</h2>
-      <ul class="feature-list">
-        <li>Markdown with TOML front matter</li>
-        <li>Syntax highlighting</li>
-        <li>Tags and categories</li>
-        <li>RSS and sitemap generation</li>
-        <li>Local build and serve workflow</li>
-      </ul>
-    </aside>
+  <section class="home-section">
+    <h2>Recent Posts</h2>
+    <ul class="post-list">
+      {{ range .Pages }}
+      <li class="post-list-item">
+        <h3><a href="{{ .URL }}">{{ .Title }}</a></h3>
+        <p class="post-meta">{{ formatDate .Date }}</p>
+        <p>{{ .Description }}</p>
+      </li>
+      {{ end }}
+    </ul>
   </section>
 {{- end }}

@@ -1,8 +1,8 @@
 {{- define "post" -}}{{ template "base" . }}{{- end }}
 {{- define "content" }}
   <article class="article">
-    <p class="eyebrow">{{ formatDate .Page.Date }}</p>
     <h1>{{ .Page.Title }}</h1>
+    <p class="post-meta">{{ formatDate .Page.Date }}</p>
     <p class="lede">{{ .Page.Description }}</p>
     <div class="article-meta">
       {{ if .Page.Tags }}<p><strong>Tags:</strong> {{ join .Page.Tags ", " }}</p>{{ end }}

@@ -11,22 +11,18 @@
 <body>
   <div class="page-shell">
     <header class="site-header">
-      <div class="brand-block">
-        <a class="brand" href="{{ .HomeURL }}">{{ .Config.Title }}</a>
-        <p class="tagline">{{ .Config.Description }}</p>
-      </div>
+      <a class="brand" href="{{ .HomeURL }}">{{ .Config.Title }}</a>
       <nav class="site-nav" aria-label="Primary">
         <a href="/">Home</a>
         <a href="/posts/">Archive</a>
         <a href="/about/">About</a>
-        <a href="/colophon/">Colophon</a>
       </nav>
     </header>
     <main class="content-shell">
       {{- template "content" . }}
     </main>
     <footer class="site-footer">
-      <p>Published with Nida. Built for a calm writing workflow.</p>
+      <p>{{ .Config.Description }}</p>
     </footer>
   </div>
 </body>

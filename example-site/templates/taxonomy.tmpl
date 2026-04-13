@@ -2,13 +2,12 @@
 {{- define "content" }}
   {{- if .Term.Name }}
   <section class="taxonomy">
-    <p class="eyebrow">{{ .Taxonomy.Name | title }}</p>
     <h1>{{ .Term.Name }}</h1>
     <ul class="post-list">
       {{ range .Pages }}
       <li class="post-list-item">
-        <p class="post-meta">{{ formatDate .Date }}</p>
         <h2><a href="{{ .URL }}">{{ .Title }}</a></h2>
+        <p class="post-meta">{{ formatDate .Date }}</p>
         <p>{{ .Description }}</p>
       </li>
       {{ end }}
@@ -16,7 +15,6 @@
   </section>
   {{- else }}
   <section class="taxonomy">
-    <p class="eyebrow">Explore</p>
     <h1>{{ .Title }}</h1>
     <ul class="term-list">
       {{ range .Terms }}
