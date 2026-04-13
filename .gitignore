@@ -8,3 +8,4 @@ plan.md
 /example-site/public/*
 !/example-site/public/.gitkeep
 blog*
+public/*

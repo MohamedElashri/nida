@@ -108,7 +108,7 @@ The repository includes a `Makefile`:
 
 Current behavior:
 
-* watch mode uses native filesystem events on Linux, with polling fallback where event watching is unavailable
+* watch mode uses native filesystem events on Linux and macOS, with polling fallback where event watching is unavailable
 * serve mode updates output incrementally: asset-only changes sync assets, while content/template/config changes rewrite only the outputs that changed
 * `server.livereload` is implemented for local development and auto-refreshes the browser after successful rebuilds
 
