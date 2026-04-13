@@ -47,13 +47,103 @@ http://127.0.0.1:2906
 
 ## Install
 
-Install the latest tagged release with Go:
+### Install A Prebuilt Binary From Releases
+
+Set `VERSION` to the release tag you want to install, for example:
+
+macOS or Linux:
+
+```bash
+VERSION=<latest-tag>
+```
+
+Windows PowerShell:
+
+```powershell
+$VERSION = "<latest-tag>"
+```
+
+<details>
+<summary>Linux x86_64</summary>
+
+```bash
+curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_linux_x86_64.tar.gz"
+```
+
+</details>
+
+<details>
+<summary>Linux arm64</summary>
+
+```bash
+curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_linux_arm64.tar.gz"
+```
+
+</details>
+
+<details>
+<summary>macOS Intel</summary>
+
+```bash
+curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_darwin_x86_64.tar.gz"
+```
+
+</details>
+
+<details>
+<summary>macOS Apple Silicon</summary>
+
+```bash
+curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_darwin_arm64.tar.gz"
+```
+
+</details>
+
+<details>
+<summary>Windows x86_64</summary>
+
+```powershell
+Invoke-WebRequest -Uri "https://github.com/MohamedElashri/nida/releases/download/$VERSION/nida_${VERSION}_windows_x86_64.zip" -OutFile "nida.zip"
+```
+
+</details>
+
+Extract and install:
+
+macOS or Linux:
+
+```bash
+tar -xzf nida.tar.gz
+chmod +x nida
+sudo mv nida /usr/local/bin/nida
+nida version
+```
+
+Windows PowerShell:
+
+```powershell
+Expand-Archive -Path "nida.zip" -DestinationPath ".\\nida"
+.\\nida\\nida.exe version
+```
+
+You can then move `nida.exe` into a directory that is already on your `PATH`.
+
+### Build It Yourself
+
+Build from source with Go:
+
+```bash
+git clone https://github.com/MohamedElashri/nida.git
+cd nida
+go build ./cmd/nida
+./nida version
+```
+
+Or install it into your Go bin directory:
 
 ```bash
 go install github.com/MohamedElashri/nida/cmd/nida@latest
 ```
-
-Or download a prebuilt binary archive from GitHub Releases.
 
 ## Commands
 
