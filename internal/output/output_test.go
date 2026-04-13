@@ -17,6 +17,7 @@ func TestWriteSiteWritesExpectedFiles(t *testing.T) {
 	pages := []render.Page{
 		{URL: "/", Content: "home"},
 		{URL: "/posts/hello/", Content: "post"},
+		{URL: "/404.html", Content: "not found"},
 	}
 
 	if err := WriteSite(dir, cfg, pages); err != nil {
@@ -25,6 +26,7 @@ func TestWriteSiteWritesExpectedFiles(t *testing.T) {
 
 	assertFile(t, filepath.Join(dir, "public", "index.html"), "home")
 	assertFile(t, filepath.Join(dir, "public", "posts", "hello", "index.html"), "post")
+	assertFile(t, filepath.Join(dir, "public", "404.html"), "not found")
 }
 
 func TestWriteSiteCleansStaleFiles(t *testing.T) {

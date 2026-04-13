@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"html/template"
 	"net/url"
 	"path"
 	"strings"
@@ -139,6 +140,12 @@ func RenderSite(siteRoot string, cfg config.SiteConfig, state site.State) ([]Pag
 		pages = append(pages, taxonomyPages...)
 	}
 
+	notFoundPage, err := renderNotFoundPage(set, cfg, state.Index)
+	if err != nil {
+		return nil, err
+	}
+	pages = append(pages, notFoundPage)
+
 	return pages, nil
 }
 
@@ -204,6 +211,83 @@ func renderTemplate(set templates.Set, name string, data templateContext) (strin
 		out += "\n"
 	}
 	return out, nil
+}
+
+func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, index site.SiteIndex) (Page, error) {
+	title := "Page not found"
+	canonical := canonicalURL(cfg.BaseURL, "/404.html")
+
+	if set.Has("404") {
+		out, err := renderTemplate(set, "404", templateContext{
+			Title:        title,
+			HomeURL:      "/",
+			CanonicalURL: canonical,
+			Config:       cfg,
+			Index:        index,
+		})
+		if err != nil {
+			return Page{}, err
+		}
+		return Page{
+			URL:          "/404.html",
+			CanonicalURL: canonical,
+			TemplateName: "404",
+			Title:        title,
+			Content:      out,
+		}, nil
+	}
+
+	return Page{
+		URL:          "/404.html",
+		CanonicalURL: canonical,
+		TemplateName: "builtin-404",
+		Title:        title,
+		Content:      defaultNotFoundHTML(cfg, canonical, title),
+	}, nil
+}
+
+func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) string {
+	siteTitle := template.HTMLEscapeString(cfg.Title)
+	if strings.TrimSpace(siteTitle) == "" {
+		siteTitle = "Site"
+	}
+	pageTitle := template.HTMLEscapeString(title)
+	description := template.HTMLEscapeString(cfg.Description)
+
+	var b strings.Builder
+	b.WriteString("<!doctype html>\n")
+	b.WriteString("<html lang=\"en\">\n")
+	b.WriteString("<head>\n")
+	b.WriteString("  <meta charset=\"utf-8\">\n")
+	b.WriteString("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
+	b.WriteString("  <title>")
+	b.WriteString(pageTitle)
+	b.WriteString(" | ")
+	b.WriteString(siteTitle)
+	b.WriteString("</title>\n")
+	b.WriteString("  <meta name=\"robots\" content=\"noindex\">\n")
+	if canonicalURL != "" {
+		b.WriteString("  <link rel=\"canonical\" href=\"")
+		b.WriteString(template.HTMLEscapeString(canonicalURL))
+		b.WriteString("\">\n")
+	}
+	if description != "" {
+		b.WriteString("  <meta name=\"description\" content=\"")
+		b.WriteString(description)
+		b.WriteString("\">\n")
+	}
+	b.WriteString("</head>\n")
+	b.WriteString("<body>\n")
+	b.WriteString("  <main>\n")
+	b.WriteString("    <h1>")
+	b.WriteString(pageTitle)
+	b.WriteString("</h1>\n")
+	b.WriteString("    <p>The page you requested could not be found.</p>\n")
+	b.WriteString("    <p><a href=\"/\">Return to the homepage</a></p>\n")
+	b.WriteString("  </main>\n")
+	b.WriteString("</body>\n")
+	b.WriteString("</html>\n")
+	return b.String()
 }
 
 func canonicalURL(baseURL, route string) string {

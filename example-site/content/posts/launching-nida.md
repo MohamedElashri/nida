@@ -8,8 +8,6 @@ description = "A first look at the publishing model Nida is built around."
 slug = "launching-nida"
 +++
 
-# Launching Nida
-
 Nida starts from a simple belief: many personal sites do not need a giant abstraction layer.
 
 Instead of aiming for maximum flexibility, it tries to make a focused publishing workflow feel calm and obvious. The source files are plain. The outputs are deterministic. The command surface stays small enough to remember.

@@ -13,6 +13,7 @@ It keeps the workflow simple:
 * reads Markdown content with TOML front matter
 * renders posts and pages with Go templates
 * supports tags and categories
+* generates a default `404.html` page, with optional theme override
 * generates `rss.xml`
 * generates `sitemap.xml`
 * serves a local development site with rebuilds
@@ -72,7 +73,13 @@ Useful files:
 * config: [example-site/config.toml](/home/melashri/projects/nida/example-site/config.toml:1)
 * content: [example-site/content/posts/launching-nida.md](/home/melashri/projects/nida/example-site/content/posts/launching-nida.md:1)
 * templates: [example-site/templates/base.tmpl](/home/melashri/projects/nida/example-site/templates/base.tmpl:1)
+* custom 404 template: [example-site/templates/404.tmpl](/home/melashri/projects/nida/example-site/templates/404.tmpl:1)
 * styles: [example-site/static/site.css](/home/melashri/projects/nida/example-site/static/site.css:1)
+
+Optional theme template:
+
+* add `templates/404.tmpl` to customize the generated `/404.html`
+* if no `404.tmpl` exists, `nida` emits a built-in fallback page automatically
 
 ## Development
 

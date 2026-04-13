@@ -3,6 +3,7 @@ package render
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MohamedElashri/nida/internal/config"
@@ -33,6 +34,7 @@ func TestRenderSiteGolden(t *testing.T) {
 	assertGoldenPage(t, pages, "/tags/architecture/", "tag-architecture.golden.html")
 	assertGoldenPage(t, pages, "/categories/", "categories.golden.html")
 	assertGoldenPage(t, pages, "/categories/engineering/", "category-engineering.golden.html")
+	assertGoldenPage(t, pages, "/404.html", "404.golden.html")
 }
 
 func TestRenderSiteMissingTemplateFailsClearly(t *testing.T) {
@@ -54,19 +56,50 @@ func TestRenderSiteMissingTemplateFailsClearly(t *testing.T) {
 	}
 }
 
+func TestRenderSiteIncludesBuiltin404WithoutThemeTemplate(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Title = "Example"
+	cfg.TemplateDir = "templates"
+
+	if err := os.MkdirAll(filepath.Join(dir, "templates"), 0o755); err != nil {
+		t.Fatalf("mkdir templates: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "templates", "base.tmpl"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write base: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "templates", "index.tmpl"), []byte(`{{ define "index" }}home{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "templates", "post.tmpl"), []byte(`{{ define "post" }}post{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write post: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "templates", "page.tmpl"), []byte(`{{ define "page" }}page{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write page: %v", err)
+	}
+
+	pages, err := RenderSite(dir, cfg, site.State{})
+	if err != nil {
+		t.Fatalf("RenderSite returned error: %v", err)
+	}
+
+	page := findPage(t, pages, "/404.html")
+	if page.TemplateName != "builtin-404" {
+		t.Fatalf("expected builtin 404 template, got %q", page.TemplateName)
+	}
+	if page.CanonicalURL != "https://example.com/404.html" {
+		t.Fatalf("unexpected canonical URL %q", page.CanonicalURL)
+	}
+	if !containsAll(page.Content, "<title>Page not found | Example</title>", "<meta name=\"robots\" content=\"noindex\">", "<h1>Page not found</h1>") {
+		t.Fatalf("unexpected builtin 404 content:\n%s", page.Content)
+	}
+}
+
 func assertGoldenPage(t *testing.T, pages []Page, url, goldenName string) {
 	t.Helper()
 
-	var got string
-	for _, page := range pages {
-		if page.URL == url {
-			got = page.Content
-			break
-		}
-	}
-	if got == "" {
-		t.Fatalf("page %q not found", url)
-	}
+	got := findPage(t, pages, url).Content
 
 	want, err := os.ReadFile(filepath.Join("testdata", goldenName))
 	if err != nil {
@@ -75,4 +108,25 @@ func assertGoldenPage(t *testing.T, pages []Page, url, goldenName string) {
 	if got != string(want) {
 		t.Fatalf("golden mismatch for %s\nwant:\n%s\ngot:\n%s", goldenName, string(want), got)
 	}
+}
+
+func findPage(t *testing.T, pages []Page, url string) Page {
+	t.Helper()
+
+	for _, page := range pages {
+		if page.URL == url {
+			return page
+		}
+	}
+	t.Fatalf("page %q not found", url)
+	return Page{}
+}
+
+func containsAll(value string, parts ...string) bool {
+	for _, part := range parts {
+		if !strings.Contains(value, part) {
+			return false
+		}
+	}
+	return true
 }

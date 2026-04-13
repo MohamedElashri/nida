@@ -8,8 +8,6 @@ description = "Why Nida keeps the public interface intentionally narrow."
 slug = "designing-the-cli"
 +++
 
-# Designing a Two-Command CLI
-
 Nida intentionally exposes only two user-facing commands:
 
 - `nida build`
