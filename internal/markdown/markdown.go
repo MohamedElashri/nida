@@ -28,6 +28,7 @@ func Render(source string, cfg config.SiteConfig) (string, error) {
 				util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
 			),
 			renderhtml.WithHardWraps(),
+			renderhtml.WithUnsafe(),
 		),
 	)
 

@@ -37,6 +37,19 @@ func TestRenderHighlightedCodeGolden(t *testing.T) {
 	assertGolden(t, "highlight.golden.html", got)
 }
 
+func TestRenderPreservesRawImageHTML(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+
+	got, err := Render(`<div><img src="/images/example.png" alt="Example"></div>`, cfg)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	if !strings.Contains(got, `<img src="/images/example.png" alt="Example">`) {
+		t.Fatalf("expected raw img HTML to be preserved, got %q", got)
+	}
+}
+
 func TestRenderUnknownLanguageFallsBackGracefully(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 
