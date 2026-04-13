@@ -21,7 +21,7 @@ It keeps the workflow simple:
 
 ## Quick Start
 
-Build the binary:
+Build the binary (see [Install](#install) for more options and prebuilt releases):
 
 ```bash
 go build ./cmd/nida
