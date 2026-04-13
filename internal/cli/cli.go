@@ -1,0 +1,257 @@
+package cli
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/MohamedElashri/nida/internal/assets"
+	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/feeds"
+	"github.com/MohamedElashri/nida/internal/output"
+	"github.com/MohamedElashri/nida/internal/render"
+	"github.com/MohamedElashri/nida/internal/server"
+	"github.com/MohamedElashri/nida/internal/site"
+	"github.com/MohamedElashri/nida/internal/sitemap"
+	"github.com/MohamedElashri/nida/internal/watcher"
+)
+
+// Run executes the narrow public command surface defined in the project plan.
+func Run(args []string) int {
+	return run(os.Stdout, os.Stderr, args)
+}
+
+type commandOptions struct {
+	siteRoot   string
+	configPath string
+	drafts     bool
+	port       int
+}
+
+func run(stdout, stderr io.Writer, args []string) int {
+	if len(args) == 0 {
+		writeUsage(stderr)
+		return 1
+	}
+
+	switch args[0] {
+	case "build":
+		opts, err := parseBuildFlags(args[1:])
+		if err != nil {
+			return writeCommandError(stderr, err)
+		}
+		return runBuild(stdout, stderr, opts)
+	case "serve":
+		opts, err := parseServeFlags(args[1:])
+		if err != nil {
+			return writeCommandError(stderr, err)
+		}
+		return runServe(stdout, stderr, opts)
+	case "-h", "--help", "help":
+		writeUsage(stdout)
+		return 0
+	default:
+		_, _ = fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
+		writeUsage(stderr)
+		return 1
+	}
+}
+
+func parseBuildFlags(args []string) (commandOptions, error) {
+	fs := flag.NewFlagSet("build", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	opts := commandOptions{}
+	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
+	fs.StringVar(&opts.configPath, "config", "", "config file path")
+	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
+
+	if err := fs.Parse(args); err != nil {
+		return commandOptions{}, err
+	}
+	return opts, nil
+}
+
+func parseServeFlags(args []string) (commandOptions, error) {
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	opts := commandOptions{}
+	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
+	fs.StringVar(&opts.configPath, "config", "", "config file path")
+	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
+	fs.IntVar(&opts.port, "port", 0, "override server port")
+
+	if err := fs.Parse(args); err != nil {
+		return commandOptions{}, err
+	}
+	return opts, nil
+}
+
+func runBuild(stdout, stderr io.Writer, opts commandOptions) int {
+	cfg, path, state, pages, err := buildSite(opts)
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+
+	_, _ = fmt.Fprintf(stdout, "nida build: config=%s drafts=%t output=%s posts=%d pages=%d routes=%d rendered=%d\n", path, cfg.Drafts, cfg.OutputDir, len(state.Index.Posts), len(state.Index.Pages), len(state.Index.RouteRegistry), len(pages))
+	return 0
+}
+
+func runServe(stdout, stderr io.Writer, opts commandOptions) int {
+	cfg, path, state, pages, err := buildSite(opts)
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	outputDir := filepath.Join(opts.siteRoot, cfg.OutputDir)
+	instance, err := server.Start(ctx, outputDir, cfg.Server.Host, cfg.Server.Port)
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+
+	_, _ = fmt.Fprintf(stdout, "nida serve: config=%s drafts=%t host=%s port=%d routes=%d rendered=%d address=%s\n", path, cfg.Drafts, cfg.Server.Host, cfg.Server.Port, len(state.Index.RouteRegistry), len(pages), instance.Address)
+
+	var rebuildMu sync.Mutex
+	go func() {
+		err := watcher.Run(ctx, watcher.Options{
+			SiteRoot:  opts.siteRoot,
+			OutputDir: cfg.OutputDir,
+			Interval:  time.Second,
+			OnChange: func(paths []string) {
+				rebuildMu.Lock()
+				defer rebuildMu.Unlock()
+
+				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild triggered by %s\n", strings.Join(paths, ", "))
+				nextCfg, _, nextState, nextPages, buildErr := buildSite(opts)
+				if buildErr != nil {
+					_, _ = fmt.Fprintf(stderr, "error: rebuild failed: %v\n", buildErr)
+					return
+				}
+				if nextCfg.Server.Host != cfg.Server.Host || nextCfg.Server.Port != cfg.Server.Port {
+					_, _ = fmt.Fprintf(stdout, "nida serve: config changed server address to %s:%d; restart required to apply\n", nextCfg.Server.Host, nextCfg.Server.Port)
+				}
+				cfg = nextCfg
+				state = nextState
+				pages = nextPages
+				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild complete posts=%d pages=%d routes=%d rendered=%d\n", len(state.Index.Posts), len(state.Index.Pages), len(state.Index.RouteRegistry), len(pages))
+			},
+			OnError: func(err error) {
+				_, _ = fmt.Fprintf(stderr, "error: watcher snapshot failed: %v\n", err)
+			},
+		})
+		if err != nil && ctx.Err() == nil {
+			_, _ = fmt.Fprintf(stderr, "error: watcher failed: %v\n", err)
+			stop()
+		}
+	}()
+
+	<-ctx.Done()
+	_, _ = fmt.Fprintln(stdout, "nida serve: shutting down")
+	return 0
+}
+
+func buildSite(opts commandOptions) (config.SiteConfig, string, site.State, []render.Page, error) {
+	cfg, path, err := loadCommandConfig(opts)
+	if err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+
+	state, err := site.Load(opts.siteRoot, cfg)
+	if err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+
+	pages, err := render.RenderSite(opts.siteRoot, cfg, state)
+	if err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+
+	artifacts := make([]output.Artifact, 0, 2)
+	if cfg.RSS.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
+	}
+	if cfg.Sitemap.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
+	}
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, artifacts); err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+
+	if err := output.WriteSite(opts.siteRoot, cfg, pages); err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+	feedOutput, err := feeds.Generate(cfg, state.Index)
+	if err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+	if feedOutput != nil {
+		if err := output.WriteFile(opts.siteRoot, cfg, feedOutput.Filename, feedOutput.Content); err != nil {
+			return config.SiteConfig{}, "", site.State{}, nil, err
+		}
+	}
+	sitemapOutput, err := sitemap.Generate(cfg, state, pages)
+	if err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+	if sitemapOutput != nil {
+		if err := output.WriteFile(opts.siteRoot, cfg, sitemapOutput.Filename, sitemapOutput.Content); err != nil {
+			return config.SiteConfig{}, "", site.State{}, nil, err
+		}
+	}
+	if err := assets.Copy(opts.siteRoot, cfg); err != nil {
+		return config.SiteConfig{}, "", site.State{}, nil, err
+	}
+
+	return cfg, path, state, pages, nil
+}
+
+func loadCommandConfig(opts commandOptions) (config.SiteConfig, string, error) {
+	cfg, path, err := config.Load(config.Options{
+		SiteRoot: opts.siteRoot,
+		Path:     opts.configPath,
+	})
+	if err != nil {
+		return config.SiteConfig{}, "", err
+	}
+
+	if opts.drafts {
+		cfg.Drafts = true
+	}
+	if opts.port != 0 {
+		cfg.Server.Port = opts.port
+	}
+	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
+		return config.SiteConfig{}, "", errors.New("server.port must be between 1 and 65535")
+	}
+
+	return cfg, path, nil
+}
+
+func writeCommandError(stderr io.Writer, err error) int {
+	_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
+	return 1
+}
+
+func writeUsage(w io.Writer) {
+	_, _ = io.WriteString(w, `Usage:
+  nida serve [--site PATH] [--config PATH] [--drafts] [--port PORT]
+  nida build [--site PATH] [--config PATH] [--drafts]
+
+Commands:
+  serve   Build, watch, and serve the local site
+  build   Build the site into the configured output directory
+`)
+}

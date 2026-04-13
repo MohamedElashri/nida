@@ -1,0 +1,9 @@
+{{- define "page" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  <article class="article article-page">
+    <p class="eyebrow">Page</p>
+    <h1>{{ .Page.Title }}</h1>
+    {{ if .Page.Description }}<p class="lede">{{ .Page.Description }}</p>{{ end }}
+    <div class="prose">{{ safeHTML .Page.BodyHTML }}</div>
+  </article>
+{{- end }}

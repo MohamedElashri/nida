@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Launching Nida | Nida Journal</title>
+  <meta name="description" content="A first look at the publishing model Nida is built around.">
+  <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="brand-block">
+        <a class="brand" href="/">Nida Journal</a>
+        <p class="tagline">Notes on building a calm, focused publishing workflow with Nida.</p>
+      </div>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/posts/">Archive</a>
+        <a href="/about/">About</a>
+        <a href="/colophon/">Colophon</a>
+      </nav>
+    </header>
+    <main class="content-shell">
+  <article class="article">
+    <p class="eyebrow">2026-04-13</p>
+    <h1>Launching Nida</h1>
+    <p class="lede">A first look at the publishing model Nida is built around.</p>
+    <div class="article-meta">
+      <p><strong>Tags:</strong> architecture, release</p>
+      <p><strong>Categories:</strong> engineering</p>
+    </div>
+    <div class="prose"><h1 id="launching-nida">Launching Nida</h1>
+<p>Nida starts from a simple belief: many personal sites do not need a giant abstraction layer.</p>
+<p>Instead of aiming for maximum flexibility, it tries to make a focused publishing workflow feel calm and obvious. The source files are plain. The outputs are deterministic. The command surface stays small enough to remember.</p>
+<h2 id="what-this-first-version-includes">What this first version includes</h2>
+<ul>
+<li>Markdown content with TOML front matter</li>
+<li>syntax-highlighted fenced code blocks</li>
+<li>built-in tags and categories</li>
+<li>RSS and sitemap generation</li>
+<li>a local development server with rebuilds</li>
+</ul>
+<pre style="background-color:#f7f7f7;"><code><span style="display:flex;"><span><span style="color:#cf222e">func</span><span style="color:#fff"> </span><span style="color:#6639ba">main</span><span style="color:#1f2328">()</span><span style="color:#fff"> </span><span style="color:#1f2328">{</span><span style="color:#fff">
+</span></span></span><span style="display:flex;"><span><span style="color:#fff">    </span><span style="color:#1f2328">os</span><span style="color:#1f2328">.</span><span style="color:#6639ba">Exit</span><span style="color:#1f2328">(</span><span style="color:#1f2328">cli</span><span style="color:#1f2328">.</span><span style="color:#6639ba">Run</span><span style="color:#1f2328">(</span><span style="color:#1f2328">os</span><span style="color:#1f2328">.</span><span style="color:#1f2328">Args</span><span style="color:#1f2328">[</span><span style="color:#0550ae">1</span><span style="color:#1f2328">:]))</span><span style="color:#fff">
+</span></span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span><span style="color:#fff">
+</span></span></span></code></pre>
+<p>The interesting work happens behind that tiny entrypoint: config loading, content discovery, rendering, output writing, and local serving all move through the same internal pipeline.</p>
+</div>
+  </article>
+    </main>
+    <footer class="site-footer">
+      <p>Published with Nida. Built for a calm writing workflow.</p>
+    </footer>
+  </div>
+</body>
+</html>

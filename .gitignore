@@ -1,0 +1,9 @@
+.DS_Store
+.codex
+plan.md
+/.gocache/
+/.gomodcache/
+/nida
+/coverage.out
+/example-site/public/*
+!/example-site/public/.gitkeep
