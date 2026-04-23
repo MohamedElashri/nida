@@ -181,15 +181,15 @@ Useful files:
 
 * config: [example-site/config.toml](./example-site/config.toml:1)
 * content: [example-site/content/posts/launching-nida.md](./example-site/content/posts/launching-nida.md:1)
-* templates: [example-site/templates/base.tmpl](./example-site/templates/base.tmpl:1)
-* custom 404 template: [example-site/templates/404.tmpl](./example-site/templates/404.tmpl:1)
+* templates: [example-site/templates/base.html](./example-site/templates/base.html:1)
+* custom 404 template: [example-site/templates/404.html](./example-site/templates/404.html:1)
 * styles: [example-site/static/site.css](./example-site/static/site.css:1)
 * Arabic example config: [example-site-ar/config.toml](./example-site-ar/config.toml:1)
 
 Optional theme template:
 
-* add `templates/404.tmpl` to customize the generated `/404.html`
-* if no `404.tmpl` exists, `nida` emits a built-in fallback page automatically
+* add `templates/404.html` to customize the generated `/404.html`
+* if no `404.html` exists, `nida` emits a built-in fallback page automatically
 
 RTL support:
 

@@ -14,7 +14,10 @@ import (
 	"github.com/MohamedElashri/nida/internal/content"
 )
 
-const baseTemplateFile = "base.tmpl"
+const (
+	baseTemplateFile = "base.html"
+	templateExt      = ".html"
+)
 
 type Set struct {
 	templates map[string]*template.Template
@@ -40,7 +43,7 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if d.IsDir() || filepath.Ext(path) != ".tmpl" {
+		if d.IsDir() || filepath.Ext(path) != templateExt {
 			return nil
 		}
 

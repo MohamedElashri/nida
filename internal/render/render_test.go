@@ -46,7 +46,7 @@ func TestRenderSiteMissingTemplateFailsClearly(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "templates"), 0o755); err != nil {
 		t.Fatalf("mkdir templates: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "base.tmpl"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "base.html"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write base: %v", err)
 	}
 
@@ -66,16 +66,16 @@ func TestRenderSiteIncludesBuiltin404WithoutThemeTemplate(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "templates"), 0o755); err != nil {
 		t.Fatalf("mkdir templates: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "base.tmpl"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "base.html"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write base: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "index.tmpl"), []byte(`{{ define "index" }}home{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "index.html"), []byte(`{{ define "index" }}home{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write index: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "post.tmpl"), []byte(`{{ define "post" }}post{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "post.html"), []byte(`{{ define "post" }}post{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write post: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "page.tmpl"), []byte(`{{ define "page" }}page{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "page.html"), []byte(`{{ define "page" }}page{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write page: %v", err)
 	}
 
@@ -130,16 +130,16 @@ func TestRenderSiteBuiltin404UsesConfiguredRTLDirection(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "templates"), 0o755); err != nil {
 		t.Fatalf("mkdir templates: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "base.tmpl"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "base.html"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write base: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "index.tmpl"), []byte(`{{ define "index" }}home{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "index.html"), []byte(`{{ define "index" }}home{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write index: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "post.tmpl"), []byte(`{{ define "post" }}post{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "post.html"), []byte(`{{ define "post" }}post{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write post: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "templates", "page.tmpl"), []byte(`{{ define "page" }}page{{ end }}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "templates", "page.html"), []byte(`{{ define "page" }}page{{ end }}`), 0o644); err != nil {
 		t.Fatalf("write page: %v", err)
 	}
 

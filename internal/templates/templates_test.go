@@ -42,6 +42,37 @@ func TestLoadMissingBaseTemplate(t *testing.T) {
 	}
 }
 
+func TestLoadUsesHTMLTemplateFiles(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.TemplateDir = "templates"
+	templateDir := filepath.Join(dir, cfg.TemplateDir)
+
+	if err := os.MkdirAll(templateDir, 0o755); err != nil {
+		t.Fatalf("mkdir templates: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(templateDir, "base.html"), []byte(`{{ define "base" }}{{ template "content" . }}{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write base: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(templateDir, "index.html"), []byte(`{{ define "index" }}home{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(templateDir, "ignored.txt"), []byte(`{{ define "ignored" }}old{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write ignored: %v", err)
+	}
+
+	set, err := Load(dir, cfg)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if !set.Has("index") {
+		t.Fatalf("expected index.html to load, got %v", AvailableNames(set))
+	}
+	if set.Has("ignored") {
+		t.Fatalf("expected non-HTML files to be ignored, got %v", AvailableNames(set))
+	}
+}
+
 func TestDocumentDirectionTemplateHelper(t *testing.T) {
 	got, err := executeTemplateText(`{{ documentDirection . }}`, "ar")
 	if err != nil {
