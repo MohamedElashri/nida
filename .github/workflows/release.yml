@@ -72,6 +72,8 @@ jobs:
           FORMULA_FILE="homebrew-nida/Formula/nida.rb"
           VERSION="${TAG#v}"
 
+          mkdir -p "$(dirname "${FORMULA_FILE}")"
+
           darwin_x86_64_sha="$(awk '/nida_.*_darwin_x86_64\.tar\.gz$/ { print $1 }' "${CHECKSUMS_FILE}")"
           darwin_arm64_sha="$(awk '/nida_.*_darwin_arm64\.tar\.gz$/ { print $1 }' "${CHECKSUMS_FILE}")"
           linux_x86_64_sha="$(awk '/nida_.*_linux_x86_64\.tar\.gz$/ { print $1 }' "${CHECKSUMS_FILE}")"

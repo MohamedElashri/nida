@@ -137,8 +137,9 @@ After GoReleaser publishes assets, the release workflow:
 
 1. Checks out `MohamedElashri/homebrew-nida`.
 2. Reads SHA-256 values from `dist/checksums.txt`.
-3. Renders `packaging/homebrew/Formula/nida.rb.tpl`.
-4. Commits and pushes `Formula/nida.rb` to the tap.
+3. Creates `Formula/` in the tap if it does not already exist.
+4. Renders `packaging/homebrew/Formula/nida.rb.tpl`.
+5. Commits and pushes `Formula/nida.rb` to the tap.
 
 The formula uses the full Git tag for the GitHub release URL, such as
 `v0.2.0`, and the tag without `v` for Homebrew's package version and archive
@@ -147,12 +148,13 @@ filename, such as `0.2.0`.
 Prerequisites:
 
 * `MohamedElashri/homebrew-nida` exists.
-* The tap has a `Formula/` directory.
 * This repo has a `HOMEBREW_TAP_TOKEN` Actions secret.
 * `HOMEBREW_TAP_TOKEN` can write contents to the tap repository.
 
 If the GitHub Release succeeds but the tap update fails, fix the tap problem and
-rerun the failed workflow job for the same tag.
+rerun the failed workflow job if the fix is outside this repository. If the fix
+changes this repository's workflow file, create a new patch release or recreate
+the failed tag only if the broken release was not consumed.
 
 ## Failure Handling
 
