@@ -2,6 +2,14 @@
 
 All notable changes to Nida are documented here.
 
+## [0.3.1] - 2026-04-23
+
+### Added
+
+* Added reading time estimation mechanism and related tests.
+* Improved template function map with arithmetic operations.
+* Added external live reload script handling and corresponding tests.
+
 ## [0.3.0] - 2026-04-23
 
 ### Added
