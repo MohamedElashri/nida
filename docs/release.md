@@ -66,18 +66,19 @@ This writes artifacts under `dist/` and does not publish anything.
 ## Cutting A Release
 
 1. Make sure `main` contains the release commit.
-2. Run the preflight checks above.
-3. Create and push the tag:
+2. Update `CHANGELOG.md` with the release version, date, and migration notes.
+3. Run the preflight checks above.
+4. Create and push the tag:
 
 ```bash
 git tag v0.2.0
 git push origin v0.2.0
 ```
 
-4. Watch the `release` workflow in GitHub Actions.
-5. Confirm the GitHub Release has archives and `checksums.txt`.
-6. Confirm the Homebrew tap received an updated `Formula/nida.rb`.
-7. Install from the tap and verify:
+5. Watch the `release` workflow in GitHub Actions.
+6. Confirm the GitHub Release has archives and `checksums.txt`.
+7. Confirm the Homebrew tap received an updated `Formula/nida.rb`.
+8. Install from the tap and verify:
 
 ```bash
 brew update
@@ -98,6 +99,7 @@ Archives include:
 * `nida` binary
 * `LICENSE`
 * `README.md`
+* `CHANGELOG.md`
 
 Example sites are used as release verification fixtures, but they are not
 included in release archives.

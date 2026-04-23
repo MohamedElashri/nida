@@ -1,0 +1,52 @@
+# Changelog
+
+All notable changes to Nida are documented here.
+
+## [0.2.0] - 2026-04-23
+
+### Changed
+
+* Template files now use the standard `.html` extension instead of `.tmpl`.
+* The bundled example sites were renamed to use `templates/*.html`.
+* Documentation references for example templates and custom `404` templates now use `.html`.
+
+### Added
+
+* Homebrew tap release automation for `MohamedElashri/homebrew-nida`.
+* A maintainer release guide in `docs/release.md`.
+* Release preflight coverage for the Arabic example site.
+
+### Fixed
+
+* Homebrew formula rendering now separates the GitHub release tag, such as `v0.2.0`, from the archive/package version, such as `0.2.0`.
+* Manual release workflow runs now build snapshots instead of attempting to publish a non-tagged release.
+* Release tags are validated before publishing.
+
+### Migration Notes
+
+Rename custom template files from `.tmpl` to `.html`, for example:
+
+```text
+templates/base.tmpl -> templates/base.html
+templates/post.tmpl -> templates/post.html
+templates/page.tmpl -> templates/page.html
+templates/404.tmpl -> templates/404.html
+```
+
+Template names inside files do not change. For example, `post.html` should still define `{{ define "post" }}`.
+
+## [0.1.0] - 2026-04-13
+
+### Added
+
+* Initial release of Nida.
+* `nida build`, `nida serve`, and `nida version`.
+* Config loading and validation.
+* Markdown content discovery and rendering.
+* Posts, pages, sections, tags, and categories.
+* RSS feed and sitemap generation.
+* Static asset copying and output writing.
+* GitHub Releases packaging with GoReleaser.
+
+[0.2.0]: https://github.com/MohamedElashri/nida/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/MohamedElashri/nida/releases/tag/v0.1.0
