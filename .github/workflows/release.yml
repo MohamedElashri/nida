@@ -37,3 +37,69 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check out Homebrew tap
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/checkout@v6
+        with:
+          repository: MohamedElashri/homebrew-nida
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-nida
+
+      - name: Update Homebrew formula
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          CHECKSUMS_FILE="dist/checksums.txt"
+          TEMPLATE_FILE="packaging/homebrew/Formula/nida.rb.tpl"
+          FORMULA_FILE="homebrew-nida/Formula/nida.rb"
+
+          darwin_x86_64_sha="$(awk '/nida_.*_darwin_x86_64\.tar\.gz$/ { print $1 }' "${CHECKSUMS_FILE}")"
+          darwin_arm64_sha="$(awk '/nida_.*_darwin_arm64\.tar\.gz$/ { print $1 }' "${CHECKSUMS_FILE}")"
+          linux_x86_64_sha="$(awk '/nida_.*_linux_x86_64\.tar\.gz$/ { print $1 }' "${CHECKSUMS_FILE}")"
+          linux_arm64_sha="$(awk '/nida_.*_linux_arm64\.tar\.gz$/ { print $1 }' "${CHECKSUMS_FILE}")"
+
+          for value in \
+            "${darwin_x86_64_sha}" \
+            "${darwin_arm64_sha}" \
+            "${linux_x86_64_sha}" \
+            "${linux_arm64_sha}"
+          do
+            if [[ -z "${value}" ]]; then
+              echo "missing expected checksum in ${CHECKSUMS_FILE}" >&2
+              exit 1
+            fi
+          done
+
+          sed \
+            -e "s/__VERSION__/${VERSION}/g" \
+            -e "s/__DARWIN_X86_64_SHA__/${darwin_x86_64_sha}/g" \
+            -e "s/__DARWIN_ARM64_SHA__/${darwin_arm64_sha}/g" \
+            -e "s/__LINUX_X86_64_SHA__/${linux_x86_64_sha}/g" \
+            -e "s/__LINUX_ARM64_SHA__/${linux_arm64_sha}/g" \
+            "${TEMPLATE_FILE}" > "${FORMULA_FILE}"
+
+      - name: Commit and push Homebrew formula
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        working-directory: homebrew-nida
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- Formula/nida.rb; then
+            echo "No Homebrew formula changes to commit"
+            exit 0
+          fi
+
+          git add Formula/nida.rb
+          git commit -m "nida ${VERSION}"
+          git push origin HEAD

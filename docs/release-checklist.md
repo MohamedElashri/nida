@@ -34,6 +34,17 @@ Expected release behavior:
 * GitHub Releases receives platform archives plus `checksums.txt`
 * archives contain the `nida` binary, `README.md`, and `LICENSE`
 * example sites are not included in release archives
+* the Homebrew tap repo receives an updated `Formula/nida.rb` generated from release checksums
+
+## Homebrew Prerequisites
+
+Before publishing a tagged release that should update Homebrew:
+
+* the tap repo `MohamedElashri/homebrew-nida` exists
+* the tap repo contains a `Formula/` directory
+* this repo has a `HOMEBREW_TAP_TOKEN` Actions secret
+* `HOMEBREW_TAP_TOKEN` has permission to write contents to `MohamedElashri/homebrew-nida`
+* the release workflow on the default branch includes the Homebrew formula update steps
 
 ## Versioning
 

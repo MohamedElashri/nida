@@ -145,6 +145,13 @@ Or install it into your Go bin directory:
 go install github.com/MohamedElashri/nida/cmd/nida@latest
 ```
 
+Homebrew users can install from the separate tap once it exists:
+
+```bash
+brew tap MohamedElashri/nida
+brew install nida
+```
+
 ## Commands
 
 ```bash
@@ -216,6 +223,7 @@ Release artifacts include:
 * `checksums.txt`
 
 The bundled example sites are used for release verification, but they are not packaged into binary archives.
+The same release workflow also updates the separate `MohamedElashri/homebrew-nida` tap with a formula for macOS and Linux.
 
 ## Notes
 
