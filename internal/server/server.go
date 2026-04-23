@@ -70,6 +70,7 @@ func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker
 
 	mux := http.NewServeMux()
 	mux.Handle("/_nida/livereload", reloader)
+	mux.HandleFunc("/_nida/livereload.js", liveReloadScriptHandler)
 	mux.Handle("/", fileHandler)
 	return mux, nil
 }
@@ -152,12 +153,7 @@ func isHTMLResponse(res *http.Response, body []byte) bool {
 }
 
 func injectReloadSnippet(body []byte) []byte {
-	snippet := []byte(`<script>
-(() => {
-  const source = new EventSource("/_nida/livereload");
-  source.onmessage = () => window.location.reload();
-})();
-</script>`)
+	snippet := []byte(`<script src="/_nida/livereload.js"></script>`)
 	lower := strings.ToLower(string(body))
 	index := strings.LastIndex(lower, "</body>")
 	if index == -1 {
@@ -170,6 +166,19 @@ func injectReloadSnippet(body []byte) []byte {
 	out = append(out, body[index:]...)
 	return out
 }
+
+func liveReloadScriptHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = io.WriteString(w, liveReloadScript)
+}
+
+const liveReloadScript = `
+(() => {
+  const source = new EventSource("/_nida/livereload");
+  source.onmessage = () => window.location.reload();
+})();
+`
 
 type reloadBroker struct {
 	mu          sync.Mutex

@@ -73,7 +73,33 @@ func TestFileHandlerInjectsLiveReloadScript(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200 status, got %d", rec.Code)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, `/_nida/livereload`) {
+	if body := rec.Body.String(); !strings.Contains(body, `<script src="/_nida/livereload.js"></script>`) {
 		t.Fatalf("expected livereload script in response, got %q", body)
+	}
+}
+
+func TestFileHandlerServesExternalLiveReloadScript(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><html><body><main>hello</main></body></html>"), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	handler, err := fileHandler(dir, true, newReloadBroker())
+	if err != nil {
+		t.Fatalf("fileHandler returned error: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/_nida/livereload.js", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 status, got %d", rec.Code)
+	}
+	if contentType := rec.Header().Get("Content-Type"); !strings.Contains(contentType, "text/javascript") {
+		t.Fatalf("expected javascript content type, got %q", contentType)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, `new EventSource("/_nida/livereload")`) {
+		t.Fatalf("expected livereload client script, got %q", body)
 	}
 }
