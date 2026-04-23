@@ -38,6 +38,17 @@ change.
 
 ## Preflight
 
+Release only when the documented behavior matches the shipped behavior for:
+
+* `nida build`
+* `nida serve`
+* config loading and validation
+* content discovery and rendering
+* taxonomy pages
+* RSS generation
+* sitemap generation
+* output writing and static asset copying
+
 Run these checks from the repository root before tagging:
 
 ```bash
@@ -62,6 +73,13 @@ GOCACHE="$PWD/.gocache" goreleaser release --snapshot --clean
 ```
 
 This writes artifacts under `dist/` and does not publish anything.
+
+Before publishing a tagged release, also confirm:
+
+* `go run ./cmd/nida serve --site ./example-site` starts on the default port or an explicit override
+* `go run ./cmd/nida version` reports the expected version metadata for the release candidate build
+* the tap repo `MohamedElashri/homebrew-nida` exists and contains a `Formula/` directory
+* this repo has a `HOMEBREW_TAP_TOKEN` Actions secret with contents write access to the tap
 
 ## Cutting A Release
 

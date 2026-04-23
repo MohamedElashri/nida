@@ -1,136 +1,80 @@
 # Nida
 
-`nida` is a small Go static site generator for blogs and personal sites.
+Nida is a small Go static site generator for blogs and personal sites. It reads
+Markdown with TOML front matter, renders pages with Go HTML templates, and writes
+a static site you can serve anywhere.
 
-It keeps the workflow simple:
+## Features
 
-* `nida build`
-* `nida serve`
-
-## What It Does
-
-* loads site settings from `config.toml`
-* reads Markdown content with TOML front matter
-* renders posts and pages with Go templates
-* supports tags and categories
-* generates a default `404.html` page, with optional theme override
-* generates `rss.xml`
-* generates `sitemap.xml`
-* serves a local development site with watch mode and livereload
-* supports RTL document rendering for languages like Arabic
-
-## Quick Start
-
-Build the binary (see [Install](#install) for more options and prebuilt releases):
-
-```bash
-go build ./cmd/nida
-```
-
-Build the bundled example site:
-
-```bash
-./nida build --site ./example-site
-```
-
-Serve it locally:
-
-```bash
-./nida serve --site ./example-site
-```
-
-Default local address:
-
-```text
-http://127.0.0.1:2906
-```
+* posts and standalone pages
+* Go template themes using `.html` files
+* tags and categories
+* RSS and sitemap generation
+* static asset copying
+* local development server with watch mode and livereload
+* optional custom `404.html`
+* RTL document support for languages such as Arabic
 
 ## Install
 
-### Install A Prebuilt Binary From Releases
-
-Set `VERSION` to the release tag you want to install, for example:
-
-macOS or Linux:
+### Homebrew
 
 ```bash
-VERSION=<latest-tag>
+brew tap MohamedElashri/nida
+brew install nida
 ```
 
-Windows PowerShell:
+### Prebuilt Binary
 
-```powershell
-$VERSION = "<latest-tag>"
-```
+Download a release archive from
+[GitHub Releases](https://github.com/MohamedElashri/nida/releases).
 
-<details>
-<summary>Linux x86_64</summary>
+For shell installs, set the tag and package version separately:
 
 ```bash
-curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_linux_x86_64.tar.gz"
+TAG=v0.2.0 # replace with the latest release tag
+VERSION=${TAG#v}
 ```
 
-</details>
-
-<details>
-<summary>Linux arm64</summary>
+Linux x86_64:
 
 ```bash
-curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_linux_arm64.tar.gz"
-```
-
-</details>
-
-<details>
-<summary>macOS Intel</summary>
-
-```bash
-curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_darwin_x86_64.tar.gz"
-```
-
-</details>
-
-<details>
-<summary>macOS Apple Silicon</summary>
-
-```bash
-curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${VERSION}/nida_${VERSION}_darwin_arm64.tar.gz"
-```
-
-</details>
-
-<details>
-<summary>Windows x86_64</summary>
-
-```powershell
-Invoke-WebRequest -Uri "https://github.com/MohamedElashri/nida/releases/download/$VERSION/nida_${VERSION}_windows_x86_64.zip" -OutFile "nida.zip"
-```
-
-</details>
-
-Extract and install:
-
-macOS or Linux:
-
-```bash
+curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${TAG}/nida_${VERSION}_linux_x86_64.tar.gz"
 tar -xzf nida.tar.gz
 chmod +x nida
 sudo mv nida /usr/local/bin/nida
 nida version
 ```
 
+macOS Apple Silicon:
+
+```bash
+curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${TAG}/nida_${VERSION}_darwin_arm64.tar.gz"
+tar -xzf nida.tar.gz
+chmod +x nida
+sudo mv nida /usr/local/bin/nida
+nida version
+```
+
+Other archives are published for Linux arm64, macOS Intel, and Windows x86_64.
+
 Windows PowerShell:
 
 ```powershell
-Expand-Archive -Path "nida.zip" -DestinationPath ".\\nida"
-.\\nida\\nida.exe version
+$TAG = "v0.2.0"
+$VERSION = $TAG.TrimStart("v")
+Invoke-WebRequest -Uri "https://github.com/MohamedElashri/nida/releases/download/${TAG}/nida_${VERSION}_windows_x86_64.zip" -OutFile "nida.zip"
+Expand-Archive -Path "nida.zip" -DestinationPath ".\nida"
+.\nida\nida.exe version
 ```
 
-You can then move `nida.exe` into a directory that is already on your `PATH`.
+### Go
 
-### Build It Yourself
+```bash
+go install github.com/MohamedElashri/nida/cmd/nida@latest
+```
 
-Build from source with Go:
+Or build from source:
 
 ```bash
 git clone https://github.com/MohamedElashri/nida.git
@@ -139,24 +83,32 @@ go build ./cmd/nida
 ./nida version
 ```
 
-Or install it into your Go bin directory:
+## Usage
+
+Build a site:
 
 ```bash
-go install github.com/MohamedElashri/nida/cmd/nida@latest
+nida build --site ./example-site
 ```
 
-Homebrew users can install from the separate tap once it exists:
+Serve it locally:
 
 ```bash
-brew tap MohamedElashri/nida
-brew install nida
+nida serve --site ./example-site
 ```
 
-## Commands
+The default local address is:
+
+```text
+http://127.0.0.1:2906
+```
+
+Commands:
 
 ```bash
 nida build [--site PATH] [--config PATH] [--drafts]
 nida serve [--site PATH] [--config PATH] [--drafts] [--port PORT]
+nida version
 ```
 
 ## Site Layout
@@ -172,66 +124,38 @@ site/
 └── public/
 ```
 
-## Example Site
+Templates live in `templates/` and use `.html` filenames:
 
-A complete example project lives in [example-site](./example-site).
-An Arabic RTL example also lives in [example-site-ar](./example-site-ar).
+```text
+templates/base.html
+templates/index.html
+templates/post.html
+templates/page.html
+templates/404.html
+```
 
-Useful files:
+The filename stem is the template name. For example, `post.html` should define
+`{{ define "post" }}`.
 
-* config: [example-site/config.toml](./example-site/config.toml:1)
-* content: [example-site/content/posts/launching-nida.md](./example-site/content/posts/launching-nida.md:1)
-* templates: [example-site/templates/base.html](./example-site/templates/base.html:1)
-* custom 404 template: [example-site/templates/404.html](./example-site/templates/404.html:1)
-* styles: [example-site/static/site.css](./example-site/static/site.css:1)
-* Arabic example config: [example-site-ar/config.toml](./example-site-ar/config.toml:1)
+## Examples
 
-Optional theme template:
+The repository includes two example sites:
 
-* add `templates/404.html` to customize the generated `/404.html`
-* if no `404.html` exists, `nida` emits a built-in fallback page automatically
+* [example-site](./example-site): English example blog
+* [example-site-ar](./example-site-ar): Arabic RTL example blog
 
-RTL support:
+Useful starting points:
 
-* set `language = "ar"` in `config.toml` for an Arabic site
-* theme templates can use `{{ documentDirection .Config.Language }}` to switch between `ltr` and `rtl`
+* [example-site/config.toml](./example-site/config.toml)
+* [example-site/content/posts/launching-nida.md](./example-site/content/posts/launching-nida.md)
+* [example-site/templates/base.html](./example-site/templates/base.html)
+* [example-site/static/site.css](./example-site/static/site.css)
 
-## Development
+## Documentation
 
-The repository includes a `Makefile`:
-
-* `make build`
-* `make test`
-* `make site-build`
-* `make serve`
-* `make example-build`
-* `make example-serve`
-* `make arabic-example-build`
-* `make arabic-example-serve`
-* `make check`
-* `make clean`
-
-## Releases
-
-Tagged releases are built from Git tags matching `v*` with GitHub Actions and GoReleaser.
-
-Release artifacts include:
-
-* the `nida` binary for each supported platform
-* `README.md`
-* `LICENSE`
-* `checksums.txt`
-
-The bundled example sites are used for release verification, but they are not packaged into binary archives.
-The same release workflow also updates the separate `MohamedElashri/homebrew-nida` tap with a formula for macOS and Linux.
-
-## Notes
-
-Current behavior:
-
-* watch mode uses native filesystem events on Linux and macOS, with polling fallback where event watching is unavailable
-* serve mode updates output incrementally: asset-only changes sync assets, while content/template/config changes rewrite only the outputs that changed
-* `server.livereload` is implemented for local development and auto-refreshes the browser after successful rebuilds
+* [Development](./docs/dev.md)
+* [Release process](./docs/release.md)
+* [Changelog](./CHANGELOG.md)
 
 ## License
 
