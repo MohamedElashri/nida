@@ -122,8 +122,15 @@ func shouldSkipPath(path, outputDir string) bool {
 		return true
 	}
 
-	base := filepath.Base(cleanPath)
-	return base == ".git"
+	parts := strings.Split(cleanPath, string(filepath.Separator))
+	for _, part := range parts {
+		switch part {
+		case ".git", ".hg", ".svn":
+			return true
+		}
+	}
+
+	return false
 }
 
 func diff(previous, current map[string]fileState) []string {

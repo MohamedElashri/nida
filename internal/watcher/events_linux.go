@@ -54,6 +54,9 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 		if !d.IsDir() {
 			return nil
 		}
+		if shouldSkipPath(path, outputRoot) {
+			return fs.SkipDir
+		}
 		return addWatch(path)
 	}); err != nil {
 		return err
