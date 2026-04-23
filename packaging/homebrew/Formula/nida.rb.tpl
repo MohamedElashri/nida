@@ -6,20 +6,20 @@ class Nida < Formula
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/MohamedElashri/nida/releases/download/#{version}/nida_#{version}_darwin_arm64.tar.gz"
+      url "https://github.com/MohamedElashri/nida/releases/download/__TAG__/nida_#{version}_darwin_arm64.tar.gz"
       sha256 "__DARWIN_ARM64_SHA__"
     else
-      url "https://github.com/MohamedElashri/nida/releases/download/#{version}/nida_#{version}_darwin_x86_64.tar.gz"
+      url "https://github.com/MohamedElashri/nida/releases/download/__TAG__/nida_#{version}_darwin_x86_64.tar.gz"
       sha256 "__DARWIN_X86_64_SHA__"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/MohamedElashri/nida/releases/download/#{version}/nida_#{version}_linux_arm64.tar.gz"
+      url "https://github.com/MohamedElashri/nida/releases/download/__TAG__/nida_#{version}_linux_arm64.tar.gz"
       sha256 "__LINUX_ARM64_SHA__"
     else
-      url "https://github.com/MohamedElashri/nida/releases/download/#{version}/nida_#{version}_linux_x86_64.tar.gz"
+      url "https://github.com/MohamedElashri/nida/releases/download/__TAG__/nida_#{version}_linux_x86_64.tar.gz"
       sha256 "__LINUX_X86_64_SHA__"
     end
   end

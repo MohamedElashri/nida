@@ -7,6 +7,7 @@ before:
     - go test ./...
     - go build ./...
     - go run ./cmd/nida build --site ./example-site
+    - go run ./cmd/nida build --site ./example-site-ar
 
 builds:
   - id: nida
