@@ -2,6 +2,12 @@
 
 All notable changes to Nida are documented here.
 
+## [0.3.2] - 2026-04-24
+
+### Fixed
+* Improve path skipping logic to exclude VCS directories like `.git` and `.svn` from content discovery and incremental rebuilds, preventing unnecessary processing and potential errors when such directories are present in the content tree.
+* Refactor minifyHTML function to extract <pre> blocks and preserve whitespace, improving HTML minification logic
+
 ## [0.3.1] - 2026-04-23
 
 ### Added
