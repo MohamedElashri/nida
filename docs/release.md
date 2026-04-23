@@ -129,7 +129,13 @@ Build metadata is injected into `internal/buildinfo`:
 * build date
 * `builtBy=goreleaser`
 
-The `nida version` command should show those values for release binaries.
+Release binaries print only the public version:
+
+```text
+nida version 0.2.0
+```
+
+Development builds still include commit, date, and builder metadata.
 
 ## Homebrew Tap Update
 

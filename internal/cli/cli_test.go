@@ -86,7 +86,7 @@ func TestBuildReportsConfigErrors(t *testing.T) {
 	}
 }
 
-func TestVersionReportsBuildMetadata(t *testing.T) {
+func TestVersionReportsReleaseVersionOnly(t *testing.T) {
 	originalVersion := buildinfo.Version
 	originalCommit := buildinfo.Commit
 	originalDate := buildinfo.Date
@@ -98,10 +98,10 @@ func TestVersionReportsBuildMetadata(t *testing.T) {
 		buildinfo.BuiltBy = originalBuiltBy
 	})
 
-	buildinfo.Version = "v0.1.0"
+	buildinfo.Version = "0.2.0"
 	buildinfo.Commit = "abc1234"
-	buildinfo.Date = "2026-04-13T10:00:00Z"
-	buildinfo.BuiltBy = "test"
+	buildinfo.Date = "2026-04-23T10:00:00Z"
+	buildinfo.BuiltBy = "goreleaser"
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -112,13 +112,44 @@ func TestVersionReportsBuildMetadata(t *testing.T) {
 	}
 
 	output := stdout.String()
-	if !strings.Contains(output, "nida version v0.1.0") {
+	if output != "nida version 0.2.0\n" {
+		t.Fatalf("expected release version only, got %q", output)
+	}
+}
+
+func TestVersionReportsDevBuildMetadata(t *testing.T) {
+	originalVersion := buildinfo.Version
+	originalCommit := buildinfo.Commit
+	originalDate := buildinfo.Date
+	originalBuiltBy := buildinfo.BuiltBy
+	t.Cleanup(func() {
+		buildinfo.Version = originalVersion
+		buildinfo.Commit = originalCommit
+		buildinfo.Date = originalDate
+		buildinfo.BuiltBy = originalBuiltBy
+	})
+
+	buildinfo.Version = "dev"
+	buildinfo.Commit = "abc1234"
+	buildinfo.Date = "2026-04-23T10:00:00Z"
+	buildinfo.BuiltBy = "local"
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	code := run(stdout, stderr, []string{"version"})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+
+	output := stdout.String()
+	if !strings.Contains(output, "nida version dev") {
 		t.Fatalf("expected version in output, got %q", output)
 	}
 	if !strings.Contains(output, "commit=abc1234") {
 		t.Fatalf("expected commit in output, got %q", output)
 	}
-	if !strings.Contains(output, "builtBy=test") {
+	if !strings.Contains(output, "builtBy=local") {
 		t.Fatalf("expected builtBy in output, got %q", output)
 	}
 }
