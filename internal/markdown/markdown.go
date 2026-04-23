@@ -18,6 +18,14 @@ import (
 )
 
 func Render(source string, cfg config.SiteConfig) (string, error) {
+	processed, err := processShortcodes(source, cfg)
+	if err != nil {
+		return "", err
+	}
+	return renderMarkdownCore(processed, cfg)
+}
+
+func renderMarkdownCore(source string, cfg config.SiteConfig) (string, error) {
 	engine := goldmark.New(
 		goldmark.WithExtensions(extension.GFM),
 		goldmark.WithParserOptions(

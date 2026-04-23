@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+  <title>Fixture Site</title>
+  <link href="https://example.com/atom.xml" rel="self" type="application/atom+xml"></link>
+  <link href="https://example.com" rel="alternate" type="text/html"></link>
+  <updated>2026-04-12T10:00:00Z</updated>
+  <id>https://example.com/atom.xml</id>
+  <author>
+    <name>Fixture Author</name>
+  </author>
+  <entry>
+    <title>Hello World</title>
+    <link href="https://example.com/posts/hello-world/" rel="alternate" type="text/html"></link>
+    <id>https://example.com/posts/hello-world/</id>
+    <updated>2026-04-12T10:00:00Z</updated>
+    <summary>A fixture post for early tests.</summary>
+    <content type="html">&lt;p&gt;Hello feed.&lt;/p&gt;&#xA;</content>
+  </entry>
+</feed>

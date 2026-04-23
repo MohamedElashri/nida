@@ -50,6 +50,48 @@ func TestRenderPreservesRawImageHTML(t *testing.T) {
 	}
 }
 
+func TestRenderRawHTMLShortcode(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+
+	got, err := Render(`Before
+
+{{< rawhtml >}}
+<video controls></video>
+{{< /rawhtml >}}
+`, cfg)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	if !strings.Contains(got, `<video controls></video>`) || strings.Contains(got, "rawhtml") {
+		t.Fatalf("expected rawhtml shortcode markers to be stripped, got %q", got)
+	}
+}
+
+func TestRenderDetailsShortcode(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+
+	got, err := Render(`{% details(summary="Original post") %}
+
+**Hello** from inside.
+
+{% end %}
+`, cfg)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, want := range []string{
+		`<details class="collapsible-details">`,
+		`<span class="collapsible-details-label">Original post</span>`,
+		`<strong>Hello</strong> from inside.`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in rendered details shortcode, got %q", want, got)
+		}
+	}
+}
+
 func TestRenderUnknownLanguageFallsBackGracefully(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 

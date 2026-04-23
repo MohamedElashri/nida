@@ -17,6 +17,7 @@ type SiteConfig struct {
 	SyntaxTheme string          `toml:"syntax_theme"`
 	Taxonomies  TaxonomyConfig  `toml:"taxonomies"`
 	RSS         RSSConfig       `toml:"rss"`
+	Atom        AtomConfig      `toml:"atom"`
 	Sitemap     SitemapConfig   `toml:"sitemap"`
 	Server      ServerConfig    `toml:"server"`
 	Permalinks  PermalinkConfig `toml:"permalinks"`
@@ -29,6 +30,12 @@ type TaxonomyConfig struct {
 }
 
 type RSSConfig struct {
+	Enabled  bool   `toml:"enabled"`
+	Filename string `toml:"filename"`
+	Limit    int    `toml:"limit"`
+}
+
+type AtomConfig struct {
 	Enabled  bool   `toml:"enabled"`
 	Filename string `toml:"filename"`
 	Limit    int    `toml:"limit"`

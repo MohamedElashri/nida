@@ -55,6 +55,9 @@ func buildSiteState(opts commandOptions) (buildResult, error) {
 	if cfg.RSS.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
 	}
+	if cfg.Atom.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.Atom.Filename})
+	}
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
 	}
@@ -96,11 +99,11 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 		}
 	}
 
-	feedOutput, err := feeds.Generate(next.cfg, next.state.Index)
+	feedOutputs, err := feeds.GenerateAll(next.cfg, next.state.Index)
 	if err != nil {
 		return err
 	}
-	if feedOutput != nil {
+	for _, feedOutput := range feedOutputs {
 		if err := output.WriteFile(opts.siteRoot, next.cfg, feedOutput.Filename, feedOutput.Content); err != nil {
 			return err
 		}
@@ -182,6 +185,9 @@ func artifactPaths(cfg config.SiteConfig) []string {
 	paths := make([]string, 0, 2)
 	if cfg.RSS.Enabled {
 		paths = append(paths, cfg.RSS.Filename)
+	}
+	if cfg.Atom.Enabled {
+		paths = append(paths, cfg.Atom.Filename)
 	}
 	if cfg.Sitemap.Enabled {
 		paths = append(paths, cfg.Sitemap.Filename)

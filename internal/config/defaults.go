@@ -21,6 +21,11 @@ func DefaultSiteConfig() SiteConfig {
 			Filename: "rss.xml",
 			Limit:    20,
 		},
+		Atom: AtomConfig{
+			Enabled:  false,
+			Filename: "atom.xml",
+			Limit:    20,
+		},
 		Sitemap: SitemapConfig{
 			Enabled:  true,
 			Filename: "sitemap.xml",

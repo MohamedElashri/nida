@@ -191,6 +191,9 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	if cfg.RSS.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
 	}
+	if cfg.Atom.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.Atom.Filename})
+	}
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
 	}
@@ -201,11 +204,11 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	if err := output.WriteSite(opts.siteRoot, cfg, pages); err != nil {
 		return buildResult{}, err
 	}
-	feedOutput, err := feeds.Generate(cfg, state.Index)
+	feedOutputs, err := feeds.GenerateAll(cfg, state.Index)
 	if err != nil {
 		return buildResult{}, err
 	}
-	if feedOutput != nil {
+	for _, feedOutput := range feedOutputs {
 		if err := output.WriteFile(opts.siteRoot, cfg, feedOutput.Filename, feedOutput.Content); err != nil {
 			return buildResult{}, err
 		}

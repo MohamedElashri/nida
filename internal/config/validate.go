@@ -29,6 +29,9 @@ func Validate(cfg SiteConfig) error {
 	if cfg.RSS.Enabled && cfg.RSS.Limit <= 0 {
 		problems = append(problems, "rss.limit must be greater than 0 when RSS is enabled")
 	}
+	if cfg.Atom.Enabled && cfg.Atom.Limit <= 0 {
+		problems = append(problems, "atom.limit must be greater than 0 when Atom is enabled")
+	}
 
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
 		problems = append(problems, "server.port must be between 1 and 65535")
@@ -42,6 +45,7 @@ func Validate(cfg SiteConfig) error {
 		"posts_dir":             cfg.PostsDir,
 		"pages_dir":             cfg.PagesDir,
 		"rss.filename":          cfg.RSS.Filename,
+		"atom.filename":         cfg.Atom.Filename,
 		"sitemap.filename":      cfg.Sitemap.Filename,
 		"permalinks.posts":      cfg.Permalinks.Posts,
 		"permalinks.pages":      cfg.Permalinks.Pages,
