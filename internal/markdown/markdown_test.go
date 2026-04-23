@@ -105,6 +105,24 @@ func TestRenderUnknownLanguageFallsBackGracefully(t *testing.T) {
 	}
 }
 
+func TestRenderExternalLinkAttributes(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.Markdown.ExternalLinksTargetBlank = true
+	cfg.Markdown.ExternalLinksNoFollow = true
+	cfg.Markdown.ExternalLinksNoReferrer = true
+
+	got, err := Render(`[external](https://example.com) and [local](/about/)`, cfg)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	if !strings.Contains(got, `<a href="https://example.com" target="_blank" rel="nofollow noreferrer noopener">external</a>`) {
+		t.Fatalf("expected external link attributes, got %q", got)
+	}
+	if !strings.Contains(got, `<a href="/about/">local</a>`) {
+		t.Fatalf("expected local link without external attributes, got %q", got)
+	}
+}
+
 func TestRenderItemsStoresBodyHTML(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	items := []content.Item{{

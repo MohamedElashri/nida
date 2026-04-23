@@ -47,6 +47,7 @@ func Validate(cfg SiteConfig) error {
 		"rss.filename":          cfg.RSS.Filename,
 		"atom.filename":         cfg.Atom.Filename,
 		"sitemap.filename":      cfg.Sitemap.Filename,
+		"robots.filename":       cfg.Robots.Filename,
 		"permalinks.posts":      cfg.Permalinks.Posts,
 		"permalinks.pages":      cfg.Permalinks.Pages,
 		"permalinks.tags":       cfg.Permalinks.Tags,

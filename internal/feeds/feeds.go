@@ -65,12 +65,14 @@ type atomAuthor struct {
 }
 
 type atomEntry struct {
-	Title   string       `xml:"title"`
-	Link    atomLink     `xml:"link"`
-	ID      string       `xml:"id"`
-	Updated string       `xml:"updated"`
-	Summary string       `xml:"summary,omitempty"`
-	Content *atomContent `xml:"content,omitempty"`
+	Title     string       `xml:"title"`
+	Link      atomLink     `xml:"link"`
+	ID        string       `xml:"id"`
+	Author    *atomAuthor  `xml:"author,omitempty"`
+	Published string       `xml:"published,omitempty"`
+	Updated   string       `xml:"updated"`
+	Summary   string       `xml:"summary,omitempty"`
+	Content   *atomContent `xml:"content,omitempty"`
 }
 
 type atomContent struct {
@@ -201,11 +203,13 @@ func GenerateAtom(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) 
 		}
 
 		doc.Entries = append(doc.Entries, atomEntry{
-			Title:   item.Title,
-			Link:    atomLink{Href: link, Rel: "alternate", Type: "text/html"},
-			ID:      link,
-			Updated: formatAtomDate(item.Date),
-			Summary: summary,
+			Title:     item.Title,
+			Link:      atomLink{Href: link, Rel: "alternate", Type: "text/html"},
+			ID:        link,
+			Author:    atomEntryAuthor(item, cfg),
+			Published: formatAtomDate(item.Date),
+			Updated:   formatAtomDate(item.Date),
+			Summary:   summary,
 			Content: &atomContent{
 				Type:  "html",
 				Value: item.BodyHTML,
@@ -249,6 +253,37 @@ func latestUpdated(items []content.Item) time.Time {
 		}
 	}
 	return latest
+}
+
+func atomEntryAuthor(item content.Item, cfg config.SiteConfig) *atomAuthor {
+	if authors := stringListExtra(item.Extra, "authors"); len(authors) > 0 {
+		return &atomAuthor{Name: strings.Join(authors, ", ")}
+	}
+	if strings.TrimSpace(cfg.Author) != "" {
+		return &atomAuthor{Name: strings.TrimSpace(cfg.Author)}
+	}
+	return nil
+}
+
+func stringListExtra(values map[string]any, key string) []string {
+	raw, ok := values[key]
+	if !ok {
+		return nil
+	}
+	switch v := raw.(type) {
+	case []string:
+		return v
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+				out = append(out, strings.TrimSpace(s))
+			}
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 func feedURL(baseURL, filename string) (string, error) {

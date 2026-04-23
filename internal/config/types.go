@@ -14,11 +14,14 @@ type SiteConfig struct {
 	PagesDir    string          `toml:"pages_dir"`
 	Paginate    int             `toml:"paginate"`
 	Drafts      bool            `toml:"drafts"`
+	MinifyHTML  bool            `toml:"minify_html"`
 	SyntaxTheme string          `toml:"syntax_theme"`
+	Markdown    MarkdownConfig  `toml:"markdown"`
 	Taxonomies  TaxonomyConfig  `toml:"taxonomies"`
 	RSS         RSSConfig       `toml:"rss"`
 	Atom        AtomConfig      `toml:"atom"`
 	Sitemap     SitemapConfig   `toml:"sitemap"`
+	Robots      RobotsConfig    `toml:"robots"`
 	Server      ServerConfig    `toml:"server"`
 	Permalinks  PermalinkConfig `toml:"permalinks"`
 	Extra       map[string]any  `toml:"extra"`
@@ -27,6 +30,12 @@ type SiteConfig struct {
 type TaxonomyConfig struct {
 	Tags       bool `toml:"tags"`
 	Categories bool `toml:"categories"`
+}
+
+type MarkdownConfig struct {
+	ExternalLinksTargetBlank bool `toml:"external_links_target_blank"`
+	ExternalLinksNoFollow    bool `toml:"external_links_no_follow"`
+	ExternalLinksNoReferrer  bool `toml:"external_links_no_referrer"`
 }
 
 type RSSConfig struct {
@@ -44,6 +53,12 @@ type AtomConfig struct {
 type SitemapConfig struct {
 	Enabled  bool   `toml:"enabled"`
 	Filename string `toml:"filename"`
+}
+
+type RobotsConfig struct {
+	Enabled  bool   `toml:"enabled"`
+	Filename string `toml:"filename"`
+	Content  string `toml:"content"`
 }
 
 type ServerConfig struct {

@@ -21,6 +21,7 @@ func normalize(cfg *SiteConfig) {
 	cfg.RSS.Filename = cleanRelativePath(cfg.RSS.Filename)
 	cfg.Atom.Filename = cleanRelativePath(cfg.Atom.Filename)
 	cfg.Sitemap.Filename = cleanRelativePath(cfg.Sitemap.Filename)
+	cfg.Robots.Filename = cleanRelativePath(cfg.Robots.Filename)
 	cfg.Server.Host = strings.TrimSpace(cfg.Server.Host)
 	cfg.Permalinks.Posts = normalizePermalink(cfg.Permalinks.Posts)
 	cfg.Permalinks.Pages = normalizePermalink(cfg.Permalinks.Pages)

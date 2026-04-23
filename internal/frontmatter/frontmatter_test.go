@@ -67,3 +67,28 @@ title = "Broken
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestParseYAMLFrontMatter(t *testing.T) {
+	doc, err := Parse([]byte(`---
+title: "Optional vs Optional-Ref"
+description: "A short look"
+date: 2025-10-01
+slug: "std-optional-vs-optional-ref"
+draft: false
+---
+
+Body
+`))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if doc.Metadata.Title != "Optional vs Optional-Ref" {
+		t.Fatalf("unexpected title %q", doc.Metadata.Title)
+	}
+	if doc.Metadata.Slug != "std-optional-vs-optional-ref" {
+		t.Fatalf("unexpected slug %q", doc.Metadata.Slug)
+	}
+	if doc.Metadata.Date.IsZero() {
+		t.Fatal("expected date to parse")
+	}
+}

@@ -34,6 +34,7 @@ func renderMarkdownCore(source string, cfg config.SiteConfig) (string, error) {
 		goldmark.WithRendererOptions(
 			renderer.WithNodeRenderers(
 				util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
+				util.Prioritized(&linkRenderer{cfg: cfg.Markdown}, 600),
 			),
 			renderhtml.WithHardWraps(),
 			renderhtml.WithUnsafe(),
@@ -46,6 +47,69 @@ func renderMarkdownCore(source string, cfg config.SiteConfig) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+type linkRenderer struct {
+	cfg config.MarkdownConfig
+}
+
+func (r *linkRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindLink, r.renderLink)
+}
+
+func (r *linkRenderer) renderLink(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	n := node.(*ast.Link)
+	if entering {
+		destination := string(n.Destination)
+		if _, err := w.WriteString(`<a href="` + string(util.EscapeHTML(n.Destination)) + `"`); err != nil {
+			return ast.WalkStop, err
+		}
+		if isExternalLink(destination) {
+			if r.cfg.ExternalLinksTargetBlank {
+				if _, err := w.WriteString(` target="_blank"`); err != nil {
+					return ast.WalkStop, err
+				}
+			}
+			rel := externalLinkRel(r.cfg)
+			if rel != "" {
+				if _, err := w.WriteString(` rel="` + rel + `"`); err != nil {
+					return ast.WalkStop, err
+				}
+			}
+		}
+		if n.Title != nil {
+			if _, err := w.WriteString(` title="` + string(util.EscapeHTML(n.Title)) + `"`); err != nil {
+				return ast.WalkStop, err
+			}
+		}
+		if _, err := w.WriteString(">"); err != nil {
+			return ast.WalkStop, err
+		}
+		return ast.WalkContinue, nil
+	}
+	if _, err := w.WriteString("</a>"); err != nil {
+		return ast.WalkStop, err
+	}
+	return ast.WalkContinue, nil
+}
+
+func isExternalLink(destination string) bool {
+	destination = strings.ToLower(strings.TrimSpace(destination))
+	return strings.HasPrefix(destination, "http://") || strings.HasPrefix(destination, "https://")
+}
+
+func externalLinkRel(cfg config.MarkdownConfig) string {
+	parts := make([]string, 0, 2)
+	if cfg.ExternalLinksNoFollow {
+		parts = append(parts, "nofollow")
+	}
+	if cfg.ExternalLinksNoReferrer {
+		parts = append(parts, "noreferrer")
+	}
+	if cfg.ExternalLinksTargetBlank && cfg.ExternalLinksNoReferrer {
+		parts = append(parts, "noopener")
+	}
+	return strings.Join(parts, " ")
 }
 
 func RenderItem(item content.Item, cfg config.SiteConfig) (content.Item, error) {

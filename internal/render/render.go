@@ -61,6 +61,12 @@ func RenderSite(siteRoot string, cfg config.SiteConfig, state site.State) ([]Pag
 	}
 	pages = append(pages, notFoundPage)
 
+	if cfg.MinifyHTML {
+		for i := range pages {
+			pages[i].Content = minifyHTML(pages[i].Content)
+		}
+	}
+
 	return pages, nil
 }
 
@@ -209,6 +215,16 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, s
 				Title:        section.Title,
 				Content:      out,
 			})
+			if pageNum == 1 && section.PaginateBy > 0 {
+				aliasRoute := strings.TrimSuffix(section.URL, "/") + "/page/1/"
+				pages = append(pages, Page{
+					URL:          aliasRoute,
+					CanonicalURL: canonicalURL(cfg.BaseURL, section.URL),
+					TemplateName: templateName,
+					Title:        section.Title,
+					Content:      out,
+				})
+			}
 		}
 	}
 

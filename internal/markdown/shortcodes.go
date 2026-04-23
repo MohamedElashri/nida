@@ -16,6 +16,14 @@ var (
 	summaryAttrRe  = regexp.MustCompile(`summary\s*=\s*"([^"]*)"`)
 )
 
+type shortcodeHandler func(args, body string, cfg config.SiteConfig) (string, error)
+
+func blockShortcodeHandlers() map[string]shortcodeHandler {
+	return map[string]shortcodeHandler{
+		"details": renderDetailsShortcode,
+	}
+}
+
 func processShortcodes(source string, cfg config.SiteConfig) (string, error) {
 	source = rawHTMLOpenRe.ReplaceAllString(source, "")
 	source = rawHTMLCloseRe.ReplaceAllString(source, "")
@@ -42,12 +50,13 @@ func processDetailsShortcodes(source string, cfg config.SiteConfig) (string, err
 		}
 
 		body := remaining[bodyStart : bodyStart+endStart]
-		renderedBody, err := renderShortcodeBody(body, cfg)
+		handler := blockShortcodeHandlers()["details"]
+		rendered, err := handler(summaryValue(args), body, cfg)
 		if err != nil {
 			return "", err
 		}
 
-		out.WriteString(renderDetails(summaryValue(args), renderedBody))
+		out.WriteString(rendered)
 		remaining = remaining[bodyStart+endEnd:]
 	}
 }
@@ -71,6 +80,14 @@ func renderShortcodeBody(source string, cfg config.SiteConfig) (string, error) {
 		return "", fmt.Errorf("render details shortcode body: %w", err)
 	}
 	return html, nil
+}
+
+func renderDetailsShortcode(summary, body string, cfg config.SiteConfig) (string, error) {
+	renderedBody, err := renderShortcodeBody(body, cfg)
+	if err != nil {
+		return "", err
+	}
+	return renderDetails(summary, renderedBody), nil
 }
 
 func summaryValue(args string) string {

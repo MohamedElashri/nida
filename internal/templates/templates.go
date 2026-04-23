@@ -113,10 +113,27 @@ func funcMap() template.FuncMap {
 		"formatDateWith":    formatDateWith,
 		"safeHTML":          safeHTML,
 		"safeCSS":           safeCSS,
-		"join":              strings.Join,
+		"join":              joinValues,
 		"default":           defaultString,
 		"slugify":           content.DeriveSlug,
 		"documentDirection": config.DocumentDirection,
+	}
+}
+
+func joinValues(value any, sep string) string {
+	switch values := value.(type) {
+	case []string:
+		return strings.Join(values, sep)
+	case []any:
+		parts := make([]string, 0, len(values))
+		for _, item := range values {
+			if s, ok := item.(string); ok {
+				parts = append(parts, s)
+			}
+		}
+		return strings.Join(parts, sep)
+	default:
+		return ""
 	}
 }
 

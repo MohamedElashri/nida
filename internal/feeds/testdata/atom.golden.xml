@@ -12,6 +12,10 @@
     <title>Hello World</title>
     <link href="https://example.com/posts/hello-world/" rel="alternate" type="text/html"></link>
     <id>https://example.com/posts/hello-world/</id>
+    <author>
+      <name>Fixture Author</name>
+    </author>
+    <published>2026-04-12T10:00:00Z</published>
     <updated>2026-04-12T10:00:00Z</updated>
     <summary>A fixture post for early tests.</summary>
     <content type="html">&lt;p&gt;Hello feed.&lt;/p&gt;&#xA;</content>

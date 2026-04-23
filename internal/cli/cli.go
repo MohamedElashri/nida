@@ -19,6 +19,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/output"
 	"github.com/MohamedElashri/nida/internal/render"
+	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/server"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/sitemap"
@@ -197,6 +198,9 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
 	}
+	if cfg.Robots.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.Robots.Filename})
+	}
 	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, artifacts); err != nil {
 		return buildResult{}, err
 	}
@@ -219,6 +223,11 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	}
 	if sitemapOutput != nil {
 		if err := output.WriteFile(opts.siteRoot, cfg, sitemapOutput.Filename, sitemapOutput.Content); err != nil {
+			return buildResult{}, err
+		}
+	}
+	if robotsOutput := robots.Generate(cfg); robotsOutput != nil {
+		if err := output.WriteFile(opts.siteRoot, cfg, robotsOutput.Filename, robotsOutput.Content); err != nil {
 			return buildResult{}, err
 		}
 	}

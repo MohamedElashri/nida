@@ -11,6 +11,7 @@ func DefaultSiteConfig() SiteConfig {
 		PagesDir:    "pages",
 		Paginate:    10,
 		Drafts:      false,
+		MinifyHTML:  false,
 		SyntaxTheme: "github",
 		Taxonomies: TaxonomyConfig{
 			Tags:       true,
@@ -29,6 +30,10 @@ func DefaultSiteConfig() SiteConfig {
 		Sitemap: SitemapConfig{
 			Enabled:  true,
 			Filename: "sitemap.xml",
+		},
+		Robots: RobotsConfig{
+			Enabled:  false,
+			Filename: "robots.txt",
 		},
 		Server: ServerConfig{
 			Host:       "127.0.0.1",
