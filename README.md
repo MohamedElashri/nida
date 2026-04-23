@@ -13,7 +13,7 @@ a static site you can serve anywhere.
 * static asset copying
 * local development server with watch mode and livereload
 * optional custom `404.html`
-* RTL document support for languages such as Arabic
+* RTL document support for languages such as Arabic/Persian
 
 ## Install
 
@@ -29,12 +29,20 @@ brew install nida
 Download a release archive from
 [GitHub Releases](https://github.com/MohamedElashri/nida/releases).
 
-For shell installs, set the tag and package version separately:
+For shell installs, resolve the latest release tag first:
 
 ```bash
-TAG=v0.2.0 # replace with the latest release tag
+TAG=$(curl -fsSL https://api.github.com/repos/MohamedElashri/nida/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p')
 VERSION=${TAG#v}
 ```
+
+or choose a specific release tag:
+
+```bashTAG=v0.2.0
+VERSION=${TAG#v}
+```
+
+Then download and install the appropriate archive for your platform. For example,
 
 Linux x86_64:
 
@@ -61,7 +69,7 @@ Other archives are published for Linux arm64, macOS Intel, and Windows x86_64.
 Windows PowerShell:
 
 ```powershell
-$TAG = "v0.2.0"
+$TAG = (Invoke-RestMethod "https://api.github.com/repos/MohamedElashri/nida/releases/latest").tag_name
 $VERSION = $TAG.TrimStart("v")
 Invoke-WebRequest -Uri "https://github.com/MohamedElashri/nida/releases/download/${TAG}/nida_${VERSION}_windows_x86_64.zip" -OutFile "nida.zip"
 Expand-Archive -Path "nida.zip" -DestinationPath ".\nida"
