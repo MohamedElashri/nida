@@ -92,6 +92,15 @@ func TestDeriveSlug(t *testing.T) {
 	}
 }
 
+func TestEstimateReadingTime(t *testing.T) {
+	if got := EstimateReadingTime(""); got != 0 {
+		t.Fatalf("expected empty content reading time 0, got %d", got)
+	}
+	if got := EstimateReadingTime(strings.Repeat("word ", 201)); got != 2 {
+		t.Fatalf("expected 201 words to round up to 2 minutes, got %d", got)
+	}
+}
+
 func writeSiteConfig(t *testing.T, dir string) {
 	t.Helper()
 

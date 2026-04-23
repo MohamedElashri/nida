@@ -114,10 +114,21 @@ func funcMap() template.FuncMap {
 		"safeHTML":          safeHTML,
 		"safeCSS":           safeCSS,
 		"join":              joinValues,
+		"add":               add,
+		"sub":               sub,
+		"hasSuffix":         strings.HasSuffix,
 		"default":           defaultString,
 		"slugify":           content.DeriveSlug,
 		"documentDirection": config.DocumentDirection,
 	}
+}
+
+func add(a, b int) int {
+	return a + b
+}
+
+func sub(a, b int) int {
+	return a - b
 }
 
 func joinValues(value any, sep string) string {

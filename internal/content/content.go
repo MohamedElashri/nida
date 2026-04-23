@@ -32,6 +32,7 @@ type Item struct {
 	URL            string
 	Description    string
 	Date           time.Time
+	ReadingTime    int
 	Draft          bool
 	Tags           []string
 	Categories     []string
@@ -137,6 +138,7 @@ func loadItem(contentRoot, sourcePath, itemType string) (Item, error) {
 		Slug:           slug,
 		Description:    meta.Description,
 		Date:           meta.Date,
+		ReadingTime:    EstimateReadingTime(doc.BodyMarkdown),
 		Draft:          meta.Draft,
 		Tags:           meta.Tags,
 		Categories:     meta.Categories,
