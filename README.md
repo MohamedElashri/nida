@@ -168,3 +168,6 @@ Useful starting points:
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+## Name Meaning
+Nida (نداء) is Arabic for "call" or "summons". It reflects the idea of a blog as a call to share thoughts and ideas with the world. The name also has a nice ring to it and is easy to remember.
