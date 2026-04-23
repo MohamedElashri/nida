@@ -6,7 +6,6 @@ import (
 	stdhtml "html"
 	"strings"
 
-	"github.com/alecthomas/chroma/v2"
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
@@ -25,7 +24,6 @@ func Render(code, language, theme string) (string, error) {
 		return renderPlain(code, language), nil
 	}
 
-	lexer = chroma.Coalesce(lexer)
 	iterator, err := lexer.Tokenise(nil, code)
 	if err != nil {
 		return "", fmt.Errorf("tokenize %q code block: %w", language, err)
