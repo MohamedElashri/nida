@@ -139,7 +139,7 @@ After GoReleaser publishes assets, the release workflow:
 2. Reads SHA-256 values from `dist/checksums.txt`.
 3. Creates `Formula/` in the tap if it does not already exist.
 4. Renders `packaging/homebrew/Formula/nida.rb.tpl`.
-5. Commits and pushes `Formula/nida.rb` to the tap.
+5. Stages `Formula/nida.rb`, then commits and pushes it when the staged file changed.
 
 The formula uses the full Git tag for the GitHub release URL, such as
 `v0.2.0`, and the tag without `v` for Homebrew's package version and archive

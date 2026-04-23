@@ -112,11 +112,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git diff --quiet -- Formula/nida.rb; then
+          git add Formula/nida.rb
+
+          if git diff --cached --quiet -- Formula/nida.rb; then
             echo "No Homebrew formula changes to commit"
             exit 0
           fi
 
-          git add Formula/nida.rb
           git commit -m "nida ${VERSION}"
           git push origin HEAD
