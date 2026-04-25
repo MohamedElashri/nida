@@ -65,8 +65,8 @@ func TestLoadCommandConfigUsesUpdatedDefaultServePort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadCommandConfig returned error: %v", err)
 	}
-	if cfg.Server.Port != 2906 {
-		t.Fatalf("expected default port 2906, got %d", cfg.Server.Port)
+	if cfg.Server.Port != 1307 {
+		t.Fatalf("expected default port 1307, got %d", cfg.Server.Port)
 	}
 }
 

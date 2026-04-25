@@ -83,8 +83,11 @@ func parseBuildFlags(args []string) (commandOptions, error) {
 
 	opts := commandOptions{}
 	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
+	fs.StringVar(&opts.siteRoot, "s", ".", "site root")
 	fs.StringVar(&opts.configPath, "config", "", "config file path")
+	fs.StringVar(&opts.configPath, "c", "", "config file path")
 	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
+	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
 
 	if err := fs.Parse(args); err != nil {
 		return commandOptions{}, err
@@ -98,9 +101,13 @@ func parseServeFlags(args []string) (commandOptions, error) {
 
 	opts := commandOptions{}
 	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
+	fs.StringVar(&opts.siteRoot, "s", ".", "site root")
 	fs.StringVar(&opts.configPath, "config", "", "config file path")
+	fs.StringVar(&opts.configPath, "c", "", "config file path")
 	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
+	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
 	fs.IntVar(&opts.port, "port", 0, "override server port")
+	fs.IntVar(&opts.port, "p", 0, "override server port")
 
 	if err := fs.Parse(args); err != nil {
 		return commandOptions{}, err
@@ -267,8 +274,8 @@ func writeCommandError(stderr io.Writer, err error) int {
 
 func writeUsage(w io.Writer) {
 	_, _ = io.WriteString(w, `Usage:
-  nida serve [--site PATH] [--config PATH] [--drafts] [--port PORT]
-  nida build [--site PATH] [--config PATH] [--drafts]
+  nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-p PORT] [--port PORT]
+  nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts]
   nida version
 
 Commands:

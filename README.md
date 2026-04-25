@@ -108,14 +108,14 @@ nida serve --site ./example-site
 The default local address is:
 
 ```text
-http://127.0.0.1:2906
+http://127.0.0.1:1307
 ```
 
 Commands:
 
 ```bash
-nida build [--site PATH] [--config PATH] [--drafts]
-nida serve [--site PATH] [--config PATH] [--drafts] [--port PORT]
+nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts]
+nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-p PORT] [--port PORT]
 nida version
 ```
 

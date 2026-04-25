@@ -12,8 +12,8 @@ func TestDefaultSiteConfig(t *testing.T) {
 	if cfg.Language != "en" {
 		t.Fatalf("expected default language en, got %q", cfg.Language)
 	}
-	if cfg.Server.Port != 2906 {
-		t.Fatalf("expected default server port 2906, got %d", cfg.Server.Port)
+	if cfg.Server.Port != 1307 {
+		t.Fatalf("expected default server port 1307, got %d", cfg.Server.Port)
 	}
 	if !cfg.RSS.Enabled {
 		t.Fatal("expected RSS to be enabled by default")
@@ -34,8 +34,8 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.ContentDir != "content" {
 		t.Fatalf("expected default content_dir, got %q", cfg.ContentDir)
 	}
-	if cfg.Server.Port != 2906 {
-		t.Fatalf("expected default port 2906, got %d", cfg.Server.Port)
+	if cfg.Server.Port != 1307 {
+		t.Fatalf("expected default port 1307, got %d", cfg.Server.Port)
 	}
 }
 
