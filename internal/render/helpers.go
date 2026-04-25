@@ -163,3 +163,83 @@ func canonicalURL(baseURL, route string) string {
 	}
 	return base.String()
 }
+
+func computeAffected(index site.SiteIndex, changedItems []content.Item, removedPaths []string) map[string]bool {
+	affected := map[string]bool{
+		"/": true,
+	}
+
+	changed := make(map[string]bool, len(changedItems)+len(removedPaths))
+	for _, item := range changedItems {
+		changed[item.RelativePath] = true
+	}
+	for _, p := range removedPaths {
+		changed[p] = true
+	}
+
+	affectedSections := map[string]bool{}
+	affectedTags := map[string]bool{}
+	affectedCats := map[string]bool{}
+
+	for _, post := range index.Posts {
+		if !changed[post.RelativePath] {
+			continue
+		}
+		affected[post.URL] = true
+		if post.SectionPath != "" {
+			affectedSections[post.SectionPath] = true
+		}
+		for _, tag := range post.Tags {
+			affectedTags[content.DeriveSlug(tag)] = true
+		}
+		for _, cat := range post.Categories {
+			affectedCats[content.DeriveSlug(cat)] = true
+		}
+	}
+	for _, page := range index.Pages {
+		if changed[page.RelativePath] {
+			affected[page.URL] = true
+		}
+	}
+
+	if len(affectedTags) > 0 || len(affectedCats) > 0 {
+		if index.Tags.Name != "" {
+			affected[index.Tags.URL] = true
+		}
+		if index.Categories.Name != "" {
+			affected[index.Categories.URL] = true
+		}
+	}
+
+	for _, section := range index.Sections {
+		if !affectedSections[section.SectionPath] {
+			continue
+		}
+		perPage := section.PaginateBy
+		if perPage <= 0 {
+			perPage = 10
+		}
+		totalPages := max(1, (len(section.Pages)+perPage-1)/perPage)
+		for i := 1; i <= totalPages; i++ {
+			if i == 1 {
+				affected[section.URL] = true
+				affected[strings.TrimSuffix(section.URL, "/")+"/page/1/"] = true
+			} else {
+				affected[strings.TrimSuffix(section.URL, "/")+"/page/"+strconv.Itoa(i)+"/"] = true
+			}
+		}
+	}
+
+	for _, term := range index.Tags.Terms {
+		if affectedTags[term.Slug] {
+			affected[term.URL] = true
+		}
+	}
+	for _, term := range index.Categories.Terms {
+		if affectedCats[term.Slug] {
+			affected[term.URL] = true
+		}
+	}
+
+	return affected
+}

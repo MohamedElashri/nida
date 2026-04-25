@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/assets"
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/feeds"
+	"github.com/MohamedElashri/nida/internal/markdown"
 	"github.com/MohamedElashri/nida/internal/output"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
@@ -24,7 +27,13 @@ func rebuildSite(opts commandOptions, previous buildResult, changedPaths []strin
 		return previous, mode, nil
 	}
 
-	next, err := buildSiteState(opts)
+	var next buildResult
+	var err error
+	if mode == "partial" {
+		next, err = buildIncremental(opts, previous, changedPaths)
+	} else {
+		next, err = buildSiteState(opts)
+	}
 	if err != nil {
 		return buildResult{}, mode, err
 	}
@@ -52,7 +61,15 @@ func buildSiteState(opts commandOptions) (buildResult, error) {
 		return buildResult{}, err
 	}
 
-	artifacts := []output.Artifact{}
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
+		return buildResult{}, err
+	}
+
+	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
+}
+
+func buildArtifactList(cfg config.SiteConfig) []output.Artifact {
+	artifacts := make([]output.Artifact, 0, 4)
 	if cfg.RSS.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
 	}
@@ -65,11 +82,104 @@ func buildSiteState(opts commandOptions) (buildResult, error) {
 	if cfg.Robots.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Robots.Filename})
 	}
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, artifacts); err != nil {
+	return artifacts
+}
+
+func buildIncremental(opts commandOptions, previous buildResult, changedPaths []string) (buildResult, error) {
+	cfg, path, err := loadCommandConfig(opts)
+	if err != nil {
 		return buildResult{}, err
 	}
 
-	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
+	absSiteRoot, err := filepath.Abs(opts.siteRoot)
+	if err != nil {
+		return buildResult{}, err
+	}
+	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
+	contentPrefix := filepath.ToSlash(cfg.ContentDir + "/")
+
+	changedByRelPath := make(map[string]content.Item)
+	removedByRelPath := make(map[string]bool)
+
+	for _, p := range changedPaths {
+		normalized := filepath.ToSlash(strings.TrimSpace(p))
+		if !strings.HasPrefix(normalized, contentPrefix) {
+			continue
+		}
+		if !strings.HasSuffix(normalized, ".md") {
+			continue
+		}
+
+		relPath := strings.TrimPrefix(normalized, contentPrefix)
+		fullPath := filepath.Join(contentRoot, filepath.FromSlash(relPath))
+
+		info, statErr := os.Stat(fullPath)
+		if statErr != nil {
+			if os.IsNotExist(statErr) {
+				removedByRelPath[relPath] = true
+				continue
+			}
+			return buildResult{}, statErr
+		}
+		if info.IsDir() {
+			continue
+		}
+
+		item, loadErr := content.LoadFile(contentRoot, fullPath, cfg)
+		if loadErr != nil {
+			return buildResult{}, loadErr
+		}
+
+		item, renderErr := markdown.RenderItem(item, cfg)
+		if renderErr != nil {
+			return buildResult{}, renderErr
+		}
+
+		changedByRelPath[item.RelativePath] = item
+	}
+
+	changedItems := make([]content.Item, 0, len(changedByRelPath))
+	for _, item := range changedByRelPath {
+		changedItems = append(changedItems, item)
+	}
+	removedPaths := make([]string, 0, len(removedByRelPath))
+	for p := range removedByRelPath {
+		removedPaths = append(removedPaths, p)
+	}
+
+	merged := make([]content.Item, 0, len(previous.state.Items))
+	for _, prevItem := range previous.state.Items {
+		if removedByRelPath[prevItem.RelativePath] {
+			continue
+		}
+		if updated, ok := changedByRelPath[prevItem.RelativePath]; ok {
+			merged = append(merged, updated)
+			delete(changedByRelPath, prevItem.RelativePath)
+		} else {
+			merged = append(merged, prevItem)
+		}
+	}
+	for _, item := range changedByRelPath {
+		merged = append(merged, item)
+	}
+
+	index, err := site.BuildIndex(merged, cfg)
+	if err != nil {
+		return buildResult{}, err
+	}
+
+	newState := site.State{Items: merged, Index: index}
+
+	pages, err := render.RenderIncremental(opts.siteRoot, cfg, newState, previous.pages, changedItems, removedPaths)
+	if err != nil {
+		return buildResult{}, err
+	}
+
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
+		return buildResult{}, err
+	}
+
+	return buildResult{cfg: cfg, path: path, state: newState, pages: pages}, nil
 }
 
 func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, changedPaths []string, mode string) error {

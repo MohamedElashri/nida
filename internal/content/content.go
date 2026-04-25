@@ -100,6 +100,11 @@ func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Item, error) {
 	return items, nil
 }
 
+func LoadFile(contentRoot, sourcePath string, cfg config.SiteConfig) (Item, error) {
+	itemType := classifyItem(contentRoot, sourcePath, cfg)
+	return loadItem(contentRoot, sourcePath, itemType)
+}
+
 func loadItem(contentRoot, sourcePath, itemType string) (Item, error) {
 	data, err := os.ReadFile(sourcePath)
 	if err != nil {
