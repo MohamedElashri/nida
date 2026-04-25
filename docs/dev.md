@@ -30,9 +30,9 @@ Useful direct Go commands:
 ```bash
 go test ./...
 go build ./...
-go run ./cmd/nida build --site ./example-site
-go run ./cmd/nida serve --site ./example-site
-go run ./cmd/nida build --site ./example-site-ar
+go run ./cmd/nida build -s ./example-site
+go run ./cmd/nida serve -s ./example-site
+go run ./cmd/nida build -s ./example-site-ar
 ```
 
 If the normal Go cache is not writable in your environment, use a local cache:

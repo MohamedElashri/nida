@@ -54,8 +54,8 @@ Run these checks from the repository root before tagging:
 ```bash
 go test ./...
 go build ./...
-go run ./cmd/nida build --site ./example-site
-go run ./cmd/nida build --site ./example-site-ar
+go run ./cmd/nida build -s ./example-site
+go run ./cmd/nida build -s ./example-site-ar
 go run ./cmd/nida version
 goreleaser check
 ```
@@ -76,7 +76,7 @@ This writes artifacts under `dist/` and does not publish anything.
 
 Before publishing a tagged release, also confirm:
 
-* `go run ./cmd/nida serve --site ./example-site` starts on the default port or an explicit override
+* `go run ./cmd/nida serve -s ./example-site` starts on the default port (1307) or an explicit override (`-p`)
 * `go run ./cmd/nida version` reports the expected version metadata for the release candidate build
 * the tap repo `MohamedElashri/homebrew-nida` exists and contains a `Formula/` directory
 * this repo has a `HOMEBREW_TAP_TOKEN` Actions secret with contents write access to the tap
