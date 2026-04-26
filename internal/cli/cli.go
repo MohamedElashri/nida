@@ -18,6 +18,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/output"
+	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/server"
@@ -215,6 +216,19 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	if err := output.WriteSite(opts.siteRoot, cfg, pages); err != nil {
 		return buildResult{}, err
 	}
+
+	if cfg.Pipeline.Fingerprint || cfg.Pipeline.Images.Enabled || cfg.Pipeline.SCSS.Enabled {
+		manifest, pipeErr := pipeline.Process(opts.siteRoot, cfg)
+		if pipeErr != nil {
+			return buildResult{}, pipeErr
+		}
+		if manifest != nil {
+			if err := pipeline.RewriteOutputFiles(opts.siteRoot, cfg, manifest); err != nil {
+				return buildResult{}, err
+			}
+		}
+	}
+
 	feedOutputs, err := feeds.GenerateAll(cfg, state.Index)
 	if err != nil {
 		return buildResult{}, err

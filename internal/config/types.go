@@ -24,6 +24,7 @@ type SiteConfig struct {
 	Robots      RobotsConfig    `toml:"robots"`
 	Server      ServerConfig    `toml:"server"`
 	Permalinks  PermalinkConfig `toml:"permalinks"`
+	Pipeline    PipelineConfig  `toml:"pipeline"`
 	Extra       map[string]any  `toml:"extra"`
 }
 
@@ -72,6 +73,25 @@ type PermalinkConfig struct {
 	Pages      string `toml:"pages"`
 	Tags       string `toml:"tags"`
 	Categories string `toml:"categories"`
+}
+
+type PipelineConfig struct {
+	Fingerprint bool              `toml:"fingerprint"`
+	MinifyCSS   bool              `toml:"minify_css"`
+	MinifyJS    bool              `toml:"minify_js"`
+	Images      ImageConfig       `toml:"images"`
+	SCSS        SCSSConfig        `toml:"scss"`
+}
+
+type ImageConfig struct {
+	Enabled bool    `toml:"enabled"`
+	Widths  []int   `toml:"widths"`
+	Quality int     `toml:"quality"`
+}
+
+type SCSSConfig struct {
+	Enabled   bool   `toml:"enabled"`
+	EntryDir  string `toml:"entry_dir"`
 }
 
 type Options struct {

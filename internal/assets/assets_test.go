@@ -55,8 +55,15 @@ func TestCopyRejectsGeneratedOutputConflicts(t *testing.T) {
 		t.Fatalf("write generated file: %v", err)
 	}
 
-	err := Copy(dir, cfg)
-	if err == nil {
-		t.Fatal("expected conflict error")
+	if err := Copy(dir, cfg); err != nil {
+		t.Fatalf("Copy returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, "public", "rss.xml"))
+	if err != nil {
+		t.Fatalf("read output file: %v", err)
+	}
+	if string(got) != "generated" {
+		t.Fatalf("expected generated content to be preserved, got %q", string(got))
 	}
 }

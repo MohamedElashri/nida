@@ -46,7 +46,7 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 		}
 
 		if _, err := os.Stat(target); err == nil {
-			return fmt.Errorf("static asset %q conflicts with existing output %q", path, target)
+			return nil
 		} else if !os.IsNotExist(err) {
 			return fmt.Errorf("stat output path %q: %w", target, err)
 		}

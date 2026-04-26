@@ -17,6 +17,20 @@ func DefaultSiteConfig() SiteConfig {
 			Tags:       true,
 			Categories: true,
 		},
+		Pipeline: PipelineConfig{
+			Fingerprint: false,
+			MinifyCSS:   false,
+			MinifyJS:    false,
+			Images: ImageConfig{
+				Enabled: false,
+				Widths:  []int{480, 768, 1200},
+				Quality: 85,
+			},
+			SCSS: SCSSConfig{
+				Enabled:  false,
+				EntryDir: "css",
+			},
+		},
 		RSS: RSSConfig{
 			Enabled:  true,
 			Filename: "rss.xml",

@@ -12,6 +12,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/markdown"
 	"github.com/MohamedElashri/nida/internal/output"
+	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/site"
@@ -208,6 +209,18 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 	for _, oldPath := range prevArtifacts {
 		if !slices.Contains(nextArtifacts, oldPath) {
 			if err := output.RemoveFile(opts.siteRoot, previous.cfg, oldPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	if next.cfg.Pipeline.Fingerprint || next.cfg.Pipeline.Images.Enabled || next.cfg.Pipeline.SCSS.Enabled {
+		manifest, pipeErr := pipeline.Process(opts.siteRoot, next.cfg)
+		if pipeErr != nil {
+			return pipeErr
+		}
+		if manifest != nil {
+			if err := pipeline.RewriteOutputFiles(opts.siteRoot, next.cfg, manifest); err != nil {
 				return err
 			}
 		}
