@@ -15,18 +15,23 @@ func normalize(cfg *SiteConfig) {
 	cfg.TemplateDir = cleanRelativePath(cfg.TemplateDir)
 	cfg.StaticDir = cleanRelativePath(cfg.StaticDir)
 	cfg.OutputDir = cleanRelativePath(cfg.OutputDir)
-	cfg.PostsDir = cleanRelativePath(cfg.PostsDir)
-	cfg.PagesDir = cleanRelativePath(cfg.PagesDir)
 	cfg.SyntaxTheme = strings.TrimSpace(cfg.SyntaxTheme)
 	cfg.RSS.Filename = cleanRelativePath(cfg.RSS.Filename)
 	cfg.Atom.Filename = cleanRelativePath(cfg.Atom.Filename)
 	cfg.Sitemap.Filename = cleanRelativePath(cfg.Sitemap.Filename)
 	cfg.Robots.Filename = cleanRelativePath(cfg.Robots.Filename)
 	cfg.Server.Host = strings.TrimSpace(cfg.Server.Host)
-	cfg.Permalinks.Posts = normalizePermalink(cfg.Permalinks.Posts)
-	cfg.Permalinks.Pages = normalizePermalink(cfg.Permalinks.Pages)
-	cfg.Permalinks.Tags = normalizePermalink(cfg.Permalinks.Tags)
-	cfg.Permalinks.Categories = normalizePermalink(cfg.Permalinks.Categories)
+
+	if cfg.Sections.PaginatePath == "" {
+		cfg.Sections.PaginatePath = "page"
+	}
+	if cfg.Sections.DefaultSortBy == "" {
+		cfg.Sections.DefaultSortBy = "date"
+	}
+
+	if cfg.Taxonomies == nil {
+		cfg.Taxonomies = []TaxonomyConfig{}
+	}
 }
 
 func cleanRelativePath(value string) string {
@@ -35,18 +40,4 @@ func cleanRelativePath(value string) string {
 		return value
 	}
 	return filepath.Clean(value)
-}
-
-func normalizePermalink(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return value
-	}
-	if !strings.HasPrefix(value, "/") {
-		value = "/" + value
-	}
-	if !strings.HasSuffix(value, "/") {
-		value += "/"
-	}
-	return value
 }

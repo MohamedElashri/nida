@@ -3,22 +3,26 @@ title = "مدونة نداء"
 description = "مثال عربي بسيط لموقع مبني باستخدام nida."
 language = "ar"
 author = "Mohamed Elashri"
+config_version = "0.4"
 
 content_dir = "content"
 template_dir = "templates"
 static_dir = "static"
 output_dir = "public"
 
-posts_dir = "posts"
-pages_dir = "pages"
-
 paginate = 10
 drafts = false
 syntax_theme = "github"
 
-[taxonomies]
-tags = false
-categories = false
+[[taxonomies]]
+name = "tags"
+path = "tags"
+render = false
+
+[[taxonomies]]
+name = "categories"
+path = "categories"
+render = false
 
 [rss]
 enabled = true
@@ -37,5 +41,3 @@ livereload = true
 [permalinks]
 posts = "/posts/{slug}/"
 pages = "/{slug}/"
-tags = "/tags/{slug}/"
-categories = "/categories/{slug}/"

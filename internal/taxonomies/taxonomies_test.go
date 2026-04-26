@@ -8,20 +8,37 @@ import (
 	"github.com/MohamedElashri/nida/internal/content"
 )
 
-func TestBuildCollection(t *testing.T) {
+func TestBuildAllCreatesCollections(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-
-	collection, err := Build("tags", true, cfg.Permalinks.Tags, "/tags/", map[string][]content.Item{
-		"Go Lang": {
-			{Slug: "second", RelativePath: "posts/second.md", Date: mustDate(t, "2026-04-12T10:00:00Z")},
-			{Slug: "first", RelativePath: "posts/first.md", Date: mustDate(t, "2026-04-13T10:00:00Z")},
-		},
-	}, cfg)
-	if err != nil {
-		t.Fatalf("Build returned error: %v", err)
+	cfg.Taxonomies = []config.TaxonomyConfig{
+		{Name: "tags", Render: true, PaginateBy: 10},
 	}
 
+	pages := []content.Page{
+		{
+			Slug:         "first",
+			RelativePath: "posts/first.md",
+			Date:         mustDate(t, "2026-04-13T10:00:00Z"),
+			Extra:        map[string]any{"tags": []string{"Go Lang"}},
+		},
+		{
+			Slug:         "second",
+			RelativePath: "posts/second.md",
+			Date:         mustDate(t, "2026-04-12T10:00:00Z"),
+			Extra:        map[string]any{"tags": []string{"Go Lang"}},
+		},
+	}
+
+	collections, taxMap, err := BuildAll(cfg, pages)
+	if err != nil {
+		t.Fatalf("BuildAll returned error: %v", err)
+	}
+
+	if len(collections) != 1 {
+		t.Fatalf("expected 1 collection, got %d", len(collections))
+	}
+	collection := collections[0]
 	if collection.URL != "/tags/" {
 		t.Fatalf("unexpected collection URL %q", collection.URL)
 	}
@@ -32,18 +49,40 @@ func TestBuildCollection(t *testing.T) {
 		t.Fatalf("unexpected term: %+v", collection.Terms[0])
 	}
 	if collection.Terms[0].Items[0].Slug != "first" {
-		t.Fatalf("expected sorted term items, got %+v", collection.Terms[0].Items)
+		t.Fatalf("expected sorted term items by date desc, got %+v", collection.Terms[0].Items)
+	}
+
+	if _, ok := taxMap["tags"]["Go Lang"]; !ok {
+		t.Fatalf("expected tags in taxonomy map")
 	}
 }
 
-func TestBuildDisabledCollection(t *testing.T) {
+func TestBuildAllSkipsDisabledTaxonomies(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
-	collection, err := Build("tags", false, cfg.Permalinks.Tags, "/tags/", map[string][]content.Item{}, cfg)
-	if err != nil {
-		t.Fatalf("Build returned error: %v", err)
+	cfg.Taxonomies = []config.TaxonomyConfig{
+		{Name: "tags", Render: false},
 	}
-	if collection.Name != "" || len(collection.Terms) != 0 {
-		t.Fatalf("expected zero collection when disabled, got %+v", collection)
+
+	pages := []content.Page{
+		{
+			Slug:         "first",
+			RelativePath: "posts/first.md",
+			Extra:        map[string]any{"tags": []string{"news"}},
+		},
+	}
+
+	collections, _, err := BuildAll(cfg, pages)
+	if err != nil {
+		t.Fatalf("BuildAll returned error: %v", err)
+	}
+	if len(collections) != 1 {
+		t.Fatalf("expected 1 collection in slice, got %d", len(collections))
+	}
+	if collections[0].Name != "tags" {
+		t.Fatalf("expected tags collection, got %q", collections[0].Name)
+	}
+	if collections[0].Render {
+		t.Fatalf("expected tags collection to have Render=false")
 	}
 }
 

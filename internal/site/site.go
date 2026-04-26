@@ -2,8 +2,7 @@ package site
 
 import (
 	"fmt"
-	"net/url"
-	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -14,150 +13,150 @@ import (
 )
 
 type State struct {
-	Items []content.Item
-	Index SiteIndex
-}
-
-type Section struct {
-	content.Item
-	Pages []content.Item
+	Pages    []content.Page
+	Sections []content.Section
+	Index    SiteIndex
 }
 
 type SiteIndex struct {
-	Posts           []content.Item
-	Pages           []content.Item
-	RecentPosts     []content.Item
-	Sections        []Section
-	SectionLookup   map[string]Section
-	RootSection     *Section
-	TagMap          map[string][]content.Item
-	CategoryMap     map[string][]content.Item
-	Tags            taxonomies.Collection
-	Categories      taxonomies.Collection
+	Sections        []content.Section
+	SectionLookup   map[string]content.Section
+	RootSection     *content.Section
+	AllPages        []content.Page
+	Taxonomies      []taxonomies.Collection
+	TaxonomyMap     taxonomies.TaxonomyMap
 	RouteRegistry   map[string]string
 	CanonicalLookup map[string]string
 }
 
 func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
-	items, err := content.Discover(siteRoot, cfg)
+	pages, sections, err := content.Discover(siteRoot, cfg)
 	if err != nil {
 		return State{}, err
 	}
 
-	renderedItems, err := markdown.RenderItems(items, cfg)
+	renderedPages, err := markdown.RenderPages(pages, cfg)
 	if err != nil {
 		return State{}, err
 	}
 
-	index, err := BuildIndex(renderedItems, cfg)
+	index, sortedPages, err := BuildIndex(renderedPages, sections, cfg)
 	if err != nil {
 		return State{}, err
 	}
 
 	return State{
-		Items: renderedItems,
-		Index: index,
+		Pages:    sortedPages,
+		Sections: sections,
+		Index:    index,
 	}, nil
 }
 
-func BuildIndex(items []content.Item, cfg config.SiteConfig) (SiteIndex, error) {
+func BuildIndex(pages []content.Page, sections []content.Section, cfg config.SiteConfig) (SiteIndex, []content.Page, error) {
 	index := SiteIndex{
-		TagMap:          map[string][]content.Item{},
-		CategoryMap:     map[string][]content.Item{},
-		SectionLookup:   map[string]Section{},
+		SectionLookup:   map[string]content.Section{},
 		RouteRegistry:   map[string]string{},
 		CanonicalLookup: map[string]string{},
 	}
-	var err error
-	sectionPages := map[string][]content.Item{}
-	sectionItems := map[string]content.Item{}
 
-	for _, item := range items {
-		if item.Draft && !cfg.Drafts {
-			continue
+	sortedPages := make([]content.Page, len(pages))
+	copy(sortedPages, pages)
+	slices.SortFunc(sortedPages, func(a, b content.Page) int {
+		if !a.Date.Equal(b.Date) {
+			if a.Date.After(b.Date) {
+				return -1
+			}
+			return 1
 		}
+		return strings.Compare(a.Slug, b.Slug)
+	})
 
-		routed, canonical, err := routeItem(item, cfg)
+	for i := range sortedPages {
+		routed, err := routePage(sortedPages[i], cfg)
 		if err != nil {
-			return SiteIndex{}, err
+			return SiteIndex{}, nil, err
 		}
+		sortedPages[i].URL = routed
 
-		if existing, exists := index.RouteRegistry[routed.URL]; exists {
-			return SiteIndex{}, fmt.Errorf("route conflict for %q between %q and %q", routed.URL, existing, routed.RelativePath)
+		if existing, exists := index.RouteRegistry[routed]; exists {
+			return SiteIndex{}, nil, fmt.Errorf("route conflict for %q between %q and %q", routed, existing, sortedPages[i].RelativePath)
 		}
+		index.RouteRegistry[routed] = sortedPages[i].RelativePath
+	}
 
-		index.RouteRegistry[routed.URL] = routed.RelativePath
-		index.CanonicalLookup[routed.URL] = canonical
+	builtSections, sectionMap := buildSectionTree(sections, sortedPages, cfg)
 
-		switch routed.Type {
-		case content.TypePost:
-			index.Posts = append(index.Posts, routed)
-			sectionPages[routed.SectionPath] = append(sectionPages[routed.SectionPath], routed)
-		case content.TypePage:
-			index.Pages = append(index.Pages, routed)
-		case content.TypeSection:
-			copy := routed
-			sectionItems[routed.SectionPath] = copy
-		default:
-			return SiteIndex{}, fmt.Errorf("unsupported content type %q for %q", routed.Type, routed.RelativePath)
+	for path, s := range sectionMap {
+		index.SectionLookup[path] = s
+	}
+
+	slices.SortFunc(builtSections, func(a, b content.Section) int {
+		if a.SectionPath == "" && b.SectionPath != "" {
+			return -1
 		}
-
-		for _, tag := range routed.Tags {
-			index.TagMap[tag] = append(index.TagMap[tag], routed)
+		if a.SectionPath != "" && b.SectionPath == "" {
+			return 1
 		}
-		for _, category := range routed.Categories {
-			index.CategoryMap[category] = append(index.CategoryMap[category], routed)
+		return strings.Compare(a.SectionPath, b.SectionPath)
+	})
+	index.Sections = builtSections
+
+	for i := range index.Sections {
+		s := &index.Sections[i]
+		if s.SectionPath == "" {
+			index.RootSection = s
+			break
 		}
 	}
 
-	sortItems(index.Posts)
-	sortItems(index.Pages)
-	for sectionPath := range sectionPages {
-		sortItems(sectionPages[sectionPath])
-	}
-	for key := range index.TagMap {
-		sortItems(index.TagMap[key])
-	}
-	for key := range index.CategoryMap {
-		sortItems(index.CategoryMap[key])
-	}
+	index.AllPages = sortedPages
 
-	index.RecentPosts = append(index.RecentPosts, index.Posts...)
-	index.Sections = buildSections(cfg, sectionItems, sectionPages)
-	for _, section := range index.Sections {
-		index.SectionLookup[section.SectionPath] = section
-		if section.SectionPath == "" {
-			copy := section
-			index.RootSection = &copy
-		}
-	}
-
-	index.Tags, err = taxonomies.Build("tags", cfg.Taxonomies.Tags, cfg.Permalinks.Tags, "/tags/", index.TagMap, cfg)
+	var err error
+	index.Taxonomies, index.TaxonomyMap, err = taxonomies.BuildAll(cfg, sortedPages)
 	if err != nil {
-		return SiteIndex{}, err
-	}
-	index.Categories, err = taxonomies.Build("categories", cfg.Taxonomies.Categories, cfg.Permalinks.Categories, "/categories/", index.CategoryMap, cfg)
-	if err != nil {
-		return SiteIndex{}, err
+		return SiteIndex{}, nil, err
 	}
 
-	return index, nil
+	return index, sortedPages, nil
 }
 
-func ResolvePermalink(item content.Item, cfg config.SiteConfig) (string, error) {
-	if item.Type != content.TypeSection && item.Slug == "" {
-		return "", fmt.Errorf("resolve permalink for %q: slug is required", item.RelativePath)
+func ResolveSectionURL(section content.Section, cfg config.SiteConfig) (string, error) {
+	route := "/" + section.SectionPath + "/"
+	if section.SectionPath == "" {
+		route = "/"
 	}
 
-	pattern, err := patternFor(item, cfg)
-	if err != nil {
-		return "", err
+	if p, ok := cfg.Permalinks[section.SectionPath]; ok && p != "" {
+		route = p
+		if !strings.HasPrefix(route, "/") {
+			route = "/" + route
+		}
+		if !strings.HasSuffix(route, "/") {
+			route += "/"
+		}
 	}
 
-	route := strings.ReplaceAll(pattern, "{slug}", item.Slug)
-	route = strings.ReplaceAll(route, "{section}", item.SectionPath)
+	return route, nil
+}
+
+func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
+	sectionPath := page.SectionPath
+
+	var pattern string
+	if p, ok := cfg.Permalinks[sectionPath]; ok && p != "" {
+		pattern = p
+	} else {
+		pattern = "/{section}/{slug}/"
+	}
+
+	route := strings.ReplaceAll(pattern, "{slug}", page.Slug)
+	route = strings.ReplaceAll(route, "{section}", sectionPath)
+	route = strings.ReplaceAll(route, "{year}", page.Date.Format("2006"))
+	route = strings.ReplaceAll(route, "{month}", page.Date.Format("01"))
+	route = strings.ReplaceAll(route, "{day}", page.Date.Format("02"))
+
 	if strings.Contains(route, "{") || strings.Contains(route, "}") {
-		return "", fmt.Errorf("resolve permalink for %q: unsupported placeholder in %q", item.RelativePath, pattern)
+		return "", fmt.Errorf("unsupported placeholder in permalink pattern %q for %q", pattern, page.RelativePath)
 	}
 	if !strings.HasPrefix(route, "/") {
 		route = "/" + route
@@ -169,122 +168,138 @@ func ResolvePermalink(item content.Item, cfg config.SiteConfig) (string, error) 
 	return route, nil
 }
 
-func routeItem(item content.Item, cfg config.SiteConfig) (content.Item, string, error) {
-	route, err := ResolvePermalink(item, cfg)
-	if err != nil {
-		return content.Item{}, "", err
+func buildSectionTree(sections []content.Section, allPages []content.Page, cfg config.SiteConfig) ([]content.Section, map[string]content.Section) {
+	sectionMap := map[string]content.Section{}
+	childrenMap := map[string][]content.Section{}
+
+	for i := range sections {
+		s := sections[i]
+		sectionMap[s.SectionPath] = s
 	}
 
-	canonical, err := canonicalURL(cfg.BaseURL, route)
-	if err != nil {
-		return content.Item{}, "", fmt.Errorf("build canonical URL for %q: %w", item.RelativePath, err)
-	}
-
-	item.URL = route
-	return item, canonical, nil
-}
-
-func patternFor(item content.Item, cfg config.SiteConfig) (string, error) {
-	switch item.Type {
-	case content.TypePost:
-		if item.SectionPath != "" && item.SectionPath != cfg.PostsDir {
-			return "/{section}/{slug}/", nil
-		}
-		return cfg.Permalinks.Posts, nil
-	case content.TypePage:
-		return cfg.Permalinks.Pages, nil
-	case content.TypeSection:
-		if item.SectionPath == "" {
-			return "/", nil
-		}
-		return "/{section}/", nil
-	default:
-		return "", fmt.Errorf("resolve permalink: unsupported content type %q", item.Type)
-	}
-}
-
-func canonicalURL(baseURL, route string) (string, error) {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return "", fmt.Errorf("parse base URL %q: %w", baseURL, err)
-	}
-
-	base.Path = path.Join(base.Path, route)
-	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
-	}
-	return base.String(), nil
-}
-
-func sortItems(items []content.Item) {
-	slices.SortFunc(items, func(a, b content.Item) int {
-		if !a.Date.Equal(b.Date) {
-			if a.Date.After(b.Date) {
-				return -1
+	for path, s := range sectionMap {
+		if path != "" {
+			dir := filepath.ToSlash(filepath.Dir(path))
+			if dir == "." {
+				dir = ""
 			}
-			return 1
+			childrenMap[dir] = append(childrenMap[dir], s)
 		}
-		if cmp := strings.Compare(a.Slug, b.Slug); cmp != 0 {
-			return cmp
+	}
+
+	for i := range sections {
+		s := &sections[i]
+		if children, ok := childrenMap[s.SectionPath]; ok {
+			s.Sections = children
 		}
-		return strings.Compare(a.RelativePath, b.RelativePath)
-	})
+		pagesInSection := filterPagesForSection(allPages, s.SectionPath)
+		s.Pages = sortPagesBySection(pagesInSection, *s, cfg)
+		sectionMap[s.SectionPath] = *s
+	}
+
+	var roots []content.Section
+	rootSection := content.Section{}
+	rootPages := filterPagesForSection(allPages, "")
+
+	if existingRoot, ok := sectionMap[""]; ok {
+		rootSection = existingRoot
+		rootSection.Pages = sortPagesBySection(rootPages, rootSection, cfg)
+		roots = append(roots, rootSection)
+	} else if len(rootPages) > 0 {
+		rootSection = content.Section{
+			SectionPath:      "",
+			Title:            "Home",
+			Slug:             "",
+			URL:              "/",
+			PaginateBy:       0,
+			PaginatePath:     "page",
+			PaginateReversed: false,
+			SortBy:           "date",
+			Transparent:      false,
+			GenerateFeeds:    false,
+			Sections:         nil,
+			Pages:           sortPagesBySection(rootPages, rootSection, cfg),
+			Extra:            map[string]any{},
+		}
+		roots = append(roots, rootSection)
+	}
+
+	for i := range sections {
+		s := sections[i]
+		if s.SectionPath != "" && s.Transparent {
+			roots = append(roots, s)
+		}
+	}
+
+	return roots, sectionMap
 }
 
-func buildSections(cfg config.SiteConfig, sectionItems map[string]content.Item, sectionPages map[string][]content.Item) []Section {
-	keys := map[string]struct{}{}
-	for key := range sectionItems {
-		keys[key] = struct{}{}
-	}
-	for key := range sectionPages {
-		keys[key] = struct{}{}
-	}
-	keys[cfg.PostsDir] = struct{}{}
-
-	sections := make([]Section, 0, len(keys))
-	for key := range keys {
-		item, ok := sectionItems[key]
-		if !ok {
-			item = syntheticSection(cfg, key)
+func filterPagesForSection(pages []content.Page, sectionPath string) []content.Page {
+	var filtered []content.Page
+	for _, page := range pages {
+		if page.SectionPath == sectionPath {
+			filtered = append(filtered, page)
 		}
-		item.SectionPath = key
-		sections = append(sections, Section{
-			Item:  item,
-			Pages: append([]content.Item(nil), sectionPages[key]...),
+	}
+	return filtered
+}
+
+func sortPagesBySection(pages []content.Page, section content.Section, cfg config.SiteConfig) []content.Page {
+	if len(pages) == 0 {
+		return pages
+	}
+
+	sortBy := section.SortBy
+	if sortBy == "" {
+		sortBy = "date"
+	}
+
+	switch sortBy {
+	case "date":
+		slices.SortFunc(pages, func(a, b content.Page) int {
+			if !a.Date.Equal(b.Date) {
+				if a.Date.After(b.Date) {
+					return -1
+				}
+				return 1
+			}
+			return strings.Compare(a.Slug, b.Slug)
+		})
+	case "title":
+		slices.SortFunc(pages, func(a, b content.Page) int {
+			if cmp := strings.Compare(a.Title, b.Title); cmp != 0 {
+				return cmp
+			}
+			return strings.Compare(a.Slug, b.Slug)
+		})
+	case "weight":
+		slices.SortFunc(pages, func(a, b content.Page) int {
+			if a.Weight != b.Weight {
+				if a.Weight < b.Weight {
+					return -1
+				}
+				return 1
+			}
+			return strings.Compare(a.Slug, b.Slug)
+		})
+	case "none":
+	default:
+		slices.SortFunc(pages, func(a, b content.Page) int {
+			if !a.Date.Equal(b.Date) {
+				if a.Date.After(b.Date) {
+					return -1
+				}
+				return 1
+			}
+			return strings.Compare(a.Slug, b.Slug)
 		})
 	}
 
-	slices.SortFunc(sections, func(a, b Section) int {
-		if a.SectionPath == "" && b.SectionPath != "" {
-			return -1
+	if section.PaginateReversed {
+		for i, j := 0, len(pages)-1; i < j; i, j = i+1, j-1 {
+			pages[i], pages[j] = pages[j], pages[i]
 		}
-		if a.SectionPath != "" && b.SectionPath == "" {
-			return 1
-		}
-		return strings.Compare(a.SectionPath, b.SectionPath)
-	})
-
-	return sections
-}
-
-func syntheticSection(cfg config.SiteConfig, sectionPath string) content.Item {
-	title := "Home"
-	slug := ""
-	url := "/"
-	if sectionPath != "" {
-		base := path.Base(sectionPath)
-		slug = content.DeriveSlug(base)
-		title = strings.Title(strings.ReplaceAll(base, "-", " "))
-		url = "/" + strings.Trim(sectionPath, "/") + "/"
 	}
 
-	item := content.Item{
-		Type:        content.TypeSection,
-		SectionPath: sectionPath,
-		Title:       title,
-		Slug:        slug,
-		PaginateBy:  cfg.Paginate,
-		URL:         url,
-	}
-	return item
+	return pages
 }

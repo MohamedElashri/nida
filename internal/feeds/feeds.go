@@ -3,6 +3,8 @@ package feeds
 import (
 	"encoding/xml"
 	"fmt"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -44,12 +46,12 @@ type rssGUID struct {
 }
 
 type atomDocument struct {
-	XMLName xml.Name    `xml:"http://www.w3.org/2005/Atom feed"`
-	Lang    string      `xml:"xml:lang,attr,omitempty"`
-	Title   string      `xml:"title"`
-	Link    []atomLink  `xml:"link"`
-	Updated string      `xml:"updated"`
-	ID      string      `xml:"id"`
+	XMLName xml.Name   `xml:"http://www.w3.org/2005/Atom feed"`
+	Lang    string     `xml:"xml:lang,attr,omitempty"`
+	Title   string     `xml:"title"`
+	Link    []atomLink `xml:"link"`
+	Updated string    `xml:"updated"`
+	ID      string    `xml:"id"`
 	Author  *atomAuthor `xml:"author,omitempty"`
 	Entries []atomEntry `xml:"entry"`
 }
@@ -107,7 +109,7 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 		return nil, nil
 	}
 
-	items := index.Posts
+	items := index.AllPages
 	if cfg.RSS.Limit > 0 && len(items) > cfg.RSS.Limit {
 		items = items[:cfg.RSS.Limit]
 	}
@@ -124,10 +126,7 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 	}
 
 	for _, item := range items {
-		link, ok := index.CanonicalLookup[item.URL]
-		if !ok {
-			return nil, fmt.Errorf("generate RSS: missing canonical URL for %q", item.URL)
-		}
+		link := canonicalURL(cfg.BaseURL, item.URL)
 
 		description := strings.TrimSpace(item.Description)
 		if description == "" {
@@ -165,7 +164,7 @@ func GenerateAtom(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) 
 		return nil, nil
 	}
 
-	items := index.Posts
+	items := index.AllPages
 	if cfg.Atom.Limit > 0 && len(items) > cfg.Atom.Limit {
 		items = items[:cfg.Atom.Limit]
 	}
@@ -192,10 +191,7 @@ func GenerateAtom(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) 
 	}
 
 	for _, item := range items {
-		link, ok := index.CanonicalLookup[item.URL]
-		if !ok {
-			return nil, fmt.Errorf("generate Atom: missing canonical URL for %q", item.URL)
-		}
+		link := canonicalURL(cfg.BaseURL, item.URL)
 
 		summary := strings.TrimSpace(item.Description)
 		if summary == "" {
@@ -245,7 +241,7 @@ func formatAtomDate(value time.Time) string {
 	return value.UTC().Format(time.RFC3339)
 }
 
-func latestUpdated(items []content.Item) time.Time {
+func latestUpdated(items []content.Page) time.Time {
 	var latest time.Time
 	for _, item := range items {
 		if item.Date.After(latest) {
@@ -255,7 +251,7 @@ func latestUpdated(items []content.Item) time.Time {
 	return latest
 }
 
-func atomEntryAuthor(item content.Item, cfg config.SiteConfig) *atomAuthor {
+func atomEntryAuthor(item content.Page, cfg config.SiteConfig) *atomAuthor {
 	if authors := stringListExtra(item.Extra, "authors"); len(authors) > 0 {
 		return &atomAuthor{Name: strings.Join(authors, ", ")}
 	}
@@ -296,4 +292,16 @@ func feedURL(baseURL, filename string) (string, error) {
 		baseURL += "/"
 	}
 	return baseURL + filename, nil
+}
+
+func canonicalURL(baseURL, route string) string {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return route
+	}
+	base.Path = path.Join(base.Path, route)
+	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
+		base.Path += "/"
+	}
+	return base.String()
 }

@@ -8,22 +8,54 @@ import (
 	"time"
 )
 
+var knownFields = map[string]bool{
+	"title":           true,
+	"description":     true,
+	"date":            true,
+	"updated":         true,
+	"draft":           true,
+	"weight":          true,
+	"slug":            true,
+	"template":        true,
+	"page_template":   true,
+	"sort_by":         true,
+	"transparent":     true,
+	"generate_feeds":  true,
+	"paginate_by":     true,
+	"paginate_path":   true,
+	"extra":           true,
+}
+
 func decodeMetadata(values map[string]any) (Metadata, error) {
 	meta := Metadata{
-		Title:        stringValue(values["title"]),
-		Date:         timeValue(values["date"]),
-		Draft:        boolValue(values["draft"]),
-		Tags:         stringSliceValue(values["tags"]),
-		Categories:   stringSliceValue(values["categories"]),
-		Description:  stringValue(values["description"]),
-		Slug:         stringValue(values["slug"]),
-		Template:     stringValue(values["template"]),
-		PageTemplate: stringValue(values["page_template"]),
-		PaginateBy:   intValue(values["paginate_by"]),
+		Title:          stringValue(values["title"]),
+		Description:    stringValue(values["description"]),
+		Date:           timeValue(values["date"]),
+		Updated:        timeValue(values["updated"]),
+		Draft:          boolValue(values["draft"]),
+		Weight:         intValue(values["weight"]),
+		Slug:           stringValue(values["slug"]),
+		Template:       stringValue(values["template"]),
+		PageTemplate:   stringValue(values["page_template"]),
+		SortBy:         stringValue(values["sort_by"]),
+		Transparent:    boolValue(values["transparent"]),
+		GenerateFeeds:   boolValue(values["generate_feeds"]),
+		PaginateBy:     intValue(values["paginate_by"]),
+		PaginatePath:   stringValue(values["paginate_path"]),
 	}
 
 	if extra, ok := mapValue(values["extra"]); ok {
 		meta.Extra = extra
+	}
+
+	for key, value := range values {
+		if knownFields[key] {
+			continue
+		}
+		if meta.Extra == nil {
+			meta.Extra = make(map[string]any)
+		}
+		meta.Extra[key] = value
 	}
 
 	if _, ok := values["date"]; ok && meta.Date.IsZero() {
@@ -58,24 +90,6 @@ func intValue(value any) int {
 	default:
 		return 0
 	}
-}
-
-func stringSliceValue(value any) []string {
-	raw, ok := value.([]any)
-	if !ok {
-		if typed, ok := value.([]string); ok {
-			return append([]string(nil), typed...)
-		}
-		return nil
-	}
-
-	items := make([]string, 0, len(raw))
-	for _, item := range raw {
-		if s, ok := item.(string); ok {
-			items = append(items, strings.TrimSpace(s))
-		}
-	}
-	return items
 }
 
 func timeValue(value any) time.Time {

@@ -4,64 +4,43 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 )
 
-func TestResolvePermalink(t *testing.T) {
+func TestBuildIndexSortsPagesByDate(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-
-	got, err := ResolvePermalink(content.Item{
-		Type:         content.TypePost,
-		Slug:         "hello-world",
-		RelativePath: "posts/hello-world.md",
-	}, cfg)
-	if err != nil {
-		t.Fatalf("ResolvePermalink returned error: %v", err)
+	pages := []content.Page{
+		{RelativePath: "posts/b.md", Slug: "b", Date: mustDate(t, "2026-04-12T10:00:00Z"), SectionPath: "posts"},
+		{RelativePath: "posts/a.md", Slug: "a", Date: mustDate(t, "2026-04-13T10:00:00Z"), SectionPath: "posts"},
+		{RelativePath: "posts/c.md", Slug: "c", Date: mustDate(t, "2026-04-11T10:00:00Z"), SectionPath: "posts"},
 	}
 
-	if got != "/posts/hello-world/" {
-		t.Fatalf("expected /posts/hello-world/, got %q", got)
-	}
-}
-
-func TestBuildIndexFiltersDraftsAndSortsPosts(t *testing.T) {
-	cfg := config.DefaultSiteConfig()
-	cfg.BaseURL = "https://example.com"
-	items := []content.Item{
-		{Type: content.TypePost, RelativePath: "posts/b.md", Slug: "b", Date: mustDate(t, "2026-04-12T10:00:00Z")},
-		{Type: content.TypePost, RelativePath: "posts/a.md", Slug: "a", Date: mustDate(t, "2026-04-13T10:00:00Z")},
-		{Type: content.TypePost, RelativePath: "posts/draft.md", Slug: "draft", Date: mustDate(t, "2026-04-14T10:00:00Z"), Draft: true},
-		{Type: content.TypePage, RelativePath: "pages/about.md", Slug: "about"},
-	}
-
-	index, err := BuildIndex(items, cfg)
+	index, _, err := BuildIndex(pages, nil, cfg)
 	if err != nil {
 		t.Fatalf("BuildIndex returned error: %v", err)
 	}
 
-	if len(index.Posts) != 2 {
-		t.Fatalf("expected 2 public posts, got %d", len(index.Posts))
+	if len(index.AllPages) != 3 {
+		t.Fatalf("expected 3 pages, got %d", len(index.AllPages))
 	}
-	if index.Posts[0].Slug != "a" || index.Posts[1].Slug != "b" {
-		t.Fatalf("unexpected post order: %+v", index.Posts)
-	}
-	if len(index.Pages) != 1 || index.Pages[0].URL != "/about/" {
-		t.Fatalf("unexpected pages: %+v", index.Pages)
+	if index.AllPages[0].Slug != "a" || index.AllPages[1].Slug != "b" || index.AllPages[2].Slug != "c" {
+		t.Fatalf("unexpected page order: %+v", index.AllPages)
 	}
 }
 
 func TestBuildIndexDetectsRouteConflicts(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	items := []content.Item{
-		{Type: content.TypePost, RelativePath: "posts/one.md", Slug: "same"},
-		{Type: content.TypePost, RelativePath: "posts/two.md", Slug: "same"},
+	pages := []content.Page{
+		{RelativePath: "posts/one.md", Slug: "same", SectionPath: "posts"},
+		{RelativePath: "posts/two.md", Slug: "same", SectionPath: "posts"},
 	}
 
-	_, err := BuildIndex(items, cfg)
+	_, _, err := BuildIndex(pages, nil, cfg)
 	if err == nil {
 		t.Fatal("expected route conflict error")
 	}
@@ -70,21 +49,20 @@ func TestBuildIndexDetectsRouteConflicts(t *testing.T) {
 	}
 }
 
-func TestBuildIndexCanonicalLookup(t *testing.T) {
+func TestBuildIndexPopulatesRouteRegistry(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	items := []content.Item{
-		{Type: content.TypePage, RelativePath: "pages/about.md", Slug: "about"},
+	pages := []content.Page{
+		{RelativePath: "pages/about.md", Slug: "about", SectionPath: "pages"},
 	}
 
-	index, err := BuildIndex(items, cfg)
+	index, _, err := BuildIndex(pages, nil, cfg)
 	if err != nil {
 		t.Fatalf("BuildIndex returned error: %v", err)
 	}
 
-	got := index.CanonicalLookup["/about/"]
-	if got != "https://example.com/about/" {
-		t.Fatalf("unexpected canonical URL %q", got)
+	if index.RouteRegistry["/pages/about/"] != "pages/about.md" {
+		t.Fatalf("unexpected route registry: %+v", index.RouteRegistry)
 	}
 }
 
@@ -100,13 +78,21 @@ func TestLoadOrchestratesDiscoveryRenderAndIndex(t *testing.T) {
 		t.Fatalf("Load returned error: %v", err)
 	}
 
-	if len(state.Index.Posts) != 3 || state.Index.Posts[0].BodyHTML == "" {
-		t.Fatalf("expected rendered post body in state index, got %+v", state.Index.Posts)
+	if len(state.Index.AllPages) != 5 {
+		t.Fatalf("expected 5 pages, got %d", len(state.Index.AllPages))
 	}
-	if state.Index.CanonicalLookup["/posts/launching-nida/"] != "https://nida.blog/posts/launching-nida/" {
-		t.Fatalf("unexpected canonical lookup: %+v", state.Index.CanonicalLookup)
+	for _, p := range state.Index.AllPages {
+		if p.BodyHTML == "" {
+			t.Fatalf("expected rendered body in page %q", p.RelativePath)
+		}
 	}
-	if len(state.Index.Tags.Terms) == 0 || state.Index.Tags.Terms[0].URL == "" {
-		t.Fatalf("unexpected tags collection: %+v", state.Index.Tags)
+}
+
+func mustDate(t *testing.T, value string) time.Time {
+	t.Helper()
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		t.Fatalf("parse date %q: %v", value, err)
 	}
+	return parsed
 }

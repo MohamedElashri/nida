@@ -37,21 +37,28 @@ func Validate(cfg SiteConfig) error {
 		problems = append(problems, "server.port must be between 1 and 65535")
 	}
 
+	seenTaxonomyNames := map[string]bool{}
+	for _, t := range cfg.Taxonomies {
+		if strings.TrimSpace(t.Name) == "" {
+			problems = append(problems, "each taxonomy must have a name")
+		} else {
+			lowered := strings.ToLower(strings.TrimSpace(t.Name))
+			if seenTaxonomyNames[lowered] {
+				problems = append(problems, "duplicate taxonomy name: "+t.Name)
+			}
+			seenTaxonomyNames[lowered] = true
+		}
+	}
+
 	requiredPaths := map[string]string{
-		"content_dir":           cfg.ContentDir,
-		"template_dir":          cfg.TemplateDir,
-		"static_dir":            cfg.StaticDir,
-		"output_dir":            cfg.OutputDir,
-		"posts_dir":             cfg.PostsDir,
-		"pages_dir":             cfg.PagesDir,
-		"rss.filename":          cfg.RSS.Filename,
-		"atom.filename":         cfg.Atom.Filename,
-		"sitemap.filename":      cfg.Sitemap.Filename,
-		"robots.filename":       cfg.Robots.Filename,
-		"permalinks.posts":      cfg.Permalinks.Posts,
-		"permalinks.pages":      cfg.Permalinks.Pages,
-		"permalinks.tags":       cfg.Permalinks.Tags,
-		"permalinks.categories": cfg.Permalinks.Categories,
+		"content_dir":      cfg.ContentDir,
+		"template_dir":    cfg.TemplateDir,
+		"static_dir":      cfg.StaticDir,
+		"output_dir":       cfg.OutputDir,
+		"rss.filename":    cfg.RSS.Filename,
+		"atom.filename":   cfg.Atom.Filename,
+		"sitemap.filename": cfg.Sitemap.Filename,
+		"robots.filename":  cfg.Robots.Filename,
 	}
 
 	for field, value := range requiredPaths {

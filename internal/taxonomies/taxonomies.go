@@ -16,46 +16,115 @@ type Term struct {
 	Slug         string
 	URL          string
 	CanonicalURL string
-	Items        []content.Item
+	Items        []content.Page
 }
 
 type Collection struct {
 	Name         string
 	URL          string
 	CanonicalURL string
+	PaginateBy   int
+	PaginatePath string
+	Feed         bool
+	Render       bool
 	Terms        []Term
 }
 
-func Build(name string, enabled bool, pattern string, rootPattern string, items map[string][]content.Item, cfg config.SiteConfig) (Collection, error) {
-	if !enabled {
-		return Collection{}, nil
+type TaxonomyMap map[string]map[string][]content.Page
+
+func BuildAll(cfg config.SiteConfig, pages []content.Page) ([]Collection, TaxonomyMap, error) {
+	taxMap := make(TaxonomyMap)
+	for _, page := range pages {
+		if page.Draft && !cfg.Drafts {
+			continue
+		}
+		for key, value := range page.Extra {
+			strList, ok := tryStringList(value)
+			if !ok {
+				continue
+			}
+			for _, termName := range strList {
+				termName = strings.TrimSpace(termName)
+				if termName == "" {
+					continue
+				}
+				if _, ok := taxMap[key]; !ok {
+					taxMap[key] = map[string][]content.Page{}
+				}
+				taxMap[key][termName] = append(taxMap[key][termName], page)
+			}
+		}
 	}
 
-	rootURL, err := normalizeRoute(rootPattern)
+	var collections []Collection
+	for _, tc := range cfg.Taxonomies {
+		termMap, ok := taxMap[tc.Name]
+		if !ok {
+			termMap = map[string][]content.Page{}
+		}
+		collection, err := buildCollection(tc, termMap, cfg)
+		if err != nil {
+			return nil, nil, err
+		}
+		collections = append(collections, collection)
+	}
+
+	return collections, taxMap, nil
+}
+
+func tryStringList(value any) ([]string, bool) {
+	switch v := value.(type) {
+	case []string:
+		return v, true
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out, len(out) > 0
+	}
+	return nil, false
+}
+
+func buildCollection(tc config.TaxonomyConfig, termMap map[string][]content.Page, cfg config.SiteConfig) (Collection, error) {
+	rootURL := "/" + strings.ToLower(strings.TrimSpace(tc.Name)) + "/"
+	pattern := tc.Name
+
+	if p, ok := cfg.Permalinks[tc.Name]; ok && p != "" {
+		pattern = p
+	}
+
+	rootURL, err := normalizeRoute(pattern)
 	if err != nil {
-		return Collection{}, fmt.Errorf("build %s taxonomy root: %w", name, err)
+		return Collection{}, fmt.Errorf("build %s taxonomy root: %w", tc.Name, err)
 	}
 
 	collection := Collection{
-		Name:         name,
+		Name:         tc.Name,
 		URL:          rootURL,
 		CanonicalURL: canonicalURL(cfg.BaseURL, rootURL),
-		Terms:        make([]Term, 0, len(items)),
+		PaginateBy:   tc.PaginateBy,
+		PaginatePath: strings.TrimSpace(defaultString(tc.PaginatePath, "page")),
+		Feed:         tc.Feed,
+		Render:       tc.Render,
+		Terms:        make([]Term, 0, len(termMap)),
 	}
 
-	for termName, termItems := range items {
+	for termName, termItems := range termMap {
 		slug := content.DeriveSlug(termName)
 		if slug == "" {
-			return Collection{}, fmt.Errorf("build %s taxonomy: empty slug for term %q", name, termName)
+			return Collection{}, fmt.Errorf("build %s taxonomy: empty slug for term %q", tc.Name, termName)
 		}
 
-		route, err := expandPattern(pattern, slug)
+		route, err := expandPattern(rootURL, slug)
 		if err != nil {
-			return Collection{}, fmt.Errorf("build %s taxonomy term %q: %w", name, termName, err)
+			return Collection{}, fmt.Errorf("build %s taxonomy term %q: %w", tc.Name, termName, err)
 		}
 
-		termCopy := append([]content.Item(nil), termItems...)
-		sortItems(termCopy)
+		termCopy := append([]content.Page(nil), termItems...)
+		sortPages(termCopy)
 
 		collection.Terms = append(collection.Terms, Term{
 			Name:         termName,
@@ -77,20 +146,27 @@ func Build(name string, enabled bool, pattern string, rootPattern string, items 
 }
 
 func normalizeRoute(pattern string) (string, error) {
-	if strings.Contains(pattern, "{") || strings.Contains(pattern, "}") {
+	cleaned := strings.ReplaceAll(pattern, "{slug}", "")
+	if strings.Contains(cleaned, "{") || strings.Contains(cleaned, "}") {
 		return "", fmt.Errorf("unsupported placeholder in %q", pattern)
 	}
-	if !strings.HasPrefix(pattern, "/") {
-		pattern = "/" + pattern
+	cleaned = strings.Trim(cleaned, "/")
+	if !strings.HasPrefix(cleaned, "/") {
+		cleaned = "/" + cleaned
 	}
-	if !strings.HasSuffix(pattern, "/") {
-		pattern += "/"
+	if !strings.HasSuffix(cleaned, "/") {
+		cleaned += "/"
 	}
-	return pattern, nil
+	return cleaned, nil
 }
 
 func expandPattern(pattern, slug string) (string, error) {
-	route := strings.ReplaceAll(pattern, "{slug}", slug)
+	var route string
+	if strings.Contains(pattern, "{slug}") {
+		route = strings.ReplaceAll(pattern, "{slug}", slug)
+	} else {
+		route = strings.TrimSuffix(pattern, "/") + "/" + slug
+	}
 	return normalizeRoute(route)
 }
 
@@ -106,8 +182,8 @@ func canonicalURL(baseURL, route string) string {
 	return base.String()
 }
 
-func sortItems(items []content.Item) {
-	slices.SortFunc(items, func(a, b content.Item) int {
+func sortPages(items []content.Page) {
+	slices.SortFunc(items, func(a, b content.Page) int {
 		if !a.Date.Equal(b.Date) {
 			if a.Date.After(b.Date) {
 				return -1
@@ -119,4 +195,11 @@ func sortItems(items []content.Item) {
 		}
 		return strings.Compare(a.RelativePath, b.RelativePath)
 	})
+}
+
+func defaultString(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
 }

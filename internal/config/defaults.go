@@ -2,35 +2,17 @@ package config
 
 func DefaultSiteConfig() SiteConfig {
 	return SiteConfig{
-		Language:    "en",
-		ContentDir:  "content",
-		TemplateDir: "templates",
-		StaticDir:   "static",
-		OutputDir:   "public",
-		PostsDir:    "posts",
-		PagesDir:    "pages",
-		Paginate:    10,
-		Drafts:      false,
-		MinifyHTML:  false,
-		SyntaxTheme: "github",
-		Taxonomies: TaxonomyConfig{
-			Tags:       true,
-			Categories: true,
-		},
-		Pipeline: PipelineConfig{
-			Fingerprint: false,
-			MinifyCSS:   false,
-			MinifyJS:    false,
-			Images: ImageConfig{
-				Enabled: false,
-				Widths:  []int{480, 768, 1200},
-				Quality: 85,
-			},
-			SCSS: SCSSConfig{
-				Enabled:  false,
-				EntryDir: "css",
-			},
-		},
+		ConfigVersion: ConfigVersion,
+		Language:      "en",
+		ContentDir:    "content",
+		TemplateDir:   "templates",
+		StaticDir:    "static",
+		OutputDir:    "public",
+		Paginate:     10,
+		Drafts:       false,
+		MinifyHTML:   false,
+		SyntaxTheme:  "github",
+		Taxonomies:   []TaxonomyConfig{},
 		RSS: RSSConfig{
 			Enabled:  true,
 			Filename: "rss.xml",
@@ -55,10 +37,26 @@ func DefaultSiteConfig() SiteConfig {
 			Livereload: true,
 		},
 		Permalinks: PermalinkConfig{
-			Posts:      "/posts/{slug}/",
-			Pages:      "/{slug}/",
-			Tags:       "/tags/{slug}/",
-			Categories: "/categories/{slug}/",
+			"tags":       "/tags/{slug}/",
+			"categories": "/categories/{slug}/",
+		},
+		Sections: SectionConfig{
+			DefaultSortBy:   "date",
+			PaginatePath:    "page",
+		},
+		Pipeline: PipelineConfig{
+			Fingerprint: false,
+			MinifyCSS:   false,
+			MinifyJS:    false,
+			Images: ImageConfig{
+				Enabled: false,
+				Widths:  []int{480, 768, 1200},
+				Quality: 85,
+			},
+			SCSS: SCSSConfig{
+				Enabled:  false,
+				EntryDir: "css",
+			},
 		},
 	}
 }

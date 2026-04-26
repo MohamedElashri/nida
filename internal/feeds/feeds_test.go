@@ -18,7 +18,7 @@ func TestGenerateGolden(t *testing.T) {
 	cfg.Description = "Fixture feed"
 
 	index := site.SiteIndex{
-		Posts: []content.Item{
+		AllPages: []content.Page{
 			{
 				Title:       "Hello World",
 				URL:         "/posts/hello-world/",
@@ -51,7 +51,7 @@ func TestGenerateRespectsLimit(t *testing.T) {
 	cfg.RSS.Limit = 1
 
 	index := site.SiteIndex{
-		Posts: []content.Item{
+		AllPages: []content.Page{
 			{Title: "Newest", URL: "/posts/newest/", Date: mustDate(t, "2026-04-13T10:00:00Z")},
 			{Title: "Older", URL: "/posts/older/", Date: mustDate(t, "2026-04-12T10:00:00Z")},
 		},
@@ -81,7 +81,7 @@ func TestGenerateAtomGolden(t *testing.T) {
 	cfg.Atom.Enabled = true
 
 	index := site.SiteIndex{
-		Posts: []content.Item{
+		AllPages: []content.Page{
 			{
 				Title:       "Hello World",
 				URL:         "/posts/hello-world/",
@@ -116,7 +116,7 @@ func TestGenerateAllReturnsEnabledFeeds(t *testing.T) {
 	cfg.Atom.Enabled = true
 
 	index := site.SiteIndex{
-		Posts: []content.Item{{Title: "Post", URL: "/posts/post/"}},
+		AllPages: []content.Page{{Title: "Post", URL: "/posts/post/"}},
 		CanonicalLookup: map[string]string{
 			"/posts/post/": "https://example.com/posts/post/",
 		},

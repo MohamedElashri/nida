@@ -13,7 +13,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/templates"
 )
 
-func buildPaginator(baseURL string, current, total int, pages []content.Item) *Paginator {
+func buildPaginator(baseURL string, current, total int, pages []content.Page) *Paginator {
 	if total <= 1 {
 		return nil
 	}
@@ -47,8 +47,8 @@ func pageURL(baseURL string, pageNum int) string {
 	return strings.TrimSuffix(baseURL, "/") + "/page/" + strconv.Itoa(pageNum) + "/"
 }
 
-func latestItems(items []content.Item, mainSections []string, limit int) []content.Item {
-	filtered := make([]content.Item, 0, len(items))
+func latestItems(items []content.Page, mainSections []string, limit int) []content.Page {
+	filtered := make([]content.Page, 0, len(items))
 	allowed := map[string]struct{}{}
 	for _, section := range mainSections {
 		allowed[strings.TrimSpace(section)] = struct{}{}
@@ -62,7 +62,7 @@ func latestItems(items []content.Item, mainSections []string, limit int) []conte
 		}
 		filtered = append(filtered, item)
 	}
-	slices.SortFunc(filtered, func(a, b content.Item) int {
+	slices.SortFunc(filtered, func(a, b content.Page) int {
 		if !a.Date.Equal(b.Date) {
 			if a.Date.After(b.Date) {
 				return -1
@@ -77,7 +77,7 @@ func latestItems(items []content.Item, mainSections []string, limit int) []conte
 	return filtered
 }
 
-func templateForItem(set templates.Set, index site.SiteIndex, item content.Item, fallback string) string {
+func templateForItem(set templates.Set, index site.SiteIndex, item content.Page, fallback string) string {
 	if name := normalizeTemplateName(item.Template); name != "" && set.Has(name) {
 		return name
 	}
@@ -92,7 +92,7 @@ func templateForItem(set templates.Set, index site.SiteIndex, item content.Item,
 	return "page"
 }
 
-func templateForSection(set templates.Set, section site.Section) string {
+func templateForSection(set templates.Set, section content.Section) string {
 	if name := normalizeTemplateName(section.Template); name != "" && set.Has(name) {
 		return name
 	}
@@ -116,13 +116,6 @@ func normalizeTemplateName(value string) string {
 	value = strings.TrimSuffix(value, filepath.Ext(value))
 	value = filepath.Base(value)
 	return strings.TrimSpace(value)
-}
-
-func derefSection(value *site.Section) site.Section {
-	if value == nil {
-		return site.Section{}
-	}
-	return *value
 }
 
 func rootSectionName(sectionPath string) string {
@@ -164,50 +157,28 @@ func canonicalURL(baseURL, route string) string {
 	return base.String()
 }
 
-func computeAffected(index site.SiteIndex, changedItems []content.Item, removedPaths []string) map[string]bool {
+func computeAffected(index site.SiteIndex, changedPages []content.Page, removedPaths []string) map[string]bool {
 	affected := map[string]bool{
 		"/": true,
 	}
 
-	changed := make(map[string]bool, len(changedItems)+len(removedPaths))
-	for _, item := range changedItems {
-		changed[item.RelativePath] = true
+	changed := make(map[string]bool, len(changedPages)+len(removedPaths))
+	for _, page := range changedPages {
+		changed[page.RelativePath] = true
 	}
 	for _, p := range removedPaths {
 		changed[p] = true
 	}
 
 	affectedSections := map[string]bool{}
-	affectedTags := map[string]bool{}
-	affectedCats := map[string]bool{}
 
-	for _, post := range index.Posts {
-		if !changed[post.RelativePath] {
+	for _, page := range index.AllPages {
+		if !changed[page.RelativePath] {
 			continue
 		}
-		affected[post.URL] = true
-		if post.SectionPath != "" {
-			affectedSections[post.SectionPath] = true
-		}
-		for _, tag := range post.Tags {
-			affectedTags[content.DeriveSlug(tag)] = true
-		}
-		for _, cat := range post.Categories {
-			affectedCats[content.DeriveSlug(cat)] = true
-		}
-	}
-	for _, page := range index.Pages {
-		if changed[page.RelativePath] {
-			affected[page.URL] = true
-		}
-	}
-
-	if len(affectedTags) > 0 || len(affectedCats) > 0 {
-		if index.Tags.Name != "" {
-			affected[index.Tags.URL] = true
-		}
-		if index.Categories.Name != "" {
-			affected[index.Categories.URL] = true
+		affected[page.URL] = true
+		if page.SectionPath != "" {
+			affectedSections[page.SectionPath] = true
 		}
 	}
 
@@ -223,20 +194,15 @@ func computeAffected(index site.SiteIndex, changedItems []content.Item, removedP
 		for i := 1; i <= totalPages; i++ {
 			if i == 1 {
 				affected[section.URL] = true
-				affected[strings.TrimSuffix(section.URL, "/")+"/page/1/"] = true
 			} else {
 				affected[strings.TrimSuffix(section.URL, "/")+"/page/"+strconv.Itoa(i)+"/"] = true
 			}
 		}
 	}
 
-	for _, term := range index.Tags.Terms {
-		if affectedTags[term.Slug] {
-			affected[term.URL] = true
-		}
-	}
-	for _, term := range index.Categories.Terms {
-		if affectedCats[term.Slug] {
+	for _, collection := range index.Taxonomies {
+		affected[collection.URL] = true
+		for _, term := range collection.Terms {
 			affected[term.URL] = true
 		}
 	}

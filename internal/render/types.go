@@ -24,8 +24,8 @@ type NavItem struct {
 
 type Favicon struct {
 	Webmanifest    string
-	Favicon16x16   string
-	Favicon32x32   string
+	Favicon16x16  string
+	Favicon32x32  string
 	AppleTouchIcon string
 }
 
@@ -58,7 +58,7 @@ type Paginator struct {
 	Previous     string
 	Next         string
 	PageLinks    []PageLink
-	Pages        []content.Item
+	Pages        []content.Page
 }
 
 type templateContext struct {
@@ -69,9 +69,9 @@ type templateContext struct {
 	Config       config.SiteConfig
 	Theme        Theme
 	Index        site.SiteIndex
-	Page         content.Item
-	Section      site.Section
-	Pages        []content.Item
+	Page         content.Page
+	Section      content.Section
+	Pages        []content.Page
 	Terms        []taxonomies.Term
 	Taxonomy     taxonomies.Collection
 	Term         taxonomies.Term

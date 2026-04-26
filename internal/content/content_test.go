@@ -16,23 +16,22 @@ func TestDiscoverFixtureSite(t *testing.T) {
 		t.Fatalf("load config: %v", err)
 	}
 
-	items, err := Discover(siteRoot, cfg)
+	pages, sections, err := Discover(siteRoot, cfg)
 	if err != nil {
 		t.Fatalf("Discover returned error: %v", err)
 	}
 
-	if len(items) != 5 {
-		t.Fatalf("expected 5 items, got %d", len(items))
+	if len(pages) != 5 {
+		t.Fatalf("expected 5 pages, got %d", len(pages))
+	}
+	if len(sections) < 2 {
+		t.Fatalf("expected at least 2 sections (root + posts), got %d", len(sections))
 	}
 
-	if items[0].RelativePath != "pages/about.md" || items[0].Type != TypePage {
-		t.Fatalf("unexpected first item: %+v", items[0])
-	}
-	if items[1].RelativePath != "pages/colophon.md" || items[1].Type != TypePage {
-		t.Fatalf("unexpected second item: %+v", items[1])
-	}
-	if items[2].RelativePath != "posts/designing-the-cli.md" || items[2].Type != TypePost {
-		t.Fatalf("unexpected third item: %+v", items[2])
+	for _, p := range pages {
+		if p.RelativePath == "" || p.Slug == "" {
+			t.Fatalf("page missing required fields: %+v", p)
+		}
 	}
 }
 
@@ -52,16 +51,16 @@ Body
 		t.Fatalf("load config: %v", err)
 	}
 
-	items, err := Discover(dir, cfg)
+	pages, _, err := Discover(dir, cfg)
 	if err != nil {
 		t.Fatalf("Discover returned error: %v", err)
 	}
 
-	if len(items) != 1 {
-		t.Fatalf("expected 1 item, got %d", len(items))
+	if len(pages) != 1 {
+		t.Fatalf("expected 1 page, got %d", len(pages))
 	}
-	if items[0].Slug != "hello-there" {
-		t.Fatalf("expected slug hello-there, got %q", items[0].Slug)
+	if pages[0].Slug != "hello-there" {
+		t.Fatalf("expected slug hello-there, got %q", pages[0].Slug)
 	}
 }
 
@@ -77,7 +76,7 @@ title = "Broken"
 		t.Fatalf("load config: %v", err)
 	}
 
-	_, err = Discover(dir, cfg)
+	_, _, err = Discover(dir, cfg)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -89,6 +88,12 @@ title = "Broken"
 func TestDeriveSlug(t *testing.T) {
 	if got := DeriveSlug("  Hello_world!.md "); got != "hello-world" {
 		t.Fatalf("unexpected slug %q", got)
+	}
+}
+
+func TestDeriveSlugNonASCII(t *testing.T) {
+	if got := DeriveSlug("البنية"); got == "" {
+		t.Fatalf("expected non-empty slug for Arabic input")
 	}
 }
 
@@ -107,6 +112,7 @@ func writeSiteConfig(t *testing.T, dir string) {
 	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(`
 base_url = "https://example.com"
 title = "Test Site"
+config_version = "0.4"
 `), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}

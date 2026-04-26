@@ -18,10 +18,8 @@ func TestGenerateGolden(t *testing.T) {
 
 	state := site.State{
 		Index: site.SiteIndex{
-			Posts: []content.Item{
+			AllPages: []content.Page{
 				{URL: "/posts/hello-world/", Date: mustDate(t, "2026-04-12T10:00:00Z")},
-			},
-			Pages: []content.Item{
 				{URL: "/about/", Date: mustDate(t, "2026-04-12T10:30:00Z")},
 			},
 		},

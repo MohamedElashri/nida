@@ -73,12 +73,7 @@ func Generate(cfg config.SiteConfig, state site.State, pages []render.Page) (*Ou
 }
 
 func lastModified(route string, state site.State) (string, bool) {
-	for _, item := range state.Index.Posts {
-		if item.URL == route && !item.Date.IsZero() {
-			return item.Date.UTC().Format("2006-01-02"), true
-		}
-	}
-	for _, item := range state.Index.Pages {
+	for _, item := range state.Index.AllPages {
 		if item.URL == route && !item.Date.IsZero() {
 			return item.Date.UTC().Format("2006-01-02"), true
 		}

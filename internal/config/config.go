@@ -5,11 +5,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
 
 const DefaultConfigName = "config.toml"
+
+type ConfigMigrationError struct {
+	Path string
+}
+
+func (e *ConfigMigrationError) Error() string {
+	return "nida: config is from v0.3.x which is not compatible with this version of nida.\nRun 'nida migrate' to upgrade your config to v0.4.\nSee https://nida.blog/docs/migrations for details."
+}
 
 func Load(opts Options) (SiteConfig, string, error) {
 	siteRoot := opts.SiteRoot
@@ -40,6 +49,10 @@ func Load(opts Options) (SiteConfig, string, error) {
 	cfg := DefaultSiteConfig()
 	if err := toml.Unmarshal(data, &cfg); err != nil {
 		return SiteConfig{}, "", fmt.Errorf("parse config %q: %w", configPath, err)
+	}
+
+	if strings.TrimSpace(cfg.ConfigVersion) == "" {
+		return SiteConfig{}, configPath, &ConfigMigrationError{Path: configPath}
 	}
 
 	normalize(&cfg)

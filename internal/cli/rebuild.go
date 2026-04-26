@@ -99,7 +99,7 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
 	contentPrefix := filepath.ToSlash(cfg.ContentDir + "/")
 
-	changedByRelPath := make(map[string]content.Item)
+	changedByRelPath := make(map[string]content.Page)
 	removedByRelPath := make(map[string]bool)
 
 	for _, p := range changedPaths {
@@ -126,52 +126,53 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 			continue
 		}
 
-		item, loadErr := content.LoadFile(contentRoot, fullPath, cfg)
+		page, loadErr := content.LoadPage(contentRoot, fullPath, cfg)
 		if loadErr != nil {
 			return buildResult{}, loadErr
 		}
 
-		item, renderErr := markdown.RenderItem(item, cfg)
-		if renderErr != nil {
-			return buildResult{}, renderErr
+		pages, err := markdown.RenderPages([]content.Page{page}, cfg)
+		if err != nil {
+			return buildResult{}, err
 		}
+		page = pages[0]
 
-		changedByRelPath[item.RelativePath] = item
+		changedByRelPath[page.RelativePath] = page
 	}
 
-	changedItems := make([]content.Item, 0, len(changedByRelPath))
-	for _, item := range changedByRelPath {
-		changedItems = append(changedItems, item)
+	changedPages := make([]content.Page, 0, len(changedByRelPath))
+	for _, page := range changedByRelPath {
+		changedPages = append(changedPages, page)
 	}
 	removedPaths := make([]string, 0, len(removedByRelPath))
 	for p := range removedByRelPath {
 		removedPaths = append(removedPaths, p)
 	}
 
-	merged := make([]content.Item, 0, len(previous.state.Items))
-	for _, prevItem := range previous.state.Items {
-		if removedByRelPath[prevItem.RelativePath] {
+	merged := make([]content.Page, 0, len(previous.state.Pages))
+	for _, prevPage := range previous.state.Pages {
+		if removedByRelPath[prevPage.RelativePath] {
 			continue
 		}
-		if updated, ok := changedByRelPath[prevItem.RelativePath]; ok {
+		if updated, ok := changedByRelPath[prevPage.RelativePath]; ok {
 			merged = append(merged, updated)
-			delete(changedByRelPath, prevItem.RelativePath)
+			delete(changedByRelPath, prevPage.RelativePath)
 		} else {
-			merged = append(merged, prevItem)
+			merged = append(merged, prevPage)
 		}
 	}
-	for _, item := range changedByRelPath {
-		merged = append(merged, item)
+	for _, page := range changedByRelPath {
+		merged = append(merged, page)
 	}
 
-	index, err := site.BuildIndex(merged, cfg)
+	index, sortedPages, err := site.BuildIndex(merged, previous.state.Sections, cfg)
 	if err != nil {
 		return buildResult{}, err
 	}
 
-	newState := site.State{Items: merged, Index: index}
+	newState := site.State{Pages: sortedPages, Sections: previous.state.Sections, Index: index}
 
-	pages, err := render.RenderIncremental(opts.siteRoot, cfg, newState, previous.pages, changedItems, removedPaths)
+	pages, err := render.RenderSite(opts.siteRoot, cfg, newState)
 	if err != nil {
 		return buildResult{}, err
 	}

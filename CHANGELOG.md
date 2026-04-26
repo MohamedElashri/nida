@@ -2,6 +2,35 @@
 
 All notable changes to Nida are documented here.
 
+## [0.4.0] - 2026-04-26
+
+### Added
+* Arbitrary content sections: any directory with `_index.md` is now a section; any other `.md` file is a page
+* New `Page` and `Section` content types replace the old `Item` type with `TypePost`/`TypePage`/`TypeSection` constants
+* Sections can be nested with parent/child relationships
+* `transparent = true` section option promotes pages to parent section
+* Per-section `page_template` and `sort_by` front matter settings
+* Generalized taxonomy system: users can define arbitrary taxonomies beyond just tags and categories
+* `nida migrate` command for upgrading v0.3.x config files to v0.4 format
+
+### Changed
+* **Breaking**: `posts_dir` and `pages_dir` config fields removed; directory structure now determines section layout
+* **Breaking**: Taxonomies changed from `[taxonomies]` struct with `tags = true, categories = true` to `[[taxonomies]]` array with `name`, `path`, `render`, `paginate_by` fields
+* **Breaking**: `SiteIndex.Posts`, `.Pages`, `.RecentPosts`, `.TagMap`, `.CategoryMap` removed and replaced with `TaxonomyMap` and section-based page organization
+* Homepage is now the root section rendered with the `index` template (no special-case `renderHomePage`)
+* Config version tracking via `config_version = "0.4"` field
+* RSS/Atom feed generation now uses canonical URLs directly instead of `CanonicalLookup`
+
+### Migration from v0.3.x
+
+If you have an existing v0.3.x site, run `nida migrate` in your site root to upgrade `config.toml` to v0.4 format. The command:
+- Creates a backup at `config.toml.bk`
+- Converts `posts_dir`/`pages_dir` to section-based structure
+- Migrates taxonomy config to the new `[[taxonomies]]` format
+- Updates permalink patterns to the new structure
+
+The `nida migrate` command is temporary and will be removed in a future release after the migration window closes.
+
 ## [0.3.3] - 2026-04-26
 
 ### Added

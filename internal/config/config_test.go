@@ -65,8 +65,8 @@ categories = "categories/{slug}"
 	if cfg.ContentDir != "content" {
 		t.Fatalf("expected cleaned content dir, got %q", cfg.ContentDir)
 	}
-	if cfg.Permalinks.Posts != "/posts/{slug}/" {
-		t.Fatalf("expected normalized posts permalink, got %q", cfg.Permalinks.Posts)
+	if cfg.Permalinks["posts"] != "posts/{slug}" {
+		t.Fatalf("expected posts permalink, got %q", cfg.Permalinks["posts"])
 	}
 }
 

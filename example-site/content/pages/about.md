@@ -4,6 +4,7 @@ date = 2026-04-13T08:30:00Z
 draft = false
 description = "What Nida is trying to optimize for."
 slug = "about"
+template = "page"
 +++
 
 # About

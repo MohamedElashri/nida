@@ -113,18 +113,18 @@ func externalLinkRel(cfg config.MarkdownConfig) string {
 	return strings.Join(parts, " ")
 }
 
-func RenderItem(item content.Item, cfg config.SiteConfig) (content.Item, error) {
+func RenderItem(item content.Page, cfg config.SiteConfig) (content.Page, error) {
 	html, err := Render(item.BodyMarkdown, cfg)
 	if err != nil {
-		return content.Item{}, fmt.Errorf("render %q markdown: %w", item.RelativePath, err)
+		return content.Page{}, fmt.Errorf("render %q markdown: %w", item.RelativePath, err)
 	}
 
 	item.BodyHTML = html
 	return item, nil
 }
 
-func RenderItems(items []content.Item, cfg config.SiteConfig) ([]content.Item, error) {
-	rendered := make([]content.Item, 0, len(items))
+func RenderItems(items []content.Page, cfg config.SiteConfig) ([]content.Page, error) {
+	rendered := make([]content.Page, 0, len(items))
 	for _, item := range items {
 		next, err := RenderItem(item, cfg)
 		if err != nil {
@@ -134,6 +134,10 @@ func RenderItems(items []content.Item, cfg config.SiteConfig) ([]content.Item, e
 	}
 
 	return rendered, nil
+}
+
+func RenderPages(pages []content.Page, cfg config.SiteConfig) ([]content.Page, error) {
+	return RenderItems(pages, cfg)
 }
 
 type fencedCodeRenderer struct {

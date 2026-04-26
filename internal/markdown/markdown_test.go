@@ -123,16 +123,16 @@ func TestRenderExternalLinkAttributes(t *testing.T) {
 	}
 }
 
-func TestRenderItemsStoresBodyHTML(t *testing.T) {
+func TestRenderPagesStoresBodyHTML(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
-	items := []content.Item{{
+	pages := []content.Page{{
 		RelativePath: "posts/example.md",
 		BodyMarkdown: "# Hello\n",
 	}}
 
-	rendered, err := RenderItems(items, cfg)
+	rendered, err := RenderPages(pages, cfg)
 	if err != nil {
-		t.Fatalf("RenderItems returned error: %v", err)
+		t.Fatalf("RenderPages returned error: %v", err)
 	}
 
 	if len(rendered) != 1 || !strings.Contains(rendered[0].BodyHTML, "<h1") {

@@ -122,7 +122,7 @@ func runBuild(stdout, stderr io.Writer, opts commandOptions) int {
 		return writeCommandError(stderr, err)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "nida build: config=%s drafts=%t output=%s posts=%d pages=%d routes=%d rendered=%d\n", result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.Posts), len(result.state.Index.Pages), len(result.state.Index.RouteRegistry), len(result.pages))
+	_, _ = fmt.Fprintf(stdout, "nida build: config=%s drafts=%t output=%s pages=%d routes=%d rendered=%d\n", result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.AllPages), len(result.state.Index.RouteRegistry), len(result.pages))
 	return 0
 }
 
@@ -163,7 +163,7 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 				}
 				current = next
 				instance.Reload()
-				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild complete mode=%s posts=%d pages=%d routes=%d rendered=%d\n", mode, len(current.state.Index.Posts), len(current.state.Index.Pages), len(current.state.Index.RouteRegistry), len(current.pages))
+				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild complete mode=%s pages=%d routes=%d rendered=%d\n", mode, len(current.state.Index.AllPages), len(current.state.Index.RouteRegistry), len(current.pages))
 			},
 			OnError: func(err error) {
 				_, _ = fmt.Fprintf(stderr, "error: watcher snapshot failed: %v\n", err)
