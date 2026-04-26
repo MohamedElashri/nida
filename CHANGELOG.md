@@ -2,6 +2,17 @@
 
 All notable changes to Nida are documented here.
 
+## [0.3.3] - 2026-04-26
+
+### Added
+* Add Asset pipeline	Image resizing
+* Add SCSS compilation and fingerprinting
+* Add lazy-loading support for images
+
+### Changed
+* Change the default port for `nida serve` to `1307`.
+
+
 ## [0.3.2] - 2026-04-24
 
 ### Fixed
