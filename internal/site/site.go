@@ -40,14 +40,19 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 		return State{}, err
 	}
 
-	index, sortedPages, err := BuildIndex(renderedPages, sections, cfg)
+	renderedSections, err := markdown.RenderSections(sections, cfg)
+	if err != nil {
+		return State{}, err
+	}
+
+	index, sortedPages, err := BuildIndex(renderedPages, renderedSections, cfg)
 	if err != nil {
 		return State{}, err
 	}
 
 	return State{
 		Pages:    sortedPages,
-		Sections: sections,
+		Sections: renderedSections,
 		Index:    index,
 	}, nil
 }

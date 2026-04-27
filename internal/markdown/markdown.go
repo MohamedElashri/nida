@@ -120,7 +120,17 @@ func RenderItem(item content.Page, cfg config.SiteConfig) (content.Page, error) 
 	}
 
 	item.BodyHTML = html
+	item.ReadingTime = readingTime(item.BodyMarkdown)
 	return item, nil
+}
+
+func readingTime(markdown string) int {
+	words := len(strings.Fields(markdown))
+	minutes := words / 200
+	if minutes < 1 {
+		return 1
+	}
+	return minutes
 }
 
 func RenderItems(items []content.Page, cfg config.SiteConfig) ([]content.Page, error) {
@@ -138,6 +148,23 @@ func RenderItems(items []content.Page, cfg config.SiteConfig) ([]content.Page, e
 
 func RenderPages(pages []content.Page, cfg config.SiteConfig) ([]content.Page, error) {
 	return RenderItems(pages, cfg)
+}
+
+func RenderSections(sections []content.Section, cfg config.SiteConfig) ([]content.Section, error) {
+	rendered := make([]content.Section, len(sections))
+	for i, s := range sections {
+		if s.BodyMarkdown == "" {
+			rendered[i] = s
+			continue
+		}
+		html, err := Render(s.BodyMarkdown, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("render section %q markdown: %w", s.RelativePath, err)
+		}
+		s.BodyHTML = html
+		rendered[i] = s
+	}
+	return rendered, nil
 }
 
 type fencedCodeRenderer struct {

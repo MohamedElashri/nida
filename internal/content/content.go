@@ -171,6 +171,7 @@ func loadSection(contentRoot, sourcePath string, cfg config.SiteConfig) (Section
 		SourcePath:        sourcePath,
 		RelativePath:      filepath.ToSlash(relativePath),
 		SectionPath:       sectionPath,
+		BodyMarkdown:      doc.BodyMarkdown,
 		Title:             strings.TrimSpace(meta.Title),
 		Description:       strings.TrimSpace(meta.Description),
 		Slug:              slug,

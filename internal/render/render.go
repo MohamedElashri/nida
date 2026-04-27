@@ -75,7 +75,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 	templateName := sectionTemplateName(set, section)
 
-	sectionURL := "/" + section.SectionPath
+	sectionURL := "/" + section.SectionPath + "/"
 	if section.SectionPath == "" {
 		sectionURL = "/"
 	}
@@ -87,9 +87,23 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 		ctxPages = section.Pages
 	}
 
+	perPage := section.PaginateBy
+	if perPage <= 0 {
+		perPage = cfg.Sections.PaginateBy
+	}
+	if perPage <= 0 {
+		perPage = cfg.Paginate
+	}
+
 	var out string
 	var err error
-	if set.Has(templateName) {
+
+	// For the root section or when pagination is disabled, render the section once
+	// without a paginator. For non-root sections with pagination, paginated page 1
+	// occupies sectionURL, so rendering a separate non-paginated page would produce
+	// a URL conflict.
+	paginateSection := perPage > 0 && section.SectionPath != ""
+	if !paginateSection && set.Has(templateName) {
 		canonical := canonicalURL(cfg.BaseURL, "/"+section.SectionPath)
 
 		ctx := templateContext{
@@ -121,15 +135,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 		})
 	}
 
-	perPage := section.PaginateBy
-	if perPage <= 0 {
-		perPage = cfg.Sections.PaginateBy
-	}
-	if perPage <= 0 {
-		perPage = cfg.Paginate
-	}
-
-	if perPage > 0 && len(section.Pages) > perPage {
+	if paginateSection {
 		totalPages := max(1, (len(section.Pages)+perPage-1)/perPage)
 		paginatePath := section.PaginatePath
 		if paginatePath == "" {

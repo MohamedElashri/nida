@@ -20,6 +20,7 @@ type Page struct {
 	Draft          bool
 	Weight         int
 	Template       string
+	ReadingTime    int
 	Extra          map[string]any
 }
 
@@ -27,6 +28,8 @@ type Section struct {
 	SourcePath      string
 	RelativePath    string
 	SectionPath     string
+	BodyMarkdown    string
+	BodyHTML        string
 	Title           string
 	Description     string
 	Slug            string
