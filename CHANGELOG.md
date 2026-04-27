@@ -2,7 +2,7 @@
 
 All notable changes to Nida are documented here.
 
-## [0.4.0] - 2026-04-26
+## [0.4.0] - 2026-04-28
 
 ### Added
 * Arbitrary content sections: any directory with `_index.md` is now a section; any other `.md` file is a page
@@ -12,6 +12,7 @@ All notable changes to Nida are documented here.
 * Per-section `page_template` and `sort_by` front matter settings
 * Generalized taxonomy system: users can define arbitrary taxonomies beyond just tags and categories
 * `nida migrate` command for upgrading v0.3.x config files to v0.4 format
+
 
 ### Changed
 * **Breaking**: `posts_dir` and `pages_dir` config fields removed; directory structure now determines section layout
