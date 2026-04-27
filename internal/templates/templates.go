@@ -29,44 +29,70 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 		return Set{}, fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	templateRoot := filepath.Join(absSiteRoot, cfg.TemplateDir)
-	if _, err := os.Stat(filepath.Join(templateRoot, baseTemplateFile)); err != nil {
-		if os.IsNotExist(err) {
-			return Set{}, fmt.Errorf("load templates from %q: missing required %s", templateRoot, baseTemplateFile)
+	var templateRoots []string
+
+	if cfg.Theme != "" {
+		themeRoot := filepath.Join(absSiteRoot, cfg.ThemesDir, cfg.Theme, "templates")
+		if _, err := os.Stat(themeRoot); err == nil {
+			templateRoots = append(templateRoots, themeRoot)
 		}
-		return Set{}, fmt.Errorf("load templates from %q: %w", templateRoot, err)
 	}
 
+	siteTemplateRoot := filepath.Join(absSiteRoot, cfg.TemplateDir)
+	templateRoots = append(templateRoots, siteTemplateRoot)
+
+	basePath := filepath.Join(siteTemplateRoot, baseTemplateFile)
+	if _, err := os.Stat(basePath); err != nil {
+		if os.IsNotExist(err) {
+			return Set{}, fmt.Errorf("load templates: missing required %s", baseTemplateFile)
+		}
+		return Set{}, fmt.Errorf("load templates: %w", err)
+	}
+
+	return loadFromRoots(templateRoots)
+}
+
+func loadFromRoots(roots []string) (Set, error) {
 	var shared []string
 	entries := map[string]string{}
-	err = filepath.WalkDir(templateRoot, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() || filepath.Ext(path) != templateExt {
-			return nil
-		}
 
-		relative, err := filepath.Rel(templateRoot, path)
+	for _, root := range roots {
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() || filepath.Ext(path) != templateExt {
+				return nil
+			}
+
+			relative, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			relative = filepath.ToSlash(relative)
+
+			if relative == baseTemplateFile {
+				shared = append(shared, path)
+				return nil
+			}
+
+			if strings.Contains(relative, "/") {
+				shared = append(shared, path)
+				return nil
+			}
+
+			name := strings.TrimSuffix(relative, filepath.Ext(relative))
+			if name == "base" {
+				shared = append(shared, path)
+				return nil
+			}
+
+			entries[name] = path
+			return nil
+		})
 		if err != nil {
-			return err
+			return Set{}, fmt.Errorf("read template directory %q: %w", root, err)
 		}
-		relative = filepath.ToSlash(relative)
-		if relative == baseTemplateFile || strings.Contains(relative, "/") {
-			shared = append(shared, path)
-			return nil
-		}
-
-		name := strings.TrimSuffix(relative, filepath.Ext(relative))
-		if name == "base" {
-			shared = append(shared, path)
-			return nil
-		}
-		entries[name] = path
-		return nil
-	})
-	if err != nil {
-		return Set{}, fmt.Errorf("read template directory %q: %w", templateRoot, err)
 	}
 
 	slices.Sort(shared)

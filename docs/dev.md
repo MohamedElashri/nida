@@ -98,6 +98,78 @@ templates/404.html
 The filename stem is the template name. For example, `post.html` should define
 `{{ define "post" }}`.
 
+## Theme System
+
+Nida supports loadable themes with override chains. Themes live in the `themes/`
+directory, and a site selects a theme via `config.toml`:
+
+```toml
+theme = "ink"
+```
+
+### Theme Structure
+
+A theme is a directory under `themes/` containing:
+
+```text
+themes/ink/
+├── config.toml      # theme metadata and defaults
+├── templates/       # template files (override site templates)
+├── static/          # static assets (copied to output)
+└── scss/            # SCSS source files (compiled before site SCSS)
+```
+
+### Theme Config
+
+```toml
+name = "Ink"
+description = "A minimalist theme for Nida"
+extends = "base"  # optional parent theme
+
+[extra]
+main_menu = [{ name = "Home", url = "/" }]
+footer = { text = "Powered by Nida" }
+date_format = "%Y-%m-%d"
+```
+
+- `name` and `description` are metadata
+- `extends` names a parent theme for inheritance
+- `[extra]` provides default values merged with site config
+
+### Template Override Chain
+
+Theme templates are loaded first, site templates second. When both have a template
+with the same name, the site version takes precedence. This allows themes to
+provide defaults that sites can override.
+
+For example, a theme can provide `base.html` and `post.html`, while the site
+overrides only `post.html` to customize post rendering while keeping the theme's
+base layout.
+
+### Inheritance Chain
+
+Themes can extend other themes via `extends = "parent"` in `config.toml`. The
+parent theme is loaded first, then the child. Child templates override parent
+templates with the same name. Circular inheritance is detected and rejected.
+
+### SCSS Compilation
+
+Theme SCSS files in `themes/<name>/scss/` are compiled before site SCSS in
+`static/scss/`. This allows themes to provide base styles that site SCSS can
+extend.
+
+### Static Assets
+
+Theme static files in `themes/<name>/static/` are copied to output before site
+static files. Site static files take precedence for files with the same path,
+allowing sites to override theme assets.
+
+### Theme Extra Values
+
+Theme `[extra]` values are merged with site `[extra]` values. Site values take
+precedence over theme values, enabling theme customization without modifying
+theme files.
+
 ## Release Work
 
 Release process documentation lives in `docs/release.md`.

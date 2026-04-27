@@ -13,6 +13,8 @@ type SiteConfig struct {
 	TemplateDir   string              `toml:"template_dir"`
 	StaticDir     string              `toml:"static_dir"`
 	OutputDir     string              `toml:"output_dir"`
+	ThemesDir     string              `toml:"themes_dir"`
+	Theme         string              `toml:"theme"`
 	Paginate      int                `toml:"paginate"`
 	Drafts        bool               `toml:"drafts"`
 	MinifyHTML    bool               `toml:"minify_html"`

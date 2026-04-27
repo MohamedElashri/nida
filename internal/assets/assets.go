@@ -17,9 +17,27 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 		return fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	staticRoot := filepath.Join(absSiteRoot, cfg.StaticDir)
 	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
 
+	staticRoots := []string{filepath.Join(absSiteRoot, cfg.StaticDir)}
+
+	if cfg.Theme != "" {
+		themeStaticRoot := filepath.Join(absSiteRoot, cfg.ThemesDir, cfg.Theme, "static")
+		if _, err := os.Stat(themeStaticRoot); err == nil {
+			staticRoots = append([]string{themeStaticRoot}, staticRoots...)
+		}
+	}
+
+	for _, staticRoot := range staticRoots {
+		if err := copyDir(staticRoot, outputRoot); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func copyDir(staticRoot, outputRoot string) error {
 	if _, err := os.Stat(staticRoot); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -61,43 +79,52 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 		return fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	staticRoot := filepath.Join(absSiteRoot, cfg.StaticDir)
 	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
-	staticPrefix := filepath.ToSlash(strings.Trim(cfg.StaticDir, "/")) + "/"
 
-	for _, changedPath := range changedPaths {
-		normalized := filepath.ToSlash(strings.TrimSpace(changedPath))
-		if !strings.HasPrefix(normalized, staticPrefix) {
-			continue
+	staticRoots := []string{filepath.Join(absSiteRoot, cfg.StaticDir)}
+	if cfg.Theme != "" {
+		themeStaticRoot := filepath.Join(absSiteRoot, cfg.ThemesDir, cfg.Theme, "static")
+		if _, err := os.Stat(themeStaticRoot); err == nil {
+			staticRoots = append([]string{themeStaticRoot}, staticRoots...)
 		}
+	}
 
-		rel := strings.TrimPrefix(normalized, staticPrefix)
-		if strings.TrimSpace(rel) == "" {
-			continue
-		}
+	for _, staticRoot := range staticRoots {
+		staticPrefix := filepath.ToSlash(strings.Trim(staticRoot, "/")) + "/"
+		for _, changedPath := range changedPaths {
+			normalized := filepath.ToSlash(strings.TrimSpace(changedPath))
+			if !strings.HasPrefix(normalized, staticPrefix) {
+				continue
+			}
 
-		source := filepath.Join(staticRoot, filepath.FromSlash(rel))
-		target := filepath.Join(outputRoot, filepath.FromSlash(rel))
+			rel := strings.TrimPrefix(normalized, staticPrefix)
+			if strings.TrimSpace(rel) == "" {
+				continue
+			}
 
-		info, err := os.Stat(source)
-		if err != nil {
-			if os.IsNotExist(err) {
-				if removeErr := os.Remove(target); removeErr != nil && !os.IsNotExist(removeErr) {
-					return fmt.Errorf("remove stale asset %q: %w", target, removeErr)
+			source := filepath.Join(staticRoot, filepath.FromSlash(rel))
+			target := filepath.Join(outputRoot, filepath.FromSlash(rel))
+
+			info, err := os.Stat(source)
+			if err != nil {
+				if os.IsNotExist(err) {
+					if removeErr := os.Remove(target); removeErr != nil && !os.IsNotExist(removeErr) {
+						return fmt.Errorf("remove stale asset %q: %w", target, removeErr)
+					}
+					continue
+				}
+				return fmt.Errorf("stat static asset %q: %w", source, err)
+			}
+			if info.IsDir() {
+				if err := os.MkdirAll(target, 0o755); err != nil {
+					return fmt.Errorf("create output directory for %q: %w", target, err)
 				}
 				continue
 			}
-			return fmt.Errorf("stat static asset %q: %w", source, err)
-		}
-		if info.IsDir() {
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return fmt.Errorf("create output directory for %q: %w", target, err)
-			}
-			continue
-		}
 
-		if err := copyFile(source, target); err != nil {
-			return err
+			if err := copyFile(source, target); err != nil {
+				return err
+			}
 		}
 	}
 

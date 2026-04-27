@@ -12,32 +12,50 @@ import (
 )
 
 func buildTheme(siteRoot string, cfg config.SiteConfig) (Theme, error) {
+	chain, err := loadThemeChain(siteRoot, cfg)
+	if err != nil {
+		return Theme{}, fmt.Errorf("load theme chain: %w", err)
+	}
+
+	mergedExtra := mergeThemeExtra(chain, cfg.Extra)
+
 	inlineCSS, err := loadInlineCSS(siteRoot, cfg)
 	if err != nil && !os.IsNotExist(err) {
 		return Theme{}, fmt.Errorf("load inline css: %w", err)
 	}
 	return Theme{
 		InlineCSS:  template.CSS(inlineCSS),
-		MainMenu:   navItems(cfg.Extra["main_menu"]),
-		Social:     navItems(cfg.Extra["social_icons"]),
-		FooterText: nestedStringOr(cfg.Extra, "footer", "text", cfg.Title),
-		DateFormat: nestedStringOr(cfg.Extra, "", "date_format", "%Y-%m-%d"),
-		AuthorName: nestedStringOr(cfg.Extra, "author", "name", cfg.Title),
+		MainMenu:   navItems(mergedExtra["main_menu"]),
+		Social:     navItems(mergedExtra["social_icons"]),
+		FooterText: nestedStringOr(mergedExtra, "footer", "text", cfg.Title),
+		DateFormat: nestedStringOr(mergedExtra, "", "date_format", "%Y-%m-%d"),
+		AuthorName: nestedStringOr(mergedExtra, "author", "name", cfg.Title),
 		Favicon: Favicon{
-			Webmanifest:    nestedStringOr(cfg.Extra, "favicon", "webmanifest", ""),
-			Favicon16x16:   nestedStringOr(cfg.Extra, "favicon", "favicon_16x16", ""),
-			Favicon32x32:   nestedStringOr(cfg.Extra, "favicon", "favicon_32x32", ""),
-			AppleTouchIcon: nestedStringOr(cfg.Extra, "favicon", "apple_touch_icon", ""),
+			Webmanifest:    nestedStringOr(mergedExtra, "favicon", "webmanifest", ""),
+			Favicon16x16:   nestedStringOr(mergedExtra, "favicon", "favicon_16x16", ""),
+			Favicon32x32:   nestedStringOr(mergedExtra, "favicon", "favicon_32x32", ""),
+			AppleTouchIcon: nestedStringOr(mergedExtra, "favicon", "apple_touch_icon", ""),
 		},
 		Umami: Umami{
-			Enabled:   nestedBoolOr(cfg.Extra, "umami", "enabled", false),
-			Src:       nestedStringOr(cfg.Extra, "umami", "src", ""),
-			WebsiteID: nestedStringOr(cfg.Extra, "umami", "website_id", ""),
+			Enabled:   nestedBoolOr(mergedExtra, "umami", "enabled", false),
+			Src:       nestedStringOr(mergedExtra, "umami", "src", ""),
+			WebsiteID: nestedStringOr(mergedExtra, "umami", "website_id", ""),
 		},
 	}, nil
 }
 
 func loadInlineCSS(siteRoot string, cfg config.SiteConfig) (string, error) {
+	if cfg.Theme != "" {
+		themeCSS := filepath.Join(siteRoot, cfg.ThemesDir, cfg.Theme, "style.css.html")
+		expanded, err := expandTemplateIncludes(themeCSS)
+		if err == nil {
+			return expanded, nil
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+	}
+
 	stylePath := filepath.Join(siteRoot, cfg.TemplateDir, "style.css.html")
 	expanded, err := expandTemplateIncludes(stylePath)
 	if err == nil {

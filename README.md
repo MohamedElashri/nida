@@ -7,7 +7,8 @@ a static site you can serve anywhere.
 ## Features
 
 * posts and standalone pages
-* Go template themes using `.html` files
+* Go template themes using `.html` files with override chains
+* loadable themes with template inheritance
 * tags and categories
 * RSS and sitemap generation
 * static asset copying
@@ -129,21 +130,44 @@ site/
 │   └── pages/
 ├── templates/
 ├── static/
+├── themes/
+│   └── ink/
+│       ├── config.toml
+│       ├── templates/
+│       ├── static/
+│       └── scss/
 └── public/
 ```
 
-Templates live in `templates/` and use `.html` filenames:
+Themes are optional. Without a `theme` setting, the site uses templates and
+assets from `templates/` and `static/` directly.
 
-```text
-templates/base.html
-templates/index.html
-templates/post.html
-templates/page.html
-templates/404.html
+## Theme System
+
+Set `theme = "name"` in `config.toml` to use a theme from `themes/name/`. Themes
+support inheritance via `extends = "parent"` in their `config.toml`.
+
+Theme template files override site templates with the same name. Theme SCSS and
+static assets are compiled/copied before site assets, allowing site customization
+while keeping theme defaults.
+
+```toml
+# site config.toml
+theme = "ink"
+
+[extra]
+footer = { text = "Custom footer text" }
 ```
 
-The filename stem is the template name. For example, `post.html` should define
-`{{ define "post" }}`.
+```toml
+# themes/ink/config.toml
+name = "Ink"
+description = "A minimalist theme"
+extends = "base"
+
+[extra]
+main_menu = [{ name = "Home", url = "/" }]
+```
 
 ## Examples
 

@@ -16,7 +16,30 @@ func compileSCSS(staticRoot, outputRoot string, cfg config.SiteConfig) error {
 		entryDir = "css"
 	}
 
-	scssRoot := filepath.Join(staticRoot, entryDir)
+	scssRoots := []string{}
+
+	if cfg.Theme != "" {
+		themeSCSSRoot := filepath.Join(staticRoot, "..", cfg.ThemesDir, cfg.Theme, "scss")
+		if _, err := os.Stat(themeSCSSRoot); err == nil {
+			scssRoots = append(scssRoots, themeSCSSRoot)
+		}
+	}
+
+	siteSCSSRoot := filepath.Join(staticRoot, entryDir)
+	if _, err := os.Stat(siteSCSSRoot); err == nil {
+		scssRoots = append(scssRoots, siteSCSSRoot)
+	}
+
+	for _, scssRoot := range scssRoots {
+		if err := compileSCSSDir(scssRoot, outputRoot, entryDir); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func compileSCSSDir(scssRoot, outputRoot, entryDir string) error {
 	if _, err := os.Stat(scssRoot); err != nil {
 		if os.IsNotExist(err) {
 			return nil

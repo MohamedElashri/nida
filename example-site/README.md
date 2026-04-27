@@ -13,8 +13,9 @@ The site includes:
 * multiple blog posts
 * standalone pages
 * tags and categories
-* a lightweight built-in theme
+* a lightweight built-in theme (site templates in `templates/`)
 * copied static assets
+* an example theme in `themes/ink/` demonstrating the theme system
 
 Typical local usage:
 

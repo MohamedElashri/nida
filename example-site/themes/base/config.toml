@@ -1,0 +1,11 @@
+name = "Base"
+description = "Base theme with default styles and settings for Nida"
+
+[extra]
+main_menu = [
+  { name = "Home", url = "/" },
+  { name = "Archive", url = "/posts/" },
+  { name = "About", url = "/about/" }
+]
+footer = { text = "Powered by Nida" }
+date_format = "%Y-%m-%d"

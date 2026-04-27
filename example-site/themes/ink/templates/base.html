@@ -1,0 +1,30 @@
+{{- define "base" -}}
+<!doctype html>
+<html lang="{{ default .Config.Language "en" }}"{{ if eq (documentDirection .Config.Language) "rtl" }} dir="rtl"{{ end }}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Title }} | {{ .Config.Title }}</title>
+  <meta name="description" content="{{ default .Page.Description .Config.Description }}">
+  <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="{{ .HomeURL }}">{{ .Config.Title }}</a>
+      <nav class="site-nav" aria-label="Primary">
+        {{ range .Theme.MainMenu }}
+        <a href="{{ .URL }}">{{ .Name }}</a>
+        {{ end }}
+      </nav>
+    </header>
+    <main class="content-shell">
+      {{- template "content" . }}
+    </main>
+    <footer class="site-footer">
+      <p>{{ .Theme.FooterText }}</p>
+    </footer>
+  </div>
+</body>
+</html>
+{{- end }}

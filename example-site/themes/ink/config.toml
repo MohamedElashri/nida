@@ -1,0 +1,7 @@
+name = "Ink"
+description = "A minimalist dark-themed blog for Nida"
+extends = "base"
+
+[extra]
+main_menu = [{ name = "Home", url = "/" }]
+footer = { text = "Ink theme powered by Nida" }
