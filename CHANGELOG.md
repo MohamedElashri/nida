@@ -2,6 +2,11 @@
 
 All notable changes to Nida are documented here.
 
+## [0.4.1] - 2026-04-28
+
+### Fixed
+* Fix a bug in markdown render not rendering footnotes correctly.
+
 ## [0.4.0] - 2026-04-28
 
 ### Added
