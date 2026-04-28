@@ -27,7 +27,7 @@ func Render(source string, cfg config.SiteConfig) (string, error) {
 
 func renderMarkdownCore(source string, cfg config.SiteConfig) (string, error) {
 	engine := goldmark.New(
-		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithExtensions(extension.GFM, extension.Footnote),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 		),

@@ -123,6 +123,25 @@ func TestRenderExternalLinkAttributes(t *testing.T) {
 	}
 }
 
+func TestRenderFootnotes(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+
+	got, err := Render("Footnote ref[^1].\n\n[^1]: Footnote text.\n", cfg)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, want := range []string{
+		`class="footnote-ref"`,
+		`class="footnotes"`,
+		`Footnote text.`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in rendered footnotes, got %q", want, got)
+		}
+	}
+}
+
 func TestRenderPagesStoresBodyHTML(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	pages := []content.Page{{
