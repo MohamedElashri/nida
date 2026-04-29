@@ -18,7 +18,7 @@ func TestRenderGolden(t *testing.T) {
 Here is a [link](https://example.com).
 
 <div>raw html</div>
-`, cfg)
+`, cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -29,7 +29,7 @@ Here is a [link](https://example.com).
 func TestRenderHighlightedCodeGolden(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 
-	got, err := Render("```go\npackage main\n```\n", cfg)
+	got, err := Render("```go\npackage main\n```\n", cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestRenderHighlightedCodeGolden(t *testing.T) {
 func TestRenderPreservesRawImageHTML(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 
-	got, err := Render(`<div><img src="/images/example.png" alt="Example"></div>`, cfg)
+	got, err := Render(`<div><img src="/images/example.png" alt="Example"></div>`, cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestRenderRawHTMLShortcode(t *testing.T) {
 {{< rawhtml >}}
 <video controls></video>
 {{< /rawhtml >}}
-`, cfg)
+`, cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestRenderDetailsShortcode(t *testing.T) {
 **Hello** from inside.
 
 {% end %}
-`, cfg)
+`, cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestRenderDetailsShortcode(t *testing.T) {
 func TestRenderUnknownLanguageFallsBackGracefully(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 
-	got, err := Render("```unknownlang\nhello\n```\n", cfg)
+	got, err := Render("```unknownlang\nhello\n```\n", cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestRenderExternalLinkAttributes(t *testing.T) {
 	cfg.Markdown.ExternalLinksNoFollow = true
 	cfg.Markdown.ExternalLinksNoReferrer = true
 
-	got, err := Render(`[external](https://example.com) and [local](/about/)`, cfg)
+	got, err := Render(`[external](https://example.com) and [local](/about/)`, cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestRenderExternalLinkAttributes(t *testing.T) {
 func TestRenderFootnotes(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 
-	got, err := Render("Footnote ref[^1].\n\n[^1]: Footnote text.\n", cfg)
+	got, err := Render("Footnote ref[^1].\n\n[^1]: Footnote text.\n", cfg, nil)
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
@@ -149,13 +149,90 @@ func TestRenderPagesStoresBodyHTML(t *testing.T) {
 		BodyMarkdown: "# Hello\n",
 	}}
 
-	rendered, err := RenderPages(pages, cfg)
+	rendered, err := RenderPages(pages, cfg, nil)
 	if err != nil {
 		t.Fatalf("RenderPages returned error: %v", err)
 	}
 
 	if len(rendered) != 1 || !strings.Contains(rendered[0].BodyHTML, "<h1") {
 		t.Fatalf("expected rendered HTML body, got %+v", rendered)
+	}
+}
+
+func TestRenderInternalLinkResolution(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	lookup := PathLookup{
+		"posts/hello.md":    "/posts/hello/",
+		"posts/hello":       "/posts/hello/",
+		"about.md":          "/about/",
+		"about":             "/about/",
+	}
+
+	got, err := Render(`Check out [Hello](@/posts/hello.md) and [About](@/about).`, cfg, lookup)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	if !strings.Contains(got, `<a href="/posts/hello/">Hello</a>`) {
+		t.Fatalf("expected resolved internal link, got %q", got)
+	}
+	if !strings.Contains(got, `<a href="/about/">About</a>`) {
+		t.Fatalf("expected resolved internal link without .md, got %q", got)
+	}
+}
+
+func TestRenderInternalLinkUnresolved(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	lookup := PathLookup{}
+
+	got, err := Render(`[Missing](@/nonexistent.md)`, cfg, lookup)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	if !strings.Contains(got, `<a href="@/nonexistent.md">Missing</a>`) {
+		t.Fatalf("expected unresolved link to pass through, got %q", got)
+	}
+}
+
+func TestRenderInternalImageResolution(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	lookup := PathLookup{
+		"images/logo.png": "/assets/logo.png",
+	}
+
+	got, err := Render(`![Logo](@/images/logo.png)`, cfg, lookup)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	if !strings.Contains(got, `<img src="/assets/logo.png"`) {
+		t.Fatalf("expected resolved internal image, got %q", got)
+	}
+}
+
+func TestResolveInternalPath(t *testing.T) {
+	lookup := PathLookup{
+		"posts/hello.md": "/posts/hello/",
+		"posts/hello":    "/posts/hello/",
+	}
+
+	tests := []struct {
+		path string
+		want string
+	}{
+		{"@/posts/hello.md", "/posts/hello/"},
+		{"@/posts/hello", "/posts/hello/"},
+		{"/about/", "/about/"},
+		{"https://example.com", "https://example.com"},
+		{"@/missing.md", "@/missing.md"},
+	}
+
+	for _, tt := range tests {
+		got := ResolveInternalPath(tt.path, lookup)
+		if got != tt.want {
+			t.Errorf("ResolveInternalPath(%q) = %q, want %q", tt.path, got, tt.want)
+		}
 	}
 }
 

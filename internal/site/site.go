@@ -35,12 +35,14 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 		return State{}, err
 	}
 
-	renderedPages, err := markdown.RenderPages(pages, cfg)
+	pathLookup := buildPathLookup(pages, sections, cfg)
+
+	renderedPages, err := markdown.RenderPages(pages, cfg, pathLookup)
 	if err != nil {
 		return State{}, err
 	}
 
-	renderedSections, err := markdown.RenderSections(sections, cfg)
+	renderedSections, err := markdown.RenderSections(sections, cfg, pathLookup)
 	if err != nil {
 		return State{}, err
 	}
@@ -142,6 +144,38 @@ func ResolveSectionURL(section content.Section, cfg config.SiteConfig) (string, 
 	}
 
 	return route, nil
+}
+
+func buildPathLookup(pages []content.Page, sections []content.Section, cfg config.SiteConfig) markdown.PathLookup {
+	lookup := make(markdown.PathLookup)
+
+	for _, page := range pages {
+		url, err := routePage(page, cfg)
+		if err != nil {
+			continue
+		}
+		lookup[page.RelativePath] = url
+		withoutExt := strings.TrimSuffix(page.RelativePath, ".md")
+		if withoutExt != page.RelativePath {
+			lookup[withoutExt] = url
+		}
+	}
+
+	for _, section := range sections {
+		url, err := ResolveSectionURL(section, cfg)
+		if err != nil {
+			continue
+		}
+		if section.RelativePath != "" {
+			lookup[section.RelativePath] = url
+			withoutExt := strings.TrimSuffix(section.RelativePath, ".md")
+			if withoutExt != section.RelativePath {
+				lookup[withoutExt] = url
+			}
+		}
+	}
+
+	return lookup
 }
 
 func routePage(page content.Page, cfg config.SiteConfig) (string, error) {

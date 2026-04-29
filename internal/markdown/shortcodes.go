@@ -16,7 +16,7 @@ var (
 	summaryAttrRe  = regexp.MustCompile(`summary\s*=\s*"([^"]*)"`)
 )
 
-type shortcodeHandler func(args, body string, cfg config.SiteConfig) (string, error)
+type shortcodeHandler func(args, body string, cfg config.SiteConfig, pathLookup PathLookup) (string, error)
 
 func blockShortcodeHandlers() map[string]shortcodeHandler {
 	return map[string]shortcodeHandler{
@@ -24,13 +24,13 @@ func blockShortcodeHandlers() map[string]shortcodeHandler {
 	}
 }
 
-func processShortcodes(source string, cfg config.SiteConfig) (string, error) {
+func processShortcodes(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
 	source = rawHTMLOpenRe.ReplaceAllString(source, "")
 	source = rawHTMLCloseRe.ReplaceAllString(source, "")
-	return processDetailsShortcodes(source, cfg)
+	return processDetailsShortcodes(source, cfg, pathLookup)
 }
 
-func processDetailsShortcodes(source string, cfg config.SiteConfig) (string, error) {
+func processDetailsShortcodes(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
 	var out strings.Builder
 	remaining := source
 
@@ -51,7 +51,7 @@ func processDetailsShortcodes(source string, cfg config.SiteConfig) (string, err
 
 		body := remaining[bodyStart : bodyStart+endStart]
 		handler := blockShortcodeHandlers()["details"]
-		rendered, err := handler(summaryValue(args), body, cfg)
+		rendered, err := handler(summaryValue(args), body, cfg, pathLookup)
 		if err != nil {
 			return "", err
 		}
@@ -70,20 +70,20 @@ func findDetailsEnd(source string) (int, int) {
 	return match[0], match[1]
 }
 
-func renderShortcodeBody(source string, cfg config.SiteConfig) (string, error) {
-	processed, err := processShortcodes(source, cfg)
+func renderShortcodeBody(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+	processed, err := processShortcodes(source, cfg, pathLookup)
 	if err != nil {
 		return "", err
 	}
-	html, err := renderMarkdownCore(processed, cfg)
+	html, err := renderMarkdownCore(processed, cfg, pathLookup)
 	if err != nil {
 		return "", fmt.Errorf("render details shortcode body: %w", err)
 	}
 	return html, nil
 }
 
-func renderDetailsShortcode(summary, body string, cfg config.SiteConfig) (string, error) {
-	renderedBody, err := renderShortcodeBody(body, cfg)
+func renderDetailsShortcode(summary, body string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+	renderedBody, err := renderShortcodeBody(body, cfg, pathLookup)
 	if err != nil {
 		return "", err
 	}

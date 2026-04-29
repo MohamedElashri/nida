@@ -17,15 +17,15 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-func Render(source string, cfg config.SiteConfig) (string, error) {
-	processed, err := processShortcodes(source, cfg)
+func Render(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+	processed, err := processShortcodes(source, cfg, pathLookup)
 	if err != nil {
 		return "", err
 	}
-	return renderMarkdownCore(processed, cfg)
+	return renderMarkdownCore(processed, cfg, pathLookup)
 }
 
-func renderMarkdownCore(source string, cfg config.SiteConfig) (string, error) {
+func renderMarkdownCore(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
 	engine := goldmark.New(
 		goldmark.WithExtensions(extension.GFM, extension.Footnote),
 		goldmark.WithParserOptions(
@@ -34,8 +34,8 @@ func renderMarkdownCore(source string, cfg config.SiteConfig) (string, error) {
 		goldmark.WithRendererOptions(
 			renderer.WithNodeRenderers(
 				util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
-				util.Prioritized(&linkRenderer{cfg: cfg.Markdown}, 600),
-				util.Prioritized(&imageRenderer{}, 700),
+				util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup}, 600),
+				util.Prioritized(&imageRenderer{pathLookup: pathLookup}, 700),
 			),
 			renderhtml.WithHardWraps(),
 			renderhtml.WithUnsafe(),
@@ -51,7 +51,8 @@ func renderMarkdownCore(source string, cfg config.SiteConfig) (string, error) {
 }
 
 type linkRenderer struct {
-	cfg config.MarkdownConfig
+	cfg        config.MarkdownConfig
+	pathLookup PathLookup
 }
 
 func (r *linkRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -62,7 +63,8 @@ func (r *linkRenderer) renderLink(w util.BufWriter, source []byte, node ast.Node
 	n := node.(*ast.Link)
 	if entering {
 		destination := string(n.Destination)
-		if _, err := w.WriteString(`<a href="` + string(util.EscapeHTML(n.Destination)) + `"`); err != nil {
+		resolved := ResolveInternalPath(destination, r.pathLookup)
+		if _, err := w.WriteString(`<a href="` + string(util.EscapeHTML([]byte(resolved))) + `"`); err != nil {
 			return ast.WalkStop, err
 		}
 		if isExternalLink(destination) {
@@ -113,8 +115,8 @@ func externalLinkRel(cfg config.MarkdownConfig) string {
 	return strings.Join(parts, " ")
 }
 
-func RenderItem(item content.Page, cfg config.SiteConfig) (content.Page, error) {
-	html, err := Render(item.BodyMarkdown, cfg)
+func RenderItem(item content.Page, cfg config.SiteConfig, pathLookup PathLookup) (content.Page, error) {
+	html, err := Render(item.BodyMarkdown, cfg, pathLookup)
 	if err != nil {
 		return content.Page{}, fmt.Errorf("render %q markdown: %w", item.RelativePath, err)
 	}
@@ -133,10 +135,10 @@ func readingTime(markdown string) int {
 	return minutes
 }
 
-func RenderItems(items []content.Page, cfg config.SiteConfig) ([]content.Page, error) {
+func RenderItems(items []content.Page, cfg config.SiteConfig, pathLookup PathLookup) ([]content.Page, error) {
 	rendered := make([]content.Page, 0, len(items))
 	for _, item := range items {
-		next, err := RenderItem(item, cfg)
+		next, err := RenderItem(item, cfg, pathLookup)
 		if err != nil {
 			return nil, err
 		}
@@ -146,18 +148,18 @@ func RenderItems(items []content.Page, cfg config.SiteConfig) ([]content.Page, e
 	return rendered, nil
 }
 
-func RenderPages(pages []content.Page, cfg config.SiteConfig) ([]content.Page, error) {
-	return RenderItems(pages, cfg)
+func RenderPages(pages []content.Page, cfg config.SiteConfig, pathLookup PathLookup) ([]content.Page, error) {
+	return RenderItems(pages, cfg, pathLookup)
 }
 
-func RenderSections(sections []content.Section, cfg config.SiteConfig) ([]content.Section, error) {
+func RenderSections(sections []content.Section, cfg config.SiteConfig, pathLookup PathLookup) ([]content.Section, error) {
 	rendered := make([]content.Section, len(sections))
 	for i, s := range sections {
 		if s.BodyMarkdown == "" {
 			rendered[i] = s
 			continue
 		}
-		html, err := Render(s.BodyMarkdown, cfg)
+		html, err := Render(s.BodyMarkdown, cfg, pathLookup)
 		if err != nil {
 			return nil, fmt.Errorf("render section %q markdown: %w", s.RelativePath, err)
 		}
@@ -203,7 +205,9 @@ func blockText(source []byte, node ast.Node) string {
 	return b.String()
 }
 
-type imageRenderer struct{}
+type imageRenderer struct {
+	pathLookup PathLookup
+}
 
 func (r *imageRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	reg.Register(ast.KindImage, r.renderImage)
@@ -215,7 +219,9 @@ func (r *imageRenderer) renderImage(w util.BufWriter, source []byte, node ast.No
 	}
 
 	n := node.(*ast.Image)
-	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML(n.Destination)) + `" alt="` + string(util.EscapeHTML(n.Text(source))) + `" loading="lazy" decoding="async"`)
+	dest := string(n.Destination)
+	resolved := ResolveInternalPath(dest, r.pathLookup)
+	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(n.Text(source))) + `" loading="lazy" decoding="async"`)
 	if n.Title != nil {
 		_, _ = w.WriteString(` title="` + string(util.EscapeHTML(n.Title)) + `"`)
 	}

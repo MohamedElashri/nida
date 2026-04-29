@@ -99,6 +99,8 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
 	contentPrefix := filepath.ToSlash(cfg.ContentDir + "/")
 
+	pathLookup := buildPathLookupFromPages(previous.state.Pages, previous.state.Sections, cfg)
+
 	changedByRelPath := make(map[string]content.Page)
 	removedByRelPath := make(map[string]bool)
 
@@ -131,7 +133,7 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 			return buildResult{}, loadErr
 		}
 
-		pages, err := markdown.RenderPages([]content.Page{page}, cfg)
+		pages, err := markdown.RenderPages([]content.Page{page}, cfg, pathLookup)
 		if err != nil {
 			return buildResult{}, err
 		}
@@ -343,4 +345,30 @@ func changedStaticPaths(cfg config.SiteConfig, changedPaths []string) []string {
 		}
 	}
 	return out
+}
+
+func buildPathLookupFromPages(pages []content.Page, sections []content.Section, cfg config.SiteConfig) markdown.PathLookup {
+	lookup := make(markdown.PathLookup)
+
+	for _, page := range pages {
+		if page.URL != "" {
+			lookup[page.RelativePath] = page.URL
+			withoutExt := strings.TrimSuffix(page.RelativePath, ".md")
+			if withoutExt != page.RelativePath {
+				lookup[withoutExt] = page.URL
+			}
+		}
+	}
+
+	for _, section := range sections {
+		if section.URL != "" && section.RelativePath != "" {
+			lookup[section.RelativePath] = section.URL
+			withoutExt := strings.TrimSuffix(section.RelativePath, ".md")
+			if withoutExt != section.RelativePath {
+				lookup[withoutExt] = section.URL
+			}
+		}
+	}
+
+	return lookup
 }
