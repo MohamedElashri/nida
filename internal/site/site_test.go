@@ -96,3 +96,133 @@ func mustDate(t *testing.T, value string) time.Time {
 	}
 	return parsed
 }
+
+func TestRoutePageSupportsTaxonomyPlaceholders(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Taxonomies = []config.TaxonomyConfig{
+		{Name: "categories"},
+		{Name: "tags"},
+	}
+	cfg.Permalinks = config.PermalinkConfig{
+		"posts": "/{categories}/{slug}/",
+	}
+
+	page := content.Page{
+		RelativePath: "posts/hello.md",
+		Slug:         "hello",
+		SectionPath:  "posts",
+		Date:         mustDate(t, "2026-04-13T10:00:00Z"),
+		Extra: map[string]any{
+			"categories": []string{"Tech", "Programming"},
+		},
+	}
+
+	route, err := routePage(page, cfg)
+	if err != nil {
+		t.Fatalf("routePage returned error: %v", err)
+	}
+
+	if route != "/tech/hello/" {
+		t.Fatalf("expected /tech/hello/, got %q", route)
+	}
+}
+
+func TestRoutePageSupportsDatePlaceholders(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Permalinks = config.PermalinkConfig{
+		"posts": "/{year}/{month}/{day}/{slug}/",
+	}
+
+	page := content.Page{
+		RelativePath: "posts/hello.md",
+		Slug:         "hello",
+		SectionPath:  "posts",
+		Date:         mustDate(t, "2026-04-13T10:00:00Z"),
+	}
+
+	route, err := routePage(page, cfg)
+	if err != nil {
+		t.Fatalf("routePage returned error: %v", err)
+	}
+
+	if route != "/2026/04/13/hello/" {
+		t.Fatalf("expected /2026/04/13/hello/, got %q", route)
+	}
+}
+
+func TestRoutePageEmptyTaxonomyFallsBack(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Taxonomies = []config.TaxonomyConfig{
+		{Name: "categories"},
+	}
+	cfg.Permalinks = config.PermalinkConfig{
+		"posts": "/{categories}/{slug}/",
+	}
+
+	page := content.Page{
+		RelativePath: "posts/hello.md",
+		Slug:         "hello",
+		SectionPath:  "posts",
+		Date:         mustDate(t, "2026-04-13T10:00:00Z"),
+		Extra:        map[string]any{},
+	}
+
+	route, err := routePage(page, cfg)
+	if err != nil {
+		t.Fatalf("routePage returned error: %v", err)
+	}
+
+	if route != "//hello/" {
+		t.Fatalf("expected //hello/, got %q", route)
+	}
+}
+
+func TestExtractTaxonomyValue(t *testing.T) {
+	tests := []struct {
+		name string
+		extra map[string]any
+		tax  string
+		want string
+	}{
+		{
+			name:  "string slice",
+			extra: map[string]any{"categories": []string{"Tech", "Science"}},
+			tax:   "categories",
+			want:  "tech",
+		},
+		{
+			name:  "any slice",
+			extra: map[string]any{"tags": []any{"Go", "Rust"}},
+			tax:   "tags",
+			want:  "go",
+		},
+		{
+			name:  "single string",
+			extra: map[string]any{"category": "Tech"},
+			tax:   "category",
+			want:  "tech",
+		},
+		{
+			name:  "missing key",
+			extra: map[string]any{},
+			tax:   "categories",
+			want:  "",
+		},
+		{
+			name:  "nil extra",
+			extra: nil,
+			tax:   "categories",
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		got := extractTaxonomyValue(tt.extra, tt.tax)
+		if got != tt.want {
+			t.Errorf("%s: extractTaxonomyValue() = %q, want %q", tt.name, got, tt.want)
+		}
+	}
+}

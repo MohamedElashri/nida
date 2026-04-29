@@ -194,6 +194,14 @@ func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 	route = strings.ReplaceAll(route, "{month}", page.Date.Format("01"))
 	route = strings.ReplaceAll(route, "{day}", page.Date.Format("02"))
 
+	for _, tc := range cfg.Taxonomies {
+		placeholder := "{" + tc.Name + "}"
+		if strings.Contains(route, placeholder) {
+			taxValue := extractTaxonomyValue(page.Extra, tc.Name)
+			route = strings.ReplaceAll(route, placeholder, taxValue)
+		}
+	}
+
 	if strings.Contains(route, "{") || strings.Contains(route, "}") {
 		return "", fmt.Errorf("unsupported placeholder in permalink pattern %q for %q", pattern, page.RelativePath)
 	}
@@ -205,6 +213,29 @@ func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 	}
 
 	return route, nil
+}
+
+func extractTaxonomyValue(extra map[string]any, name string) string {
+	if extra == nil {
+		return ""
+	}
+	if value, ok := extra[name]; ok {
+		switch v := value.(type) {
+		case []string:
+			if len(v) > 0 {
+				return content.DeriveSlug(v[0])
+			}
+		case []any:
+			if len(v) > 0 {
+				if s, ok := v[0].(string); ok {
+					return content.DeriveSlug(s)
+				}
+			}
+		case string:
+			return content.DeriveSlug(v)
+		}
+	}
+	return ""
 }
 
 func buildSectionTree(sections []content.Section, allPages []content.Page, cfg config.SiteConfig) ([]content.Section, map[string]content.Section) {
