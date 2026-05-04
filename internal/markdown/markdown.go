@@ -3,6 +3,8 @@ package markdown
 import (
 	"bytes"
 	"fmt"
+	"regexp"
+	stdhtml "html"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
@@ -183,16 +185,55 @@ func (r *fencedCodeRenderer) renderFencedCodeBlock(w util.BufWriter, source []by
 	}
 
 	n := node.(*ast.FencedCodeBlock)
-	html, err := highlight.Render(blockText(source, n), string(n.Language(source)), r.theme)
+	code := blockText(source, n)
+	isCollapsible, labels := extractCollapseMarker(code)
+	if isCollapsible {
+		code = stripCollapseMarker(code)
+	}
+
+	html, err := highlight.Render(code, string(n.Language(source)), r.theme)
 	if err != nil {
 		return ast.WalkStop, err
 	}
 
-	if _, err := w.WriteString(html); err != nil {
-		return ast.WalkStop, err
+	if isCollapsible {
+		expandLabel := labels[0]
+		collapseLabel := labels[1]
+		if expandLabel == "" {
+			expandLabel = "Show code"
+		}
+		if collapseLabel == "" {
+			collapseLabel = "Hide code"
+		}
+		wrapped := `<div class="collapsible-code-wrapper collapsed" data-expand="` + stdhtml.EscapeString(expandLabel) + `" data-collapse="` + stdhtml.EscapeString(collapseLabel) + `"><button class="collapsible-code-toggle" aria-expanded="false"><span class="toggle-icon">▶</span><span class="toggle-label">` + stdhtml.EscapeString(expandLabel) + `</span></button><div class="collapsible-code-content">` + html + `</div></div>`
+		if _, err := w.WriteString(wrapped); err != nil {
+			return ast.WalkStop, err
+		}
+	} else {
+		if _, err := w.WriteString(html); err != nil {
+			return ast.WalkStop, err
+		}
 	}
 
 	return ast.WalkSkipChildren, nil
+}
+
+var collapsePattern = regexp.MustCompile(`^\[!COLLAPSE\]\s*([^\n|]+)(?:\s*\|\s*([^\n]+))?`)
+
+func extractCollapseMarker(code string) (bool, [2]string) {
+	match := collapsePattern.FindStringSubmatch(code)
+	if match == nil {
+		return false, [2]string{}
+	}
+	labels := [2]string{strings.TrimSpace(match[1]), ""}
+	if len(match) > 2 {
+		labels[1] = strings.TrimSpace(match[2])
+	}
+	return true, labels
+}
+
+func stripCollapseMarker(code string) string {
+	return collapsePattern.ReplaceAllString(code, "")
 }
 
 func blockText(source []byte, node ast.Node) string {
