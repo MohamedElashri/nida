@@ -78,6 +78,16 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 		return strings.Compare(a.Slug, b.Slug)
 	})
 
+	if !cfg.Drafts {
+		filtered := make([]content.Page, 0, len(sortedPages))
+		for _, p := range sortedPages {
+			if !p.Draft {
+				filtered = append(filtered, p)
+			}
+		}
+		sortedPages = filtered
+	}
+
 	for i := range sortedPages {
 		routed, err := routePage(sortedPages[i], cfg)
 		if err != nil {
