@@ -2,6 +2,15 @@
 
 All notable changes to Nida are documented here.
 
+## [0.4.4] - 2026-05-06
+
+### Fixed 
+* Filter out draft pages when building the site index because it was excluded only from taxonomies and categories.
+
+### Changed
+* Bump github.com/alecthomas/chroma/v2 from 2.23.1 to 2.24.1
+* Bump github.com/pelletier/go-toml/v2 from 2.3.0 to 2.3.1
+
 
 ## [0.4.3] - 2026-05-05
 
