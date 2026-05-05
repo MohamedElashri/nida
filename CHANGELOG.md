@@ -2,6 +2,11 @@
 
 All notable changes to Nida are documented here.
 
+## [0.4.5] - 2026-05-06
+
+### Added
+* Add page bundle feature with resource management and tests
+
 ## [0.4.4] - 2026-05-06
 
 ### Fixed 
