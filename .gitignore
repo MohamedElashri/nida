@@ -10,3 +10,4 @@ plan.md
 !/example-site/public/.gitkeep
 blog*
 */public/*
+bin
