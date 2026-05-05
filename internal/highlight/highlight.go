@@ -38,7 +38,8 @@ func Render(code, language, theme string) (string, error) {
 	}
 
 	formatter := chromahtml.New(
-		chromahtml.WithClasses(false),
+		chromahtml.WithClasses(true),
+		chromahtml.ClassPrefix("z-"),
 		chromahtml.WithLineNumbers(false),
 	)
 
@@ -71,4 +72,24 @@ func renderPlain(code, language string) string {
 	}
 
 	return "<pre><code" + classAttr + ">" + stdhtml.EscapeString(code) + "</code></pre>\n"
+}
+
+func ChromaCSS(theme string) string {
+	style := styles.Get(strings.TrimSpace(theme))
+	if style == nil {
+		style = styles.Get(DefaultTheme)
+	}
+	if style == nil {
+		style = styles.Fallback
+	}
+
+	formatter := chromahtml.New(
+		chromahtml.WithClasses(true),
+		chromahtml.ClassPrefix("z-"),
+		chromahtml.WithLineNumbers(false),
+	)
+
+	var buf bytes.Buffer
+	_ = formatter.WriteCSS(&buf, style)
+	return buf.String()
 }

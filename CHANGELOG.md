@@ -2,6 +2,16 @@
 
 All notable changes to Nida are documented here.
 
+
+## [0.4.3] - 2026-05-05
+
+### Added
+* Enable class-based formatting in Chroma and add ChromaCSS function for theme styling
+* Add support for denced code to detect collapse markers and pass them to chroma
+* Add support for denced code to detect collapse markers and pass them to chroma
+* Add support for Zola-style permalink patterns to nida
+* Add automatic path resolution for internal links in nida
+
 ## [0.4.1] - 2026-04-28
 
 ### Fixed
