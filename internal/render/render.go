@@ -82,7 +82,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 	var ctxPages []content.Page
 	if section.SectionPath == "" {
-		ctxPages = latestItems(index.AllPages, nil, 9999)
+		ctxPages = latestItems(index.AllPages, nil, 30)
 	} else {
 		ctxPages = section.Pages
 	}
