@@ -25,12 +25,14 @@ func Discover(siteRoot string, cfg config.SiteConfig) ([]Page, []Section, error)
 
 func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Page, []Section, error) {
 	type fileEntry struct {
-		path    string
-		isIndex bool
+		path     string
+		isIndex  bool
+		isBundle bool
 	}
 
 	dirSections := map[string]bool{}
-	potentialPages := []fileEntry{}
+	var potentialPages []fileEntry
+	bundleDirs := map[string]bool{}
 
 	err := filepath.WalkDir(contentRoot, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -56,8 +58,11 @@ func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Page, []Section, 
 				dirSections[filepath.ToSlash(rel)] = true
 			}
 			potentialPages = append(potentialPages, fileEntry{path: path, isIndex: true})
+		} else if name == "index.md" && !isContentRoot(path, contentRoot) {
+			bundleDirs[filepath.Dir(path)] = true
+			potentialPages = append(potentialPages, fileEntry{path: path, isBundle: true})
 		} else {
-			potentialPages = append(potentialPages, fileEntry{path: path, isIndex: false})
+			potentialPages = append(potentialPages, fileEntry{path: path})
 		}
 
 		return nil
@@ -65,6 +70,15 @@ func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Page, []Section, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("discover content under %q: %w", contentRoot, err)
 	}
+
+	filtered := potentialPages[:0]
+	for _, entry := range potentialPages {
+		if !entry.isIndex && !entry.isBundle && bundleDirs[filepath.Dir(entry.path)] {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	potentialPages = filtered
 
 	slices.SortFunc(potentialPages, func(a, b fileEntry) int {
 		return strings.Compare(a.path, b.path)
@@ -80,6 +94,12 @@ func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Page, []Section, 
 				return nil, nil, err
 			}
 			sections = append(sections, section)
+		} else if entry.isBundle {
+			page, err := loadBundlePage(contentRoot, entry.path, cfg)
+			if err != nil {
+				return nil, nil, err
+			}
+			pages = append(pages, page)
 		} else {
 			page, err := loadPage(contentRoot, entry.path, cfg)
 			if err != nil {
@@ -233,7 +253,90 @@ func loadPage(contentRoot, sourcePath string, cfg config.SiteConfig) (Page, erro
 	}, nil
 }
 
+func loadBundlePage(contentRoot, sourcePath string, cfg config.SiteConfig) (Page, error) {
+	data, err := os.ReadFile(sourcePath)
+	if err != nil {
+		return Page{}, fmt.Errorf("read bundle page file %q: %w", sourcePath, err)
+	}
+
+	doc, err := frontmatter.Parse(data)
+	if err != nil {
+		return Page{}, fmt.Errorf("parse bundle page file %q: %w", sourcePath, err)
+	}
+
+	relativePath, err := filepath.Rel(contentRoot, sourcePath)
+	if err != nil {
+		return Page{}, fmt.Errorf("compute relative path for %q: %w", sourcePath, err)
+	}
+
+	meta := doc.Metadata
+
+	bundleDir := filepath.ToSlash(filepath.Dir(filepath.ToSlash(relativePath)))
+	sectionPath := filepath.ToSlash(filepath.Dir(bundleDir))
+	if sectionPath == "." {
+		sectionPath = ""
+	}
+
+	slug := meta.Slug
+	if slug == "" {
+		slug = DeriveSlug(filepath.Base(filepath.Dir(sourcePath)))
+	}
+
+	resources, err := collectBundleResources(filepath.Dir(sourcePath))
+	if err != nil {
+		return Page{}, fmt.Errorf("collect resources for bundle %q: %w", sourcePath, err)
+	}
+
+	return Page{
+		SourcePath:     sourcePath,
+		RelativePath:   filepath.ToSlash(relativePath),
+		SectionPath:    sectionPath,
+		BundleDir:      bundleDir,
+		RawFrontMatter: doc.RawFrontMatter,
+		BodyMarkdown:   doc.BodyMarkdown,
+		Title:          strings.TrimSpace(meta.Title),
+		Slug:           slug,
+		Description:    strings.TrimSpace(meta.Description),
+		Date:           meta.Date,
+		Updated:        meta.Updated,
+		Draft:          meta.Draft,
+		Weight:         meta.Weight,
+		Template:       strings.TrimSpace(meta.Template),
+		IsBundle:       true,
+		Resources:      resources,
+		Extra:          meta.Extra,
+	}, nil
+}
+
+func collectBundleResources(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var resources []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.EqualFold(filepath.Ext(name), ".md") {
+			continue
+		}
+		resources = append(resources, name)
+	}
+	slices.Sort(resources)
+	return resources, nil
+}
+
 func LoadPage(contentRoot, sourcePath string, cfg config.SiteConfig) (Page, error) {
+	name := filepath.Base(sourcePath)
+	if name == "index.md" {
+		return loadBundlePage(contentRoot, sourcePath, cfg)
+	}
+	if name == "_index.md" {
+		return Page{}, fmt.Errorf("cannot load _index.md as a page (it is a section index)")
+	}
 	return loadPage(contentRoot, sourcePath, cfg)
 }
 
@@ -242,6 +345,10 @@ func defaultString(value, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func isContentRoot(path, contentRoot string) bool {
+	return filepath.Dir(path) == contentRoot
 }
 
 func DeriveSlug(value string) string {

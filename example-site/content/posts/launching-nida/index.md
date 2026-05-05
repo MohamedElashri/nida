@@ -27,3 +27,9 @@ func main() {
 ```
 
 The interesting work happens behind that tiny entrypoint: config loading, content discovery, rendering, output writing, and local serving all move through the same internal pipeline.
+
+## Page Bundle
+
+This post demonstrates the page bundle feature: co-located assets that live alongside the content. The screenshot below is a resource stored in the same directory as this `index.md` file.
+
+![Nida CLI screenshot](screenshot.png)

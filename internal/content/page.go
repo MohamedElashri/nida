@@ -8,6 +8,7 @@ type Page struct {
 	SourcePath     string
 	RelativePath   string
 	SectionPath    string
+	BundleDir      string
 	RawFrontMatter string
 	BodyMarkdown   string
 	BodyHTML       string
@@ -21,6 +22,8 @@ type Page struct {
 	Weight         int
 	Template       string
 	ReadingTime    int
+	IsBundle       bool
+	Resources      []string
 	Extra          map[string]any
 }
 

@@ -255,6 +255,9 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	if err := assets.Copy(opts.siteRoot, cfg); err != nil {
 		return buildResult{}, err
 	}
+	if err := assets.CopyPageBundles(opts.siteRoot, cfg, bundlePagesFromIndex(state.Index)); err != nil {
+		return buildResult{}, err
+	}
 
 	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
 }
@@ -301,4 +304,18 @@ Commands:
 
 func writeVersion(w io.Writer) {
 	_, _ = fmt.Fprintln(w, buildinfo.Summary())
+}
+
+func bundlePagesFromIndex(index site.SiteIndex) []assets.BundlePage {
+	var bundles []assets.BundlePage
+	for _, p := range index.AllPages {
+		if p.IsBundle && len(p.Resources) > 0 {
+			bundles = append(bundles, assets.BundlePage{
+				URL:       p.URL,
+				BundleDir: p.BundleDir,
+				Resources: p.Resources,
+			})
+		}
+	}
+	return bundles
 }

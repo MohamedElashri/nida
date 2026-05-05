@@ -257,6 +257,9 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 	if err := assets.SyncChanged(opts.siteRoot, next.cfg, changedStaticPaths(next.cfg, changedPaths)); err != nil {
 		return err
 	}
+	if err := assets.CopyPageBundles(opts.siteRoot, next.cfg, bundlePagesFromIndex(next.state.Index)); err != nil {
+		return err
+	}
 
 	return nil
 }

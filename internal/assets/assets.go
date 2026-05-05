@@ -11,6 +11,12 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 )
 
+type BundlePage struct {
+	URL       string
+	BundleDir string
+	Resources []string
+}
+
 func Copy(siteRoot string, cfg config.SiteConfig) error {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {
@@ -124,6 +130,36 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 
 			if err := copyFile(source, target); err != nil {
 				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage) error {
+	absSiteRoot, err := filepath.Abs(siteRoot)
+	if err != nil {
+		return fmt.Errorf("resolve site root %q: %w", siteRoot, err)
+	}
+
+	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
+	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
+
+	for _, page := range pages {
+		if len(page.Resources) == 0 {
+			continue
+		}
+
+		sourceDir := filepath.Join(contentRoot, filepath.FromSlash(page.BundleDir))
+		outputURL := strings.TrimSuffix(page.URL, "/")
+		outputDir := filepath.Join(outputRoot, filepath.FromSlash(strings.TrimPrefix(outputURL, "/")))
+
+		for _, res := range page.Resources {
+			src := filepath.Join(sourceDir, res)
+			dst := filepath.Join(outputDir, res)
+			if err := copyFile(src, dst); err != nil {
+				return fmt.Errorf("copy page resource %q: %w", res, err)
 			}
 		}
 	}
