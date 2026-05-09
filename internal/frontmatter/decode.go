@@ -23,6 +23,7 @@ var knownFields = map[string]bool{
 	"generate_feeds":  true,
 	"paginate_by":     true,
 	"paginate_path":   true,
+	"aliases":         true,
 	"extra":           true,
 }
 
@@ -42,6 +43,7 @@ func decodeMetadata(values map[string]any) (Metadata, error) {
 		GenerateFeeds:   boolValue(values["generate_feeds"]),
 		PaginateBy:     intValue(values["paginate_by"]),
 		PaginatePath:   stringValue(values["paginate_path"]),
+		Aliases:        stringSliceValue(values["aliases"]),
 	}
 
 	if extra, ok := mapValue(values["extra"]); ok {
@@ -70,6 +72,22 @@ func stringValue(value any) string {
 		return strings.TrimSpace(s)
 	}
 	return ""
+}
+
+func stringSliceValue(value any) []string {
+	switch v := value.(type) {
+	case []string:
+		return v
+	case []any:
+		var out []string
+		for _, item := range v {
+			if s, ok := item.(string); ok && s != "" {
+				out = append(out, strings.TrimSpace(s))
+			}
+		}
+		return out
+	}
+	return nil
 }
 
 func boolValue(value any) bool {

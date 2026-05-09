@@ -65,6 +65,7 @@ type templateContext struct {
 	Title        string
 	Description  string
 	HomeURL      string
+	CurrentURL   string
 	CanonicalURL string
 	Config       config.SiteConfig
 	Theme        Theme

@@ -21,6 +21,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
+	"github.com/MohamedElashri/nida/internal/searchindex"
 	"github.com/MohamedElashri/nida/internal/server"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/sitemap"
@@ -196,7 +197,7 @@ func buildSite(opts commandOptions) (buildResult, error) {
 		return buildResult{}, err
 	}
 
-	artifacts := make([]output.Artifact, 0, 2)
+	artifacts := make([]output.Artifact, 0, 3)
 	if cfg.RSS.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
 	}
@@ -208,6 +209,9 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	}
 	if cfg.Robots.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Robots.Filename})
+	}
+	if cfg.Search.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.Search.Filename})
 	}
 	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, artifacts); err != nil {
 		return buildResult{}, err
@@ -249,6 +253,15 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	}
 	if robotsOutput := robots.Generate(cfg); robotsOutput != nil {
 		if err := output.WriteFile(opts.siteRoot, cfg, robotsOutput.Filename, robotsOutput.Content); err != nil {
+			return buildResult{}, err
+		}
+	}
+	searchOutput, err := searchindex.Generate(cfg, state)
+	if err != nil {
+		return buildResult{}, err
+	}
+	if searchOutput != nil {
+		if err := output.WriteFile(opts.siteRoot, cfg, searchOutput.Filename, searchOutput.Content); err != nil {
 			return buildResult{}, err
 		}
 	}

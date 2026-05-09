@@ -128,6 +128,23 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 
 	index.AllPages = sortedPages
 
+	// Populate prev/next page links within each section
+	for i := range index.Sections {
+		pagesInSection := index.Sections[i].Pages
+		for j := range pagesInSection {
+			if j > 0 {
+				pagesInSection[j].NextURL = pagesInSection[j-1].URL
+				pagesInSection[j].NextTitle = pagesInSection[j-1].Title
+			}
+			if j < len(pagesInSection)-1 {
+				pagesInSection[j].PrevURL = pagesInSection[j+1].URL
+				pagesInSection[j].PrevTitle = pagesInSection[j+1].Title
+			}
+		}
+		index.Sections[i].Pages = pagesInSection
+		sectionMap[index.Sections[i].SectionPath] = index.Sections[i]
+	}
+
 	var err error
 	index.Taxonomies, index.TaxonomyMap, err = taxonomies.BuildAll(cfg, sortedPages)
 	if err != nil {
@@ -199,7 +216,12 @@ func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 	}
 
 	route := strings.ReplaceAll(pattern, "{slug}", page.Slug)
-	route = strings.ReplaceAll(route, "{section}", sectionPath)
+	if sectionPath == "" {
+		route = strings.ReplaceAll(route, "{section}/", "")
+		route = strings.ReplaceAll(route, "{section}", "")
+	} else {
+		route = strings.ReplaceAll(route, "{section}", sectionPath)
+	}
 	route = strings.ReplaceAll(route, "{year}", page.Date.Format("2006"))
 	route = strings.ReplaceAll(route, "{month}", page.Date.Format("01"))
 	route = strings.ReplaceAll(route, "{day}", page.Date.Format("02"))

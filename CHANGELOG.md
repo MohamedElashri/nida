@@ -2,6 +2,31 @@
 
 All notable changes to Nida are documented here.
 
+## [0.4.6] - 2026-05-09
+
+### Added
+
+* `aliases` front matter support: pages can now declare `aliases = ["/old-url/"]` and Nida generates HTML redirect pages with JavaScript and `<noscript>` meta-refresh fallback
+* Taxonomy pagination: taxonomy term pages now respect `paginate_by` and `paginate_path` config fields
+* Automatic `page/1/` redirect generation for paginated sections and taxonomy terms
+* Template functions: `groupByYear`, `now`, `readFile`, `resizeImage`, `dig`, `hasPrefix`, `contains`, `lower`, `trimSpace`, `sortDesc`, `hasSuffix`
+* Search index generation (`internal/searchindex/searchindex.go`) for local JavaScript search
+* Image resize support with WebP output (`internal/templates/images.go`)
+* `CurrentURL` available in template context
+* `PrevURL`, `NextURL`, `PrevTitle`, `NextTitle` on `content.Page` for prev/next navigation
+
+### Fixed
+
+* Fixed root-level pages producing double-slash URLs (e.g. `//search/`) when `{section}` placeholder resolved to empty string
+* Fixed template names with `.html` suffix not resolving correctly in front matter
+* Fixed `DeriveSlug` incorrectly stripping content after dots in names like `"M. Elashri"`
+* Fixed non-ASCII character transliteration in slugs (ϕ, φ, ℓ now map to `ph`, `l`)
+* Fixed taxonomy term pages rendering all items on a single page regardless of `paginate_by`
+
+### Changed
+
+* Enabled `robots.txt` generation by default
+
 ## [0.4.5] - 2026-05-06
 
 ### Added
@@ -162,6 +187,15 @@ Template names inside files do not change. For example, `post.html` should still
 * Static asset copying and output writing.
 * GitHub Releases packaging with GoReleaser.
 
+[0.4.6]: https://github.com/MohamedElashri/nida/compare/v0.4.5...v0.4.6
+[0.4.5]: https://github.com/MohamedElashri/nida/compare/v0.4.4...v0.4.5
+[0.4.4]: https://github.com/MohamedElashri/nida/compare/v0.4.3...v0.4.4
+[0.4.3]: https://github.com/MohamedElashri/nida/compare/v0.4.1...v0.4.3
+[0.4.1]: https://github.com/MohamedElashri/nida/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/MohamedElashri/nida/compare/v0.3.3...v0.4.0
+[0.3.3]: https://github.com/MohamedElashri/nida/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/MohamedElashri/nida/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/MohamedElashri/nida/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MohamedElashri/nida/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/MohamedElashri/nida/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MohamedElashri/nida/releases/tag/v0.1.0

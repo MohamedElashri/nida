@@ -88,7 +88,7 @@ func osMkdirAll(path string, mode uint32) error {
 }
 
 func executeTemplateText(text string, data any) (string, error) {
-	tmpl, err := template.New("test").Funcs(funcMap()).Parse(text)
+	tmpl, err := template.New("test").Funcs(funcMap(".")).Parse(text)
 	if err != nil {
 		return "", err
 	}

@@ -29,7 +29,13 @@ type SiteConfig struct {
 	Permalinks    PermalinkConfig    `toml:"permalinks"`
 	Sections      SectionConfig      `toml:"sections"`
 	Pipeline      PipelineConfig     `toml:"pipeline"`
+	Search        SearchConfig       `toml:"search"`
 	Extra         map[string]any     `toml:"extra"`
+}
+
+type SearchConfig struct {
+	Enabled  bool   `toml:"enabled"`
+	Filename string `toml:"filename"`
 }
 
 type TaxonomyConfig struct {

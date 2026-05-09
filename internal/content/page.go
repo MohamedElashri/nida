@@ -25,6 +25,11 @@ type Page struct {
 	IsBundle       bool
 	Resources      []string
 	Extra          map[string]any
+	Aliases        []string
+	PrevURL        string
+	PrevTitle      string
+	NextURL        string
+	NextTitle      string
 }
 
 type Section struct {

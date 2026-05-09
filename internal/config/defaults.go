@@ -29,7 +29,7 @@ func DefaultSiteConfig() SiteConfig {
 			Filename: "sitemap.xml",
 		},
 		Robots: RobotsConfig{
-			Enabled:  false,
+			Enabled:  true,
 			Filename: "robots.txt",
 		},
 		Server: ServerConfig{
@@ -58,6 +58,10 @@ func DefaultSiteConfig() SiteConfig {
 				Enabled:  false,
 				EntryDir: "css",
 			},
+		},
+		Search: SearchConfig{
+			Enabled:  false,
+			Filename: "search_index.en.js",
 		},
 	}
 }

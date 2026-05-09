@@ -13,6 +13,22 @@ import (
 	"github.com/MohamedElashri/nida/internal/templates"
 )
 
+func redirectHTML(target string) string {
+	return `<!doctype html>
+<meta charset="utf-8">
+<title>Redirect</title>
+<script>
+  const target = "` + target + `";
+  const hash = window.location.hash || "";
+  window.location.replace(target + hash);
+</script>
+<noscript>
+  <meta http-equiv="refresh" content="0; url=` + target + `">
+</noscript>
+<p><a href="` + target + `">Click here</a> to be redirected.</p>
+`
+}
+
 func buildPaginator(baseURL string, current, total int, pages []content.Page) *Paginator {
 	if total <= 1 {
 		return nil

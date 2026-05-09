@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -49,10 +50,10 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 		return Set{}, fmt.Errorf("load templates: %w", err)
 	}
 
-	return loadFromRoots(templateRoots)
+	return loadFromRoots(templateRoots, absSiteRoot)
 }
 
-func loadFromRoots(roots []string) (Set, error) {
+func loadFromRoots(roots []string, siteRoot string) (Set, error) {
 	var shared []string
 	entries := map[string]string{}
 
@@ -99,7 +100,7 @@ func loadFromRoots(roots []string) (Set, error) {
 	set := Set{templates: map[string]*template.Template{}}
 	for name, entry := range entries {
 		files := append(append([]string(nil), shared...), entry)
-		tmpl := template.New("root").Funcs(funcMap())
+		tmpl := template.New("root").Funcs(funcMap(siteRoot))
 		for _, file := range files {
 			data, err := os.ReadFile(file)
 			if err != nil {
@@ -133,7 +134,7 @@ func (s Set) Execute(name string, data any) (string, error) {
 	return b.String(), nil
 }
 
-func funcMap() template.FuncMap {
+func funcMap(siteRoot string) template.FuncMap {
 	return template.FuncMap{
 		"formatDate":        formatDate,
 		"formatDateWith":    formatDateWith,
@@ -143,9 +144,20 @@ func funcMap() template.FuncMap {
 		"add":               add,
 		"sub":               sub,
 		"hasSuffix":         strings.HasSuffix,
+		"hasPrefix":         strings.HasPrefix,
+		"contains":          strings.Contains,
+		"lower":             strings.ToLower,
+		"trimSpace":         strings.TrimSpace,
+		"replace":           strings.ReplaceAll,
 		"default":           defaultString,
 		"slugify":           content.DeriveSlug,
 		"documentDirection": config.DocumentDirection,
+		"groupByYear":       groupByYear,
+		"now":               time.Now,
+		"readFile":          readFileFunc(siteRoot),
+		"resizeImage":       resizeImageFunc(siteRoot),
+		"sortDesc":          sortDesc,
+		"dig":               digValue,
 	}
 }
 
@@ -228,4 +240,79 @@ func strftimeToGoLayout(format string) string {
 		"%+", time.RFC3339,
 	)
 	return replacer.Replace(format)
+}
+
+// YearGroup holds pages grouped by a year string.
+type YearGroup struct {
+	Year  string
+	Pages []content.Page
+}
+
+func groupByYear(pages []content.Page) []YearGroup {
+	groups := make(map[string][]content.Page)
+	for _, p := range pages {
+		if !p.Date.IsZero() {
+			year := p.Date.Format("2006")
+			groups[year] = append(groups[year], p)
+		}
+	}
+
+	var years []string
+	for y := range groups {
+		years = append(years, y)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(years)))
+
+	result := make([]YearGroup, 0, len(years))
+	for _, y := range years {
+		result = append(result, YearGroup{Year: y, Pages: groups[y]})
+	}
+	return result
+}
+
+func readFileFunc(siteRoot string) func(string) (string, error) {
+	return func(path string) (string, error) {
+		// Try site root relative first
+		fullPath := filepath.Join(siteRoot, filepath.FromSlash(path))
+		data, err := os.ReadFile(fullPath)
+		if err != nil {
+			// If not found, try as absolute
+			if os.IsNotExist(err) {
+				data, err = os.ReadFile(filepath.FromSlash(path))
+				if err != nil {
+					return "", err
+				}
+				return string(data), nil
+			}
+			return "", err
+		}
+		return string(data), nil
+	}
+}
+
+func sortDesc(values []string) []string {
+	out := append([]string(nil), values...)
+	sort.Sort(sort.Reverse(sort.StringSlice(out)))
+	return out
+}
+
+func digValue(values map[string]any, path string) any {
+	if values == nil {
+		return nil
+	}
+	keys := strings.Split(path, ".")
+	for i, key := range keys {
+		v, ok := values[key]
+		if !ok {
+			return nil
+		}
+		if i == len(keys)-1 {
+			return v
+		}
+		values, ok = v.(map[string]any)
+		if !ok {
+			return nil
+		}
+	}
+	return values
 }

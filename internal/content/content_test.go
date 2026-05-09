@@ -86,7 +86,10 @@ title = "Broken"
 }
 
 func TestDeriveSlug(t *testing.T) {
-	if got := DeriveSlug("  Hello_world!.md "); got != "hello-world" {
+	if got := DeriveSlug("  Hello_world!.md "); got != "hello-world-md" {
+		t.Fatalf("unexpected slug %q", got)
+	}
+	if got := DeriveSlug("M. Elashri"); got != "m-elashri" {
 		t.Fatalf("unexpected slug %q", got)
 	}
 }

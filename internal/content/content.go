@@ -227,7 +227,9 @@ func loadPage(contentRoot, sourcePath string, cfg config.SiteConfig) (Page, erro
 	meta := doc.Metadata
 	slug := meta.Slug
 	if slug == "" {
-		slug = DeriveSlug(filepath.Base(sourcePath))
+		baseName := filepath.Base(sourcePath)
+		baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
+		slug = DeriveSlug(baseName)
 	}
 
 	sectionPath := filepath.ToSlash(filepath.Dir(filepath.ToSlash(relativePath)))
@@ -250,6 +252,7 @@ func loadPage(contentRoot, sourcePath string, cfg config.SiteConfig) (Page, erro
 		Weight:         meta.Weight,
 		Template:       strings.TrimSpace(meta.Template),
 		Extra:          meta.Extra,
+		Aliases:        meta.Aliases,
 	}, nil
 }
 
@@ -305,6 +308,7 @@ func loadBundlePage(contentRoot, sourcePath string, cfg config.SiteConfig) (Page
 		IsBundle:       true,
 		Resources:      resources,
 		Extra:          meta.Extra,
+		Aliases:        meta.Aliases,
 	}, nil
 }
 
@@ -351,10 +355,28 @@ func isContentRoot(path, contentRoot string) bool {
 	return filepath.Dir(path) == contentRoot
 }
 
+var slugTransliteration = map[rune]string{
+	'ϕ': "ph",
+	'φ': "ph",
+	'ℓ': "l",
+}
+
+func transliterateSlug(value string) string {
+	var b strings.Builder
+	for _, r := range value {
+		if replacement, ok := slugTransliteration[r]; ok {
+			b.WriteString(replacement)
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 func DeriveSlug(value string) string {
 	value = strings.TrimSpace(value)
-	value = strings.TrimSuffix(value, filepath.Ext(value))
 	value = strings.ToLower(value)
+	value = transliterateSlug(value)
 
 	var b strings.Builder
 	lastHyphen := false

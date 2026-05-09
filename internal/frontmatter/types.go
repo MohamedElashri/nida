@@ -17,6 +17,7 @@ type Metadata struct {
 	GenerateFeeds bool
 	PaginateBy    int
 	PaginatePath  string
+	Aliases       []string
 	Extra         map[string]any
 }
 
