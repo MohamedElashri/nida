@@ -22,6 +22,7 @@ All notable changes to Nida are documented here.
 * Fixed `DeriveSlug` incorrectly stripping content after dots in names like `"M. Elashri"`
 * Fixed non-ASCII character transliteration in slugs (ϕ, φ, ℓ now map to `ph`, `l`)
 * Fixed taxonomy term pages rendering all items on a single page regardless of `paginate_by`
+* Fixed release build failure by removing CGO-dependent `chai2010/webp` dependency; `resizeImage` now outputs JPEG instead of WebP
 
 ### Changed
 

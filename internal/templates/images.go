@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chai2010/webp"
 	"golang.org/x/image/draw"
 )
 
@@ -93,8 +92,6 @@ func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 
 		// Encode based on format
 		switch ext {
-		case ".webp":
-			err = webp.Encode(outFile, dstImg, &webp.Options{Quality: 85})
 		case ".png":
 			err = png.Encode(outFile, dstImg)
 		case ".gif":
