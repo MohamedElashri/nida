@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/gif"
@@ -12,16 +13,42 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
 	"golang.org/x/image/draw"
 )
 
+const (
+	maxPipelineImageDimension = 8192
+	maxPipelineImagePixels    = 60_000_000
+	maxPipelineImageBytes     = 50 << 20
+)
+
 func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, manifest Manifest) error {
+	info, err := os.Lstat(srcPath)
+	if err != nil {
+		return fmt.Errorf("stat image: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("refuse image symlink %q", srcPath)
+	}
+	if info.Size() > maxPipelineImageBytes {
+		return fmt.Errorf("image exceeds maximum size of %d bytes", maxPipelineImageBytes)
+	}
+
 	data, err := os.ReadFile(srcPath)
 	if err != nil {
 		return fmt.Errorf("read image: %w", err)
 	}
 
-	srcImg, format, err := image.Decode(strings.NewReader(string(data)))
+	cfgImg, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("decode image config: %w", err)
+	}
+	if !validPipelineImageDimensions(cfgImg.Width, cfgImg.Height) {
+		return fmt.Errorf("image dimensions %dx%d exceed limits", cfgImg.Width, cfgImg.Height)
+	}
+
+	srcImg, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("decode image: %w", err)
 	}
@@ -40,7 +67,13 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 		}
 		manifest[relPath] = origFp
 	} else {
-		dstPath := filepath.Join(outputRoot, filepath.FromSlash(relPath))
+		dstPath, err := safepath.Join(outputRoot, relPath)
+		if err != nil {
+			return fmt.Errorf("resolve original image path: %w", err)
+		}
+		if err := safepath.EnsureNoSymlinkPath(outputRoot, dstPath); err != nil {
+			return fmt.Errorf("check original image path: %w", err)
+		}
 		if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 			return fmt.Errorf("create dir: %w", err)
 		}
@@ -50,6 +83,9 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 	}
 
 	for _, targetWidth := range cfg.Pipeline.Images.Widths {
+		if targetWidth <= 0 || targetWidth > maxPipelineImageDimension {
+			return fmt.Errorf("invalid image target width %d", targetWidth)
+		}
 		if targetWidth >= origWidth {
 			continue
 		}
@@ -64,7 +100,13 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 
 		widthSuffix := strconv.Itoa(targetWidth) + "w"
 		resizedRel := base + "." + widthSuffix + ext
-		resizedPath := filepath.Join(outputRoot, filepath.FromSlash(resizedRel))
+		resizedPath, err := safepath.Join(outputRoot, resizedRel)
+		if err != nil {
+			return fmt.Errorf("resolve resized image path: %w", err)
+		}
+		if err := safepath.EnsureNoSymlinkPath(outputRoot, resizedPath); err != nil {
+			return fmt.Errorf("check resized image path: %w", err)
+		}
 
 		if err := os.MkdirAll(filepath.Dir(resizedPath), 0o755); err != nil {
 			return fmt.Errorf("create dir for resized: %w", err)
@@ -108,4 +150,14 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 	}
 
 	return nil
+}
+
+func validPipelineImageDimensions(width, height int) bool {
+	if width <= 0 || height <= 0 {
+		return false
+	}
+	if width > maxPipelineImageDimension || height > maxPipelineImageDimension {
+		return false
+	}
+	return width <= maxPipelineImagePixels/height
 }

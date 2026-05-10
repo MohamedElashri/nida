@@ -3,6 +3,7 @@ package watcher
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -58,6 +59,22 @@ func TestSnapshotSkipsGitDirectory(t *testing.T) {
 	}
 	if _, ok := got["content/post.md"]; !ok {
 		t.Fatalf("expected content file in snapshot, got %+v", got)
+	}
+}
+
+func TestSnapshotRejectsSymlinkedOutputDirectory(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(dir, "linked")); err != nil {
+		t.Skipf("symlink not supported: %v", err)
+	}
+
+	_, err := snapshot(dir, filepath.Join("linked", "public"))
+	if err == nil {
+		t.Fatal("expected symlinked output directory to be rejected")
+	}
+	if !strings.Contains(err.Error(), "refuse symlink path") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

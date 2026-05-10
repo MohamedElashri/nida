@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
@@ -18,27 +19,33 @@ var (
 
 type shortcodeHandler func(args, body string, cfg config.SiteConfig, pathLookup PathLookup) (string, error)
 
+type shortcodeResult struct {
+	Source       string
+	Replacements map[string]string
+}
+
 func blockShortcodeHandlers() map[string]shortcodeHandler {
 	return map[string]shortcodeHandler{
 		"details": renderDetailsShortcode,
 	}
 }
 
-func processShortcodes(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+func processShortcodes(source string, cfg config.SiteConfig, pathLookup PathLookup) (shortcodeResult, error) {
 	source = rawHTMLOpenRe.ReplaceAllString(source, "")
 	source = rawHTMLCloseRe.ReplaceAllString(source, "")
 	return processDetailsShortcodes(source, cfg, pathLookup)
 }
 
-func processDetailsShortcodes(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+func processDetailsShortcodes(source string, cfg config.SiteConfig, pathLookup PathLookup) (shortcodeResult, error) {
 	var out strings.Builder
 	remaining := source
+	replacements := map[string]string{}
 
 	for {
 		match := detailsStartRe.FindStringSubmatchIndex(remaining)
 		if match == nil {
 			out.WriteString(remaining)
-			return out.String(), nil
+			return shortcodeResult{Source: out.String(), Replacements: replacements}, nil
 		}
 
 		out.WriteString(remaining[:match[0]])
@@ -46,17 +53,21 @@ func processDetailsShortcodes(source string, cfg config.SiteConfig, pathLookup P
 		bodyStart := match[1]
 		endStart, endEnd := findDetailsEnd(remaining[bodyStart:])
 		if endStart < 0 {
-			return "", fmt.Errorf("render markdown: unclosed details shortcode")
+			return shortcodeResult{}, fmt.Errorf("render markdown: unclosed details shortcode")
 		}
 
 		body := remaining[bodyStart : bodyStart+endStart]
 		handler := blockShortcodeHandlers()["details"]
 		rendered, err := handler(summaryValue(args), body, cfg, pathLookup)
 		if err != nil {
-			return "", err
+			return shortcodeResult{}, err
 		}
 
-		out.WriteString(rendered)
+		placeholder := "@@NIDA_SHORTCODE_HTML_" + strconv.Itoa(len(replacements)) + "@@"
+		replacements[placeholder] = rendered
+		out.WriteString("\n\n")
+		out.WriteString(placeholder)
+		out.WriteString("\n\n")
 		remaining = remaining[bodyStart+endEnd:]
 	}
 }
@@ -75,11 +86,11 @@ func renderShortcodeBody(source string, cfg config.SiteConfig, pathLookup PathLo
 	if err != nil {
 		return "", err
 	}
-	html, err := renderMarkdownCore(processed, cfg, pathLookup)
+	html, err := renderMarkdownCore(processed.Source, cfg, pathLookup)
 	if err != nil {
 		return "", fmt.Errorf("render details shortcode body: %w", err)
 	}
-	return html, nil
+	return restoreShortcodeHTML(html, processed.Replacements), nil
 }
 
 func renderDetailsShortcode(summary, body string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
@@ -112,4 +123,13 @@ func renderDetails(summary, body string) string {
 	b.WriteString("  </div>\n")
 	b.WriteString("</details>\n")
 	return b.String()
+}
+
+func restoreShortcodeHTML(rendered string, replacements map[string]string) string {
+	for placeholder, replacement := range replacements {
+		rendered = strings.ReplaceAll(rendered, "<p>"+placeholder+"</p>\n", replacement)
+		rendered = strings.ReplaceAll(rendered, "<p>"+placeholder+"</p>", replacement)
+		rendered = strings.ReplaceAll(rendered, placeholder, replacement)
+	}
+	return rendered
 }

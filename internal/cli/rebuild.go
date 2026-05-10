@@ -15,6 +15,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
+	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/searchindex"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/sitemap"
@@ -100,7 +101,10 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	if err != nil {
 		return buildResult{}, err
 	}
-	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
+	contentRoot, err := safepath.Join(absSiteRoot, cfg.ContentDir)
+	if err != nil {
+		return buildResult{}, err
+	}
 	contentPrefix := filepath.ToSlash(cfg.ContentDir + "/")
 
 	pathLookup := buildPathLookupFromPages(previous.state.Pages, previous.state.Sections, cfg)
@@ -118,7 +122,10 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 		}
 
 		relPath := strings.TrimPrefix(normalized, contentPrefix)
-		fullPath := filepath.Join(contentRoot, filepath.FromSlash(relPath))
+		fullPath, err := safepath.Join(contentRoot, relPath)
+		if err != nil {
+			return buildResult{}, err
+		}
 
 		info, statErr := os.Stat(fullPath)
 		if statErr != nil {

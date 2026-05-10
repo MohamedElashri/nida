@@ -83,6 +83,20 @@ func TestDocumentDirectionTemplateHelper(t *testing.T) {
 	}
 }
 
+func TestReadFileRejectsAbsolutePath(t *testing.T) {
+	got, err := executeTemplateText(`{{ readFile "/etc/passwd" }}`, nil)
+	if err == nil {
+		t.Fatalf("expected absolute readFile path to fail, got %q", got)
+	}
+}
+
+func TestReadFileRejectsTraversal(t *testing.T) {
+	got, err := executeTemplateText(`{{ readFile "../secret.txt" }}`, nil)
+	if err == nil {
+		t.Fatalf("expected traversal readFile path to fail, got %q", got)
+	}
+}
+
 func osMkdirAll(path string, mode uint32) error {
 	return os.MkdirAll(path, os.FileMode(mode))
 }

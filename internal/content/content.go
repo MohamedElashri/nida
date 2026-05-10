@@ -11,6 +11,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/frontmatter"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 func Discover(siteRoot string, cfg config.SiteConfig) ([]Page, []Section, error) {
@@ -19,7 +20,13 @@ func Discover(siteRoot string, cfg config.SiteConfig) ([]Page, []Section, error)
 		return nil, nil, fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
+	contentRoot, err := safepath.Join(absSiteRoot, cfg.ContentDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve content dir %q: %w", cfg.ContentDir, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, contentRoot); err != nil {
+		return nil, nil, fmt.Errorf("check content dir %q: %w", cfg.ContentDir, err)
+	}
 	return discoverAll(contentRoot, cfg)
 }
 
@@ -43,6 +50,9 @@ func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Page, []Section, 
 		}
 
 		if d.IsDir() {
+			return nil
+		}
+		if d.Type()&fs.ModeSymlink != 0 {
 			return nil
 		}
 
@@ -142,21 +152,21 @@ func synthesizeImplicitSections(contentRoot string, pages []Page, sections []Sec
 
 		base := filepath.Base(dirPath)
 		implicit = append(implicit, Section{
-			SourcePath:        "",
-			RelativePath:      filepath.Join(contentRoot, dirPath, "_index.md"),
-			SectionPath:       dirPath,
-			Title:             strings.Title(strings.ReplaceAll(base, "-", " ")),
-			Slug:              DeriveSlug(base),
-			URL:               "/" + dirPath + "/",
-			PaginateBy:        0,
-			PaginatePath:      "page",
-			PaginateReversed:  false,
-			SortBy:            "date",
-			Transparent:       false,
-			GenerateFeeds:     false,
-			Sections:          nil,
-			Pages:             nil,
-			Extra:             map[string]any{},
+			SourcePath:       "",
+			RelativePath:     filepath.Join(contentRoot, dirPath, "_index.md"),
+			SectionPath:      dirPath,
+			Title:            strings.Title(strings.ReplaceAll(base, "-", " ")),
+			Slug:             DeriveSlug(base),
+			URL:              "/" + dirPath + "/",
+			PaginateBy:       0,
+			PaginatePath:     "page",
+			PaginateReversed: false,
+			SortBy:           "date",
+			Transparent:      false,
+			GenerateFeeds:    false,
+			Sections:         nil,
+			Pages:            nil,
+			Extra:            map[string]any{},
 		})
 	}
 
@@ -188,23 +198,23 @@ func loadSection(contentRoot, sourcePath string, cfg config.SiteConfig) (Section
 	slug := DeriveSlug(filepath.Base(filepath.Dir(sourcePath)))
 
 	return Section{
-		SourcePath:        sourcePath,
-		RelativePath:      filepath.ToSlash(relativePath),
-		SectionPath:       sectionPath,
-		BodyMarkdown:      doc.BodyMarkdown,
-		Title:             strings.TrimSpace(meta.Title),
-		Description:       strings.TrimSpace(meta.Description),
-		Slug:              slug,
-		Draft:             meta.Draft,
-		Template:          strings.TrimSpace(meta.Template),
-		PageTemplate:      strings.TrimSpace(meta.PageTemplate),
-		PaginateBy:        meta.PaginateBy,
-		PaginatePath:      strings.TrimSpace(defaultString(meta.PaginatePath, "page")),
-		PaginateReversed:  false,
-		SortBy:            strings.TrimSpace(defaultString(meta.SortBy, "date")),
-		Transparent:       meta.Transparent,
-		GenerateFeeds:     meta.GenerateFeeds,
-		Extra:             meta.Extra,
+		SourcePath:       sourcePath,
+		RelativePath:     filepath.ToSlash(relativePath),
+		SectionPath:      sectionPath,
+		BodyMarkdown:     doc.BodyMarkdown,
+		Title:            strings.TrimSpace(meta.Title),
+		Description:      strings.TrimSpace(meta.Description),
+		Slug:             slug,
+		Draft:            meta.Draft,
+		Template:         strings.TrimSpace(meta.Template),
+		PageTemplate:     strings.TrimSpace(meta.PageTemplate),
+		PaginateBy:       meta.PaginateBy,
+		PaginatePath:     strings.TrimSpace(defaultString(meta.PaginatePath, "page")),
+		PaginateReversed: false,
+		SortBy:           strings.TrimSpace(defaultString(meta.SortBy, "date")),
+		Transparent:      meta.Transparent,
+		GenerateFeeds:    meta.GenerateFeeds,
+		Extra:            meta.Extra,
 	}, nil
 }
 
@@ -321,6 +331,9 @@ func collectBundleResources(dir string) ([]string, error) {
 	var resources []string
 	for _, entry := range entries {
 		if entry.IsDir() {
+			continue
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
 			continue
 		}
 		name := entry.Name()

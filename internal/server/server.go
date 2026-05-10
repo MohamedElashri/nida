@@ -6,14 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 type Instance struct {
@@ -33,7 +37,7 @@ func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker
 		return nil, fmt.Errorf("resolve output directory %q: %w", outputDir, err)
 	}
 
-	fileServer := http.FileServer(http.Dir(absOutputDir))
+	fileServer := http.FileServer(noSymlinkFS{root: absOutputDir})
 	notFoundPath := filepath.Join(absOutputDir, "404.html")
 
 	fileHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +49,10 @@ func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker
 			return
 		}
 
+		if err := safepath.EnsureNoSymlinkPath(absOutputDir, notFoundPath); err != nil {
+			writeRecordedResponse(w, rec, injectLiveReload)
+			return
+		}
 		body, err := os.ReadFile(notFoundPath)
 		if err != nil {
 			writeRecordedResponse(w, rec, injectLiveReload)
@@ -75,6 +83,27 @@ func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker
 	return mux, nil
 }
 
+type noSymlinkFS struct {
+	root string
+}
+
+func (f noSymlinkFS) Open(name string) (http.File, error) {
+	clean := path.Clean("/" + name)
+	rel := strings.TrimPrefix(clean, "/")
+	target := f.root
+	if rel != "" && rel != "." {
+		var err error
+		target, err = safepath.Join(f.root, rel)
+		if err != nil {
+			return nil, fs.ErrPermission
+		}
+	}
+	if err := safepath.EnsureNoSymlinkPath(f.root, target); err != nil {
+		return nil, fs.ErrPermission
+	}
+	return http.Dir(f.root).Open(name)
+}
+
 func Start(ctx context.Context, outputDir, host string, port int, livereload bool) (*Instance, error) {
 	var reloader *reloadBroker
 	if livereload {
@@ -92,7 +121,10 @@ func Start(ctx context.Context, outputDir, host string, port int, livereload boo
 	}
 
 	srv := &http.Server{
-		Handler: handler,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	instance := &Instance{

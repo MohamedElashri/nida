@@ -9,6 +9,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/render"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 type Artifact struct {
@@ -44,6 +45,9 @@ func WritePages(siteRoot string, cfg config.SiteConfig, pages []render.Page) err
 		if err != nil {
 			return fmt.Errorf("resolve output path for %q: %w", page.URL, err)
 		}
+		if err := safepath.EnsureNoSymlinkPath(outputDir, targetPath); err != nil {
+			return fmt.Errorf("check output path for %q: %w", page.URL, err)
+		}
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 			return fmt.Errorf("create output directory for %q: %w", targetPath, err)
 		}
@@ -66,6 +70,9 @@ func RemovePages(siteRoot string, cfg config.SiteConfig, routes []string) error 
 		if err != nil {
 			return fmt.Errorf("resolve output path for %q: %w", route, err)
 		}
+		if err := safepath.EnsureNoSymlinkPath(outputDir, targetPath); err != nil {
+			return fmt.Errorf("check output path for %q: %w", route, err)
+		}
 		if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("remove rendered page %q: %w", targetPath, err)
 		}
@@ -83,7 +90,13 @@ func RemoveFile(siteRoot string, cfg config.SiteConfig, relativePath string) err
 		return fmt.Errorf("relative output path is required")
 	}
 
-	targetPath := filepath.Join(outputDir, filepath.FromSlash(relativePath))
+	targetPath, err := safepath.Join(outputDir, relativePath)
+	if err != nil {
+		return fmt.Errorf("resolve output path for %q: %w", relativePath, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(outputDir, targetPath); err != nil {
+		return fmt.Errorf("check output path for %q: %w", relativePath, err)
+	}
 	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove output file %q: %w", targetPath, err)
 	}
@@ -100,7 +113,13 @@ func WriteFile(siteRoot string, cfg config.SiteConfig, relativePath string, cont
 		return fmt.Errorf("relative output path is required")
 	}
 
-	targetPath := filepath.Join(outputDir, filepath.FromSlash(relativePath))
+	targetPath, err := safepath.Join(outputDir, relativePath)
+	if err != nil {
+		return fmt.Errorf("resolve output path for %q: %w", relativePath, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(outputDir, targetPath); err != nil {
+		return fmt.Errorf("check output path for %q: %w", relativePath, err)
+	}
 	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 		return fmt.Errorf("create output directory for %q: %w", targetPath, err)
 	}
@@ -132,7 +151,10 @@ func ValidateWritePlan(siteRoot string, cfg config.SiteConfig, pages []render.Pa
 		if artifact.Path == "" {
 			return fmt.Errorf("artifact output path is required")
 		}
-		targetPath := filepath.Join(outputDir, filepath.FromSlash(artifact.Path))
+		targetPath, err := safepath.Join(outputDir, artifact.Path)
+		if err != nil {
+			return fmt.Errorf("resolve artifact output path for %q: %w", artifact.Path, err)
+		}
 		if existing, ok := seen[targetPath]; ok {
 			return fmt.Errorf("output path conflict for %q between %s and artifact %q", targetPath, existing, artifact.Path)
 		}
@@ -147,7 +169,13 @@ func outputDirectory(siteRoot string, cfg config.SiteConfig) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
-	outputDir := filepath.Join(absSiteRoot, cfg.OutputDir)
+	outputDir, err := safepath.Join(absSiteRoot, cfg.OutputDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve output directory %q: %w", cfg.OutputDir, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outputDir); err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("check output directory %q: %w", cfg.OutputDir, err)
+	}
 	return outputDir, nil
 }
 

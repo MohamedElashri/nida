@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/url"
 	"strings"
+
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 func Validate(cfg SiteConfig) error {
@@ -15,6 +17,8 @@ func Validate(cfg SiteConfig) error {
 		parsed, err := url.Parse(cfg.BaseURL)
 		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 			problems = append(problems, "base_url must be an absolute URL")
+		} else if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			problems = append(problems, "base_url scheme must be http or https")
 		}
 	}
 
@@ -52,18 +56,31 @@ func Validate(cfg SiteConfig) error {
 
 	requiredPaths := map[string]string{
 		"content_dir":      cfg.ContentDir,
-		"template_dir":    cfg.TemplateDir,
-		"static_dir":      cfg.StaticDir,
+		"template_dir":     cfg.TemplateDir,
+		"static_dir":       cfg.StaticDir,
 		"output_dir":       cfg.OutputDir,
-		"rss.filename":    cfg.RSS.Filename,
-		"atom.filename":   cfg.Atom.Filename,
+		"themes_dir":       cfg.ThemesDir,
+		"rss.filename":     cfg.RSS.Filename,
+		"atom.filename":    cfg.Atom.Filename,
 		"sitemap.filename": cfg.Sitemap.Filename,
 		"robots.filename":  cfg.Robots.Filename,
+		"search.filename":  cfg.Search.Filename,
 	}
 
 	for field, value := range requiredPaths {
-		if strings.TrimSpace(value) == "" {
-			problems = append(problems, field+" must not be empty")
+		allowDot := field != "output_dir" && !strings.Contains(field, ".filename")
+		if err := safepath.ValidateRelative(field, value, allowDot); err != nil {
+			problems = append(problems, err.Error())
+		}
+	}
+	if strings.TrimSpace(cfg.Theme) != "" {
+		if err := safepath.ValidateRelative("theme", cfg.Theme, false); err != nil {
+			problems = append(problems, err.Error())
+		}
+	}
+	if cfg.Pipeline.SCSS.Enabled {
+		if err := safepath.ValidateRelative("pipeline.scss.entry_dir", cfg.Pipeline.SCSS.EntryDir, false); err != nil {
+			problems = append(problems, err.Error())
 		}
 	}
 

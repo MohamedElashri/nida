@@ -1,8 +1,9 @@
 package config
 
 import (
-	"path/filepath"
 	"strings"
+
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 func normalize(cfg *SiteConfig) {
@@ -15,11 +16,15 @@ func normalize(cfg *SiteConfig) {
 	cfg.TemplateDir = cleanRelativePath(cfg.TemplateDir)
 	cfg.StaticDir = cleanRelativePath(cfg.StaticDir)
 	cfg.OutputDir = cleanRelativePath(cfg.OutputDir)
+	cfg.ThemesDir = cleanRelativePath(cfg.ThemesDir)
+	cfg.Theme = strings.TrimSpace(cfg.Theme)
 	cfg.SyntaxTheme = strings.TrimSpace(cfg.SyntaxTheme)
 	cfg.RSS.Filename = cleanRelativePath(cfg.RSS.Filename)
 	cfg.Atom.Filename = cleanRelativePath(cfg.Atom.Filename)
 	cfg.Sitemap.Filename = cleanRelativePath(cfg.Sitemap.Filename)
 	cfg.Robots.Filename = cleanRelativePath(cfg.Robots.Filename)
+	cfg.Search.Filename = cleanRelativePath(cfg.Search.Filename)
+	cfg.Pipeline.SCSS.EntryDir = cleanRelativePath(cfg.Pipeline.SCSS.EntryDir)
 	cfg.Server.Host = strings.TrimSpace(cfg.Server.Host)
 
 	if cfg.Sections.PaginatePath == "" {
@@ -35,9 +40,5 @@ func normalize(cfg *SiteConfig) {
 }
 
 func cleanRelativePath(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return value
-	}
-	return filepath.Clean(value)
+	return safepath.CleanRelative(value)
 }

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 type Options struct {
@@ -75,7 +78,10 @@ func snapshot(siteRoot, outputDir string) (map[string]fileState, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
-	absOutputDir := filepath.Join(absSiteRoot, outputDir)
+	absOutputDir, err := resolveOutputRoot(absSiteRoot, outputDir)
+	if err != nil {
+		return nil, err
+	}
 
 	files := make(map[string]fileState)
 	err = filepath.WalkDir(absSiteRoot, func(path string, d fs.DirEntry, walkErr error) error {
@@ -114,6 +120,21 @@ func snapshot(siteRoot, outputDir string) (map[string]fileState, error) {
 	}
 
 	return files, nil
+}
+
+func resolveOutputRoot(absSiteRoot, outputDir string) (string, error) {
+	if strings.TrimSpace(outputDir) == "" {
+		return "", nil
+	}
+
+	absOutputDir, err := safepath.Join(absSiteRoot, outputDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve output dir %q: %w", outputDir, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, absOutputDir); err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("check output dir %q: %w", outputDir, err)
+	}
+	return absOutputDir, nil
 }
 
 func shouldSkipPath(path, outputDir string) bool {

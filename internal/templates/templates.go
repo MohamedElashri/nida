@@ -13,6 +13,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 const (
@@ -33,13 +34,25 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 	var templateRoots []string
 
 	if cfg.Theme != "" {
-		themeRoot := filepath.Join(absSiteRoot, cfg.ThemesDir, cfg.Theme, "templates")
+		themeRoot, err := safepath.Join(absSiteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "templates"))
+		if err != nil {
+			return Set{}, fmt.Errorf("resolve theme templates: %w", err)
+		}
+		if err := safepath.EnsureNoSymlinkPath(absSiteRoot, themeRoot); err != nil && !os.IsNotExist(err) {
+			return Set{}, fmt.Errorf("check theme templates: %w", err)
+		}
 		if _, err := os.Stat(themeRoot); err == nil {
 			templateRoots = append(templateRoots, themeRoot)
 		}
 	}
 
-	siteTemplateRoot := filepath.Join(absSiteRoot, cfg.TemplateDir)
+	siteTemplateRoot, err := safepath.Join(absSiteRoot, cfg.TemplateDir)
+	if err != nil {
+		return Set{}, fmt.Errorf("resolve template dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, siteTemplateRoot); err != nil {
+		return Set{}, fmt.Errorf("check template dir: %w", err)
+	}
 	templateRoots = append(templateRoots, siteTemplateRoot)
 
 	basePath := filepath.Join(siteTemplateRoot, baseTemplateFile)
@@ -64,6 +77,9 @@ func loadFromRoots(roots []string, siteRoot string) (Set, error) {
 			}
 			if d.IsDir() || filepath.Ext(path) != templateExt {
 				return nil
+			}
+			if d.Type()&fs.ModeSymlink != 0 {
+				return fmt.Errorf("refuse template symlink %q", path)
 			}
 
 			relative, err := filepath.Rel(root, path)
@@ -271,19 +287,23 @@ func groupByYear(pages []content.Page) []YearGroup {
 }
 
 func readFileFunc(siteRoot string) func(string) (string, error) {
+	absSiteRoot, err := filepath.Abs(siteRoot)
+	if err != nil {
+		absSiteRoot = siteRoot
+	}
 	return func(path string) (string, error) {
-		// Try site root relative first
-		fullPath := filepath.Join(siteRoot, filepath.FromSlash(path))
+		fullPath, err := safepath.Join(absSiteRoot, path)
+		if err != nil {
+			return "", err
+		}
+		if err := safepath.EnsureNoSymlinkPath(absSiteRoot, fullPath); err != nil {
+			return "", err
+		}
+		if err := safepath.RejectSymlink(fullPath); err != nil {
+			return "", err
+		}
 		data, err := os.ReadFile(fullPath)
 		if err != nil {
-			// If not found, try as absolute
-			if os.IsNotExist(err) {
-				data, err = os.ReadFile(filepath.FromSlash(path))
-				if err != nil {
-					return "", err
-				}
-				return string(data), nil
-			}
 			return "", err
 		}
 		return string(data), nil

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 func buildTheme(siteRoot string, cfg config.SiteConfig) (Theme, error) {
@@ -46,7 +47,13 @@ func buildTheme(siteRoot string, cfg config.SiteConfig) (Theme, error) {
 
 func loadInlineCSS(siteRoot string, cfg config.SiteConfig) (string, error) {
 	if cfg.Theme != "" {
-		themeCSS := filepath.Join(siteRoot, cfg.ThemesDir, cfg.Theme, "style.css.html")
+		themeCSS, err := safepath.Join(siteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "style.css.html"))
+		if err != nil {
+			return "", err
+		}
+		if err := safepath.EnsureNoSymlinkPath(siteRoot, themeCSS); err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
 		expanded, err := expandTemplateIncludes(themeCSS)
 		if err == nil {
 			return expanded, nil
@@ -56,12 +63,24 @@ func loadInlineCSS(siteRoot string, cfg config.SiteConfig) (string, error) {
 		}
 	}
 
-	stylePath := filepath.Join(siteRoot, cfg.TemplateDir, "style.css.html")
+	stylePath, err := safepath.Join(siteRoot, filepath.Join(cfg.TemplateDir, "style.css.html"))
+	if err != nil {
+		return "", err
+	}
+	if err := safepath.EnsureNoSymlinkPath(siteRoot, stylePath); err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
 	expanded, err := expandTemplateIncludes(stylePath)
 	if err == nil {
 		return expanded, nil
 	}
-	fallbackPath := filepath.Join(siteRoot, cfg.StaticDir, "site.css")
+	fallbackPath, joinErr := safepath.Join(siteRoot, filepath.Join(cfg.StaticDir, "site.css"))
+	if joinErr != nil {
+		return "", joinErr
+	}
+	if err := safepath.EnsureNoSymlinkPath(siteRoot, fallbackPath); err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
 	data, fallbackErr := os.ReadFile(fallbackPath)
 	if fallbackErr != nil {
 		return "", err
@@ -70,6 +89,12 @@ func loadInlineCSS(siteRoot string, cfg config.SiteConfig) (string, error) {
 }
 
 func expandTemplateIncludes(path string) (string, error) {
+	if err := safepath.EnsureNoSymlinkPath(filepath.Dir(path), path); err != nil {
+		return "", err
+	}
+	if err := safepath.RejectSymlink(path); err != nil {
+		return "", err
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -88,7 +113,10 @@ func expandTemplateIncludes(path string) (string, error) {
 	for _, match := range matches {
 		b.WriteString(text[last:match[0]])
 		includeName := text[match[2]:match[3]]
-		includePath := filepath.Join(dir, filepath.FromSlash(includeName))
+		includePath, err := safepath.Join(dir, includeName)
+		if err != nil {
+			return "", err
+		}
 		expanded, err := expandTemplateIncludes(includePath)
 		if err != nil {
 			if os.IsNotExist(err) {

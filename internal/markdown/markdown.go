@@ -3,9 +3,11 @@ package markdown
 import (
 	"bytes"
 	"fmt"
-	"regexp"
 	stdhtml "html"
+	"net/url"
+	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
@@ -24,24 +26,32 @@ func Render(source string, cfg config.SiteConfig, pathLookup PathLookup) (string
 	if err != nil {
 		return "", err
 	}
-	return renderMarkdownCore(processed, cfg, pathLookup)
+	rendered, err := renderMarkdownCore(processed.Source, cfg, pathLookup)
+	if err != nil {
+		return "", err
+	}
+	return restoreShortcodeHTML(rendered, processed.Replacements), nil
 }
 
 func renderMarkdownCore(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+	options := []renderer.Option{
+		renderer.WithNodeRenderers(
+			util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
+			util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup}, 600),
+			util.Prioritized(&imageRenderer{pathLookup: pathLookup}, 700),
+		),
+		renderhtml.WithHardWraps(),
+	}
+	if cfg.Markdown.UnsafeHTML {
+		options = append(options, renderhtml.WithUnsafe())
+	}
+
 	engine := goldmark.New(
 		goldmark.WithExtensions(extension.GFM, extension.Footnote),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 		),
-		goldmark.WithRendererOptions(
-			renderer.WithNodeRenderers(
-				util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
-				util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup}, 600),
-				util.Prioritized(&imageRenderer{pathLookup: pathLookup}, 700),
-			),
-			renderhtml.WithHardWraps(),
-			renderhtml.WithUnsafe(),
-		),
+		goldmark.WithRendererOptions(options...),
 	)
 
 	var buf bytes.Buffer
@@ -66,10 +76,11 @@ func (r *linkRenderer) renderLink(w util.BufWriter, source []byte, node ast.Node
 	if entering {
 		destination := string(n.Destination)
 		resolved := ResolveInternalPath(destination, r.pathLookup)
+		resolved = safeMarkdownURL(resolved, linkURL)
 		if _, err := w.WriteString(`<a href="` + string(util.EscapeHTML([]byte(resolved))) + `"`); err != nil {
 			return ast.WalkStop, err
 		}
-		if isExternalLink(destination) {
+		if isExternalLink(resolved) {
 			if r.cfg.ExternalLinksTargetBlank {
 				if _, err := w.WriteString(` target="_blank"`); err != nil {
 					return ast.WalkStop, err
@@ -101,6 +112,65 @@ func (r *linkRenderer) renderLink(w util.BufWriter, source []byte, node ast.Node
 func isExternalLink(destination string) bool {
 	destination = strings.ToLower(strings.TrimSpace(destination))
 	return strings.HasPrefix(destination, "http://") || strings.HasPrefix(destination, "https://")
+}
+
+type markdownURLKind int
+
+const (
+	linkURL markdownURLKind = iota
+	imageURL
+)
+
+func safeMarkdownURL(destination string, kind markdownURLKind) string {
+	trimmed := strings.TrimSpace(stdhtml.UnescapeString(destination))
+	if trimmed == "" || containsControl(trimmed) {
+		if kind == imageURL {
+			return ""
+		}
+		return "#"
+	}
+	if strings.HasPrefix(trimmed, "//") {
+		if kind == imageURL {
+			return ""
+		}
+		return "#"
+	}
+	if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "/") {
+		return trimmed
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		if kind == imageURL {
+			return ""
+		}
+		return "#"
+	}
+	if parsed.Scheme == "" {
+		return trimmed
+	}
+
+	switch strings.ToLower(parsed.Scheme) {
+	case "http", "https":
+		return trimmed
+	case "mailto", "tel":
+		if kind == linkURL {
+			return trimmed
+		}
+	}
+	if kind == imageURL {
+		return ""
+	}
+	return "#"
+}
+
+func containsControl(value string) bool {
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return true
+		}
+	}
+	return false
 }
 
 func externalLinkRel(cfg config.MarkdownConfig) string {
@@ -262,6 +332,7 @@ func (r *imageRenderer) renderImage(w util.BufWriter, source []byte, node ast.No
 	n := node.(*ast.Image)
 	dest := string(n.Destination)
 	resolved := ResolveInternalPath(dest, r.pathLookup)
+	resolved = safeMarkdownURL(resolved, imageURL)
 	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(n.Text(source))) + `" loading="lazy" decoding="async"`)
 	if n.Title != nil {
 		_, _ = w.WriteString(` title="` + string(util.EscapeHTML(n.Title)) + `"`)

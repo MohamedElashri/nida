@@ -5,14 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pelletier/go-toml/v2"
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/pelletier/go-toml/v2"
 )
 
 type ThemeConfig struct {
-	Name   string         `toml:"name"`
-	Extends string        `toml:"extends"`
-	Extra  map[string]any `toml:"extra"`
+	Name    string         `toml:"name"`
+	Extends string         `toml:"extends"`
+	Extra   map[string]any `toml:"extra"`
 }
 
 func loadThemeChain(siteRoot string, cfg config.SiteConfig) ([]ThemeConfig, error) {
@@ -20,7 +21,13 @@ func loadThemeChain(siteRoot string, cfg config.SiteConfig) ([]ThemeConfig, erro
 		return nil, nil
 	}
 
-	themesRoot := filepath.Join(siteRoot, cfg.ThemesDir)
+	themesRoot, err := safepath.Join(siteRoot, cfg.ThemesDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve themes root: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(siteRoot, themesRoot); err != nil {
+		return nil, fmt.Errorf("check themes root: %w", err)
+	}
 	resolved, err := resolveThemeChain(cfg.Theme, themesRoot, nil)
 	if err != nil {
 		return nil, fmt.Errorf("resolve theme chain: %w", err)
@@ -45,7 +52,13 @@ func resolveThemeChain(name, themesRoot string, visited []string) ([]string, err
 		}
 	}
 
-	themePath := filepath.Join(themesRoot, name)
+	themePath, err := safepath.Join(themesRoot, name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve theme %q: %w", name, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(themesRoot, themePath); err != nil {
+		return nil, fmt.Errorf("check theme %q: %w", name, err)
+	}
 	if _, err := os.Stat(themePath); err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("theme %q not found in %q", name, themesRoot)
@@ -78,7 +91,14 @@ func resolveThemeChain(name, themesRoot string, visited []string) ([]string, err
 }
 
 func loadThemeConfig(themesRoot, name string) (ThemeConfig, error) {
-	configPath := filepath.Join(themesRoot, name, "config.toml")
+	themePath, err := safepath.Join(themesRoot, name)
+	if err != nil {
+		return ThemeConfig{}, fmt.Errorf("resolve theme %q: %w", name, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(themesRoot, themePath); err != nil {
+		return ThemeConfig{}, fmt.Errorf("check theme %q: %w", name, err)
+	}
+	configPath := filepath.Join(themePath, "config.toml")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return ThemeConfig{}, fmt.Errorf("read theme config %q: %w", configPath, err)

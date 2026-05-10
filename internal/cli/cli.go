@@ -21,6 +21,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
+	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/searchindex"
 	"github.com/MohamedElashri/nida/internal/server"
 	"github.com/MohamedElashri/nida/internal/site"
@@ -136,7 +137,17 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	outputDir := filepath.Join(opts.siteRoot, current.cfg.OutputDir)
+	absSiteRoot, err := filepath.Abs(opts.siteRoot)
+	if err != nil {
+		return writeCommandError(stderr, fmt.Errorf("resolve site root %q: %w", opts.siteRoot, err))
+	}
+	outputDir, err := safepath.Join(absSiteRoot, current.cfg.OutputDir)
+	if err != nil {
+		return writeCommandError(stderr, fmt.Errorf("resolve output dir: %w", err))
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outputDir); err != nil {
+		return writeCommandError(stderr, fmt.Errorf("check output dir: %w", err))
+	}
 	instance, err := server.Start(ctx, outputDir, current.cfg.Server.Host, current.cfg.Server.Port, current.cfg.Server.Livereload)
 	if err != nil {
 		return writeCommandError(stderr, err)

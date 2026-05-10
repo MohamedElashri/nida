@@ -86,6 +86,39 @@ title = "Missing URL"
 	}
 }
 
+func TestLoadRejectsEscapingOutputDir(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, `
+base_url = "https://example.com"
+title = "Bad Paths"
+output_dir = ".."
+`)
+
+	_, _, err := Load(Options{SiteRoot: dir})
+	if err == nil {
+		t.Fatal("expected unsafe output_dir validation error")
+	}
+	if !strings.Contains(err.Error(), "output_dir must not escape its root") {
+		t.Fatalf("expected output_dir validation error, got %v", err)
+	}
+}
+
+func TestLoadRejectsNonHTTPBaseURL(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, `
+base_url = "javascript://example.com"
+title = "Bad URL"
+`)
+
+	_, _, err := Load(Options{SiteRoot: dir})
+	if err == nil {
+		t.Fatal("expected unsafe base_url validation error")
+	}
+	if !strings.Contains(err.Error(), "base_url scheme must be http or https") {
+		t.Fatalf("expected base_url scheme validation error, got %v", err)
+	}
+}
+
 func TestLoadReportsParseErrors(t *testing.T) {
 	dir := t.TempDir()
 	writeConfig(t, dir, `

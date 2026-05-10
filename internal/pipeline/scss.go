@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
-func compileSCSS(staticRoot, outputRoot string, cfg config.SiteConfig) error {
+func compileSCSS(siteRoot, staticRoot, outputRoot string, cfg config.SiteConfig) error {
 	entryDir := cfg.Pipeline.SCSS.EntryDir
 	if entryDir == "" {
 		entryDir = "css"
@@ -19,13 +20,19 @@ func compileSCSS(staticRoot, outputRoot string, cfg config.SiteConfig) error {
 	scssRoots := []string{}
 
 	if cfg.Theme != "" {
-		themeSCSSRoot := filepath.Join(staticRoot, "..", cfg.ThemesDir, cfg.Theme, "scss")
+		themeSCSSRoot, err := safepath.Join(siteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "scss"))
+		if err != nil {
+			return fmt.Errorf("resolve theme scss dir: %w", err)
+		}
 		if _, err := os.Stat(themeSCSSRoot); err == nil {
 			scssRoots = append(scssRoots, themeSCSSRoot)
 		}
 	}
 
-	siteSCSSRoot := filepath.Join(staticRoot, entryDir)
+	siteSCSSRoot, err := safepath.Join(staticRoot, entryDir)
+	if err != nil {
+		return fmt.Errorf("resolve site scss dir: %w", err)
+	}
 	if _, err := os.Stat(siteSCSSRoot); err == nil {
 		scssRoots = append(scssRoots, siteSCSSRoot)
 	}
@@ -52,7 +59,10 @@ func compileSCSSDir(scssRoot, outputRoot, entryDir string) error {
 		return fmt.Errorf("SCSS compilation requires the 'sass' CLI (https://sass-lang.com/install): %w", err)
 	}
 
-	cssOutput := filepath.Join(outputRoot, entryDir)
+	cssOutput, err := safepath.Join(outputRoot, entryDir)
+	if err != nil {
+		return fmt.Errorf("resolve css output dir: %w", err)
+	}
 	if err := os.MkdirAll(cssOutput, 0o755); err != nil {
 		return fmt.Errorf("create css output dir: %w", err)
 	}

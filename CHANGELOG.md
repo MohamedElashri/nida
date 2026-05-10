@@ -2,6 +2,17 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.0] - 2026-05-10
+
+### Security
+
+* Harden output path handling so configured directories and generated artifacts cannot escape the site/output root
+* Disable unsafe Markdown HTML by default; set `markdown.unsafe_html = true` to preserve trusted raw HTML behavior
+* Sanitize Markdown link and image URL schemes to block dangerous protocols
+* Restrict template `readFile` and CSS include helpers to paths under the site tree
+* Refuse symlinked site input/output paths in static assets, bundles, templates, generated output, and the dev server
+* Add image processing size/dimension limits and local dev server header timeouts
+
 ## [0.4.6] - 2026-05-09
 
 ### Added

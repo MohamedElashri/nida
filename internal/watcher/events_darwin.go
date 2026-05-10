@@ -16,7 +16,10 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 	if err != nil {
 		return fmt.Errorf("resolve site root %q: %w", opts.SiteRoot, err)
 	}
-	outputRoot := filepath.Join(absSiteRoot, opts.OutputDir)
+	outputRoot, err := resolveOutputRoot(absSiteRoot, opts.OutputDir)
+	if err != nil {
+		return err
+	}
 
 	kq, err := syscall.Kqueue()
 	if err != nil {

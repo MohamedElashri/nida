@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 type BundlePage struct {
@@ -23,12 +24,29 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 		return fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
+	outputRoot, err := safepath.Join(absSiteRoot, cfg.OutputDir)
+	if err != nil {
+		return fmt.Errorf("resolve output dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outputRoot); err != nil {
+		return fmt.Errorf("check output dir: %w", err)
+	}
 
-	staticRoots := []string{filepath.Join(absSiteRoot, cfg.StaticDir)}
+	staticRoot, err := safepath.Join(absSiteRoot, cfg.StaticDir)
+	if err != nil {
+		return fmt.Errorf("resolve static dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, staticRoot); err != nil {
+		return fmt.Errorf("check static dir: %w", err)
+	}
+	staticRoots := []string{staticRoot}
 
 	if cfg.Theme != "" {
-		themeStaticRoot := filepath.Join(absSiteRoot, cfg.ThemesDir, cfg.Theme, "static")
+		themeRoot, err := safepath.Join(absSiteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme))
+		if err != nil {
+			return fmt.Errorf("resolve theme dir: %w", err)
+		}
+		themeStaticRoot := filepath.Join(themeRoot, "static")
 		if _, err := os.Stat(themeStaticRoot); err == nil {
 			staticRoots = append([]string{themeStaticRoot}, staticRoots...)
 		}
@@ -63,12 +81,24 @@ func copyDir(staticRoot, outputRoot string) error {
 		if rel == "." {
 			return nil
 		}
+		if d.Type()&fs.ModeSymlink != 0 {
+			return fmt.Errorf("refuse static symlink %q", path)
+		}
 
-		target := filepath.Join(outputRoot, rel)
+		target, err := safepath.Join(outputRoot, rel)
+		if err != nil {
+			return fmt.Errorf("resolve output path %q: %w", rel, err)
+		}
 		if d.IsDir() {
+			if err := safepath.EnsureNoSymlinkPath(outputRoot, target); err != nil {
+				return fmt.Errorf("check output directory %q: %w", target, err)
+			}
 			return os.MkdirAll(target, 0o755)
 		}
 
+		if err := safepath.EnsureNoSymlinkPath(outputRoot, target); err != nil {
+			return fmt.Errorf("check output path %q: %w", target, err)
+		}
 		if _, err := os.Stat(target); err == nil {
 			return nil
 		} else if !os.IsNotExist(err) {
@@ -85,11 +115,28 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 		return fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
+	outputRoot, err := safepath.Join(absSiteRoot, cfg.OutputDir)
+	if err != nil {
+		return fmt.Errorf("resolve output dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outputRoot); err != nil {
+		return fmt.Errorf("check output dir: %w", err)
+	}
 
-	staticRoots := []string{filepath.Join(absSiteRoot, cfg.StaticDir)}
+	staticRoot, err := safepath.Join(absSiteRoot, cfg.StaticDir)
+	if err != nil {
+		return fmt.Errorf("resolve static dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, staticRoot); err != nil {
+		return fmt.Errorf("check static dir: %w", err)
+	}
+	staticRoots := []string{staticRoot}
 	if cfg.Theme != "" {
-		themeStaticRoot := filepath.Join(absSiteRoot, cfg.ThemesDir, cfg.Theme, "static")
+		themeRoot, err := safepath.Join(absSiteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme))
+		if err != nil {
+			return fmt.Errorf("resolve theme dir: %w", err)
+		}
+		themeStaticRoot := filepath.Join(themeRoot, "static")
 		if _, err := os.Stat(themeStaticRoot); err == nil {
 			staticRoots = append([]string{themeStaticRoot}, staticRoots...)
 		}
@@ -108,10 +155,19 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 				continue
 			}
 
-			source := filepath.Join(staticRoot, filepath.FromSlash(rel))
-			target := filepath.Join(outputRoot, filepath.FromSlash(rel))
+			source, err := safepath.Join(staticRoot, rel)
+			if err != nil {
+				return fmt.Errorf("resolve static asset %q: %w", rel, err)
+			}
+			target, err := safepath.Join(outputRoot, rel)
+			if err != nil {
+				return fmt.Errorf("resolve output path %q: %w", rel, err)
+			}
+			if err := safepath.EnsureNoSymlinkPath(outputRoot, target); err != nil {
+				return fmt.Errorf("check output path %q: %w", target, err)
+			}
 
-			info, err := os.Stat(source)
+			info, err := os.Lstat(source)
 			if err != nil {
 				if os.IsNotExist(err) {
 					if removeErr := os.Remove(target); removeErr != nil && !os.IsNotExist(removeErr) {
@@ -120,6 +176,9 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 					continue
 				}
 				return fmt.Errorf("stat static asset %q: %w", source, err)
+			}
+			if info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("refuse static symlink %q", source)
 			}
 			if info.IsDir() {
 				if err := os.MkdirAll(target, 0o755); err != nil {
@@ -143,21 +202,48 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 		return fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
-	contentRoot := filepath.Join(absSiteRoot, cfg.ContentDir)
+	outputRoot, err := safepath.Join(absSiteRoot, cfg.OutputDir)
+	if err != nil {
+		return fmt.Errorf("resolve output dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outputRoot); err != nil {
+		return fmt.Errorf("check output dir: %w", err)
+	}
+	contentRoot, err := safepath.Join(absSiteRoot, cfg.ContentDir)
+	if err != nil {
+		return fmt.Errorf("resolve content dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, contentRoot); err != nil {
+		return fmt.Errorf("check content dir: %w", err)
+	}
 
 	for _, page := range pages {
 		if len(page.Resources) == 0 {
 			continue
 		}
 
-		sourceDir := filepath.Join(contentRoot, filepath.FromSlash(page.BundleDir))
+		sourceDir, err := safepath.Join(contentRoot, page.BundleDir)
+		if err != nil {
+			return fmt.Errorf("resolve bundle dir %q: %w", page.BundleDir, err)
+		}
 		outputURL := strings.TrimSuffix(page.URL, "/")
-		outputDir := filepath.Join(outputRoot, filepath.FromSlash(strings.TrimPrefix(outputURL, "/")))
+		outputDir, err := safepath.Join(outputRoot, strings.TrimPrefix(outputURL, "/"))
+		if err != nil {
+			return fmt.Errorf("resolve bundle output dir %q: %w", page.URL, err)
+		}
 
 		for _, res := range page.Resources {
-			src := filepath.Join(sourceDir, res)
-			dst := filepath.Join(outputDir, res)
+			src, err := safepath.Join(sourceDir, res)
+			if err != nil {
+				return fmt.Errorf("resolve page resource %q: %w", res, err)
+			}
+			dst, err := safepath.Join(outputDir, res)
+			if err != nil {
+				return fmt.Errorf("resolve page resource output %q: %w", res, err)
+			}
+			if err := safepath.EnsureNoSymlinkPath(outputRoot, dst); err != nil {
+				return fmt.Errorf("check page resource output %q: %w", res, err)
+			}
 			if err := copyFile(src, dst); err != nil {
 				return fmt.Errorf("copy page resource %q: %w", res, err)
 			}
@@ -168,6 +254,12 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 }
 
 func copyFile(src, dst string) error {
+	if err := safepath.RejectSymlink(src); err != nil {
+		return fmt.Errorf("check source file %q: %w", src, err)
+	}
+	if err := safepath.RejectSymlink(dst); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("check output file %q: %w", dst, err)
+	}
 	in, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("open static file %q: %w", src, err)

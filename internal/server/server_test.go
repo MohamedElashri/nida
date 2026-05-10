@@ -55,6 +55,31 @@ func TestFileHandlerServesCustom404PageForMissingRoutes(t *testing.T) {
 	}
 }
 
+func TestFileHandlerRejectsSymlinkedFiles(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.txt")
+	if err := os.WriteFile(secret, []byte("secret"), 0o644); err != nil {
+		t.Fatalf("write secret: %v", err)
+	}
+	if err := os.Symlink(secret, filepath.Join(dir, "secret.txt")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	handler, err := FileHandler(dir)
+	if err != nil {
+		t.Fatalf("FileHandler returned error: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/secret.txt", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusOK || strings.Contains(rec.Body.String(), "secret") {
+		t.Fatalf("expected symlinked file not to be served, status=%d body=%q", rec.Code, rec.Body.String())
+	}
+}
+
 func TestFileHandlerInjectsLiveReloadScript(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><html><body><main>hello</main></body></html>"), 0o644); err != nil {

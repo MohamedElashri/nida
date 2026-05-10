@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 type Manifest map[string]string
@@ -20,8 +21,20 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 		return nil, fmt.Errorf("resolve site root: %w", err)
 	}
 
-	staticRoot := filepath.Join(absSiteRoot, cfg.StaticDir)
-	outputRoot := filepath.Join(absSiteRoot, cfg.OutputDir)
+	staticRoot, err := safepath.Join(absSiteRoot, cfg.StaticDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve static dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, staticRoot); err != nil {
+		return nil, fmt.Errorf("check static dir: %w", err)
+	}
+	outputRoot, err := safepath.Join(absSiteRoot, cfg.OutputDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve output dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outputRoot); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("check output dir: %w", err)
+	}
 
 	if _, err := os.Stat(staticRoot); err != nil {
 		if os.IsNotExist(err) {
@@ -37,7 +50,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 	manifest := make(Manifest)
 
 	if cfg.Pipeline.SCSS.Enabled {
-		if err := compileSCSS(staticRoot, outputRoot, cfg); err != nil {
+		if err := compileSCSS(absSiteRoot, staticRoot, outputRoot, cfg); err != nil {
 			return nil, err
 		}
 	}
@@ -76,6 +89,9 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 			}
 			continue
 		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refuse static symlink %q", srcPath)
+		}
 
 		if cfg.Pipeline.Images.Enabled && isImageFile(name) {
 			if err := processImage(srcPath, relPath, outputRoot, cfg, manifest); err != nil {
@@ -84,7 +100,13 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 			continue
 		}
 
-		dstPath := filepath.Join(outputRoot, filepath.FromSlash(relPath))
+		dstPath, err := safepath.Join(outputRoot, relPath)
+		if err != nil {
+			return fmt.Errorf("resolve output path %q: %w", relPath, err)
+		}
+		if err := safepath.EnsureNoSymlinkPath(outputRoot, dstPath); err != nil {
+			return fmt.Errorf("check output path %q: %w", relPath, err)
+		}
 		if cfg.Pipeline.Fingerprint && isFingerprintable(name) {
 			fpPath, err := fingerprintFile(srcPath, relPath, outputRoot)
 			if err != nil {

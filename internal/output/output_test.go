@@ -63,6 +63,96 @@ func TestWriteFileWritesArtifact(t *testing.T) {
 	assertFile(t, filepath.Join(dir, "public", "rss.xml"), "feed")
 }
 
+func TestWriteFileRejectsEscapingArtifactPath(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = "public"
+
+	err := WriteFile(dir, cfg, "../outside.xml", []byte("feed"))
+	if err == nil {
+		t.Fatal("expected escaping artifact path to be rejected")
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "outside.xml")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected outside file not to be written, stat err=%v", statErr)
+	}
+}
+
+func TestWriteFileRejectsSymlinkedOutputParent(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = "public"
+
+	if err := os.MkdirAll(filepath.Join(dir, "public"), 0o755); err != nil {
+		t.Fatalf("mkdir output dir: %v", err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "public", "linked")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	err := WriteFile(dir, cfg, "linked/rss.xml", []byte("feed"))
+	if err == nil {
+		t.Fatal("expected symlinked output parent to be rejected")
+	}
+	if _, statErr := os.Stat(filepath.Join(outside, "rss.xml")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected outside file not to be written, stat err=%v", statErr)
+	}
+}
+
+func TestWriteFileRejectsSymlinkedOutputRoot(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = "public"
+
+	if err := os.Symlink(outside, filepath.Join(dir, "public")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	err := WriteFile(dir, cfg, "rss.xml", []byte("feed"))
+	if err == nil {
+		t.Fatal("expected symlinked output root to be rejected")
+	}
+	if _, statErr := os.Stat(filepath.Join(outside, "rss.xml")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected outside file not to be written, stat err=%v", statErr)
+	}
+}
+
+func TestWriteSiteRejectsSymlinkedOutputAncestor(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = filepath.Join("linked", "public")
+
+	if err := os.Symlink(outside, filepath.Join(dir, "linked")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	victim := filepath.Join(outside, "public", "keep.txt")
+	if err := os.MkdirAll(filepath.Dir(victim), 0o755); err != nil {
+		t.Fatalf("mkdir victim dir: %v", err)
+	}
+	if err := os.WriteFile(victim, []byte("keep"), 0o644); err != nil {
+		t.Fatalf("write victim: %v", err)
+	}
+
+	err := WriteSite(dir, cfg, []render.Page{{URL: "/", Content: "home"}})
+	if err == nil {
+		t.Fatal("expected symlinked output ancestor to be rejected")
+	}
+	assertFile(t, victim, "keep")
+}
+
+func TestWriteSiteRejectsEscapingOutputDir(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = ".."
+
+	err := WriteSite(dir, cfg, []render.Page{{URL: "/", Content: "home"}})
+	if err == nil {
+		t.Fatal("expected escaping output dir to be rejected")
+	}
+}
+
 func TestValidateWritePlanRejectsPageArtifactConflict(t *testing.T) {
 	dir := t.TempDir()
 	cfg := config.DefaultSiteConfig()
@@ -89,6 +179,17 @@ func TestValidateWritePlanRejectsDuplicatePageTargets(t *testing.T) {
 	}, nil)
 	if err == nil {
 		t.Fatal("expected duplicate page output conflict")
+	}
+}
+
+func TestValidateWritePlanRejectsEscapingArtifactPath(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = "public"
+
+	err := ValidateWritePlan(dir, cfg, nil, []Artifact{{Path: "../rss.xml"}})
+	if err == nil {
+		t.Fatal("expected escaping artifact path to be rejected")
 	}
 }
 

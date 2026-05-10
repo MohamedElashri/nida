@@ -12,6 +12,7 @@ import (
 
 func TestRenderGolden(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
+	cfg.Markdown.UnsafeHTML = true
 
 	got, err := Render(`# Heading
 
@@ -39,6 +40,7 @@ func TestRenderHighlightedCodeGolden(t *testing.T) {
 
 func TestRenderPreservesRawImageHTML(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
+	cfg.Markdown.UnsafeHTML = true
 
 	got, err := Render(`<div><img src="/images/example.png" alt="Example"></div>`, cfg, nil)
 	if err != nil {
@@ -52,6 +54,7 @@ func TestRenderPreservesRawImageHTML(t *testing.T) {
 
 func TestRenderRawHTMLShortcode(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
+	cfg.Markdown.UnsafeHTML = true
 
 	got, err := Render(`Before
 
@@ -65,6 +68,19 @@ func TestRenderRawHTMLShortcode(t *testing.T) {
 
 	if !strings.Contains(got, `<video controls></video>`) || strings.Contains(got, "rawhtml") {
 		t.Fatalf("expected rawhtml shortcode markers to be stripped, got %q", got)
+	}
+}
+
+func TestRenderOmitsRawHTMLByDefault(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+
+	got, err := Render(`<script>alert(1)</script>`, cfg, nil)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	if strings.Contains(got, `<script>`) || strings.Contains(got, `alert(1)`) {
+		t.Fatalf("expected raw HTML to be omitted by default, got %q", got)
 	}
 }
 
@@ -123,6 +139,25 @@ func TestRenderExternalLinkAttributes(t *testing.T) {
 	}
 }
 
+func TestRenderRejectsDangerousLinkSchemes(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+
+	got, err := Render(`[bad](javascript:alert(1)) ![bad](javascript:alert(1))`, cfg, nil)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	if strings.Contains(got, `javascript:`) {
+		t.Fatalf("expected dangerous URL scheme to be removed, got %q", got)
+	}
+	if !strings.Contains(got, `<a href="#">bad</a>`) {
+		t.Fatalf("expected dangerous link to resolve to #, got %q", got)
+	}
+	if !strings.Contains(got, `<img src=""`) {
+		t.Fatalf("expected dangerous image URL to be blanked, got %q", got)
+	}
+}
+
 func TestRenderFootnotes(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 
@@ -162,10 +197,10 @@ func TestRenderPagesStoresBodyHTML(t *testing.T) {
 func TestRenderInternalLinkResolution(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	lookup := PathLookup{
-		"posts/hello.md":    "/posts/hello/",
-		"posts/hello":       "/posts/hello/",
-		"about.md":          "/about/",
-		"about":             "/about/",
+		"posts/hello.md": "/posts/hello/",
+		"posts/hello":    "/posts/hello/",
+		"about.md":       "/about/",
+		"about":          "/about/",
 	}
 
 	got, err := Render(`Check out [Hello](@/posts/hello.md) and [About](@/about).`, cfg, lookup)

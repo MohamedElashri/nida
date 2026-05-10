@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 func RewriteOutputFiles(siteRoot string, cfg config.SiteConfig, manifest Manifest) error {
@@ -19,7 +20,10 @@ func RewriteOutputFiles(siteRoot string, cfg config.SiteConfig, manifest Manifes
 		return fmt.Errorf("resolve site root: %w", err)
 	}
 
-	outputDir := filepath.Join(absSiteRoot, cfg.OutputDir)
+	outputDir, err := safepath.Join(absSiteRoot, cfg.OutputDir)
+	if err != nil {
+		return fmt.Errorf("resolve output dir: %w", err)
+	}
 
 	return filepath.WalkDir(outputDir, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {

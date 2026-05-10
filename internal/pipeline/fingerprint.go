@@ -9,9 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 func fingerprintFile(srcPath, relPath, outputRoot string) (string, error) {
+	if err := safepath.RejectSymlink(srcPath); err != nil {
+		return "", fmt.Errorf("check source file: %w", err)
+	}
 	data, err := os.ReadFile(srcPath)
 	if err != nil {
 		return "", fmt.Errorf("read file: %w", err)
@@ -24,7 +29,13 @@ func fingerprintFile(srcPath, relPath, outputRoot string) (string, error) {
 	base := strings.TrimSuffix(relPath, ext)
 	fpRelPath := base + "." + hashStr + ext
 
-	dstPath := filepath.Join(outputRoot, filepath.FromSlash(fpRelPath))
+	dstPath, err := safepath.Join(outputRoot, fpRelPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve fingerprint path: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(outputRoot, dstPath); err != nil {
+		return "", fmt.Errorf("check fingerprint path: %w", err)
+	}
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return "", fmt.Errorf("create dir: %w", err)
 	}
@@ -45,7 +56,13 @@ func writeManifest(outputRoot string, manifest Manifest) error {
 		return fmt.Errorf("marshal manifest: %w", err)
 	}
 
-	manifestPath := filepath.Join(outputRoot, "manifest.json")
+	manifestPath, err := safepath.Join(outputRoot, "manifest.json")
+	if err != nil {
+		return fmt.Errorf("resolve manifest path: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(outputRoot, manifestPath); err != nil {
+		return fmt.Errorf("check manifest path: %w", err)
+	}
 	if err := os.WriteFile(manifestPath, data, 0o644); err != nil {
 		return fmt.Errorf("write manifest: %w", err)
 	}
@@ -54,7 +71,10 @@ func writeManifest(outputRoot string, manifest Manifest) error {
 }
 
 func LoadManifest(outputRoot string) (Manifest, error) {
-	manifestPath := filepath.Join(outputRoot, "manifest.json")
+	manifestPath, err := safepath.Join(outputRoot, "manifest.json")
+	if err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -72,6 +92,12 @@ func LoadManifest(outputRoot string) (Manifest, error) {
 }
 
 func copyFile(src, dst string) error {
+	if err := safepath.RejectSymlink(src); err != nil {
+		return fmt.Errorf("check src: %w", err)
+	}
+	if err := safepath.RejectSymlink(dst); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("check dst: %w", err)
+	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return fmt.Errorf("create dir: %w", err)
 	}

@@ -68,6 +68,32 @@ func TestCopyRejectsGeneratedOutputConflicts(t *testing.T) {
 	}
 }
 
+func TestCopyRejectsStaticSymlink(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.StaticDir = "static"
+	cfg.OutputDir = "public"
+
+	if err := os.MkdirAll(filepath.Join(dir, "static"), 0o755); err != nil {
+		t.Fatalf("mkdir static dir: %v", err)
+	}
+	secret := filepath.Join(outside, "secret.txt")
+	if err := os.WriteFile(secret, []byte("secret"), 0o644); err != nil {
+		t.Fatalf("write secret: %v", err)
+	}
+	if err := os.Symlink(secret, filepath.Join(dir, "static", "secret.txt")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	if err := Copy(dir, cfg); err == nil {
+		t.Fatal("expected static symlink to be rejected")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "public", "secret.txt")); !os.IsNotExist(err) {
+		t.Fatalf("expected symlink target not to be copied, stat err=%v", err)
+	}
+}
+
 func TestCopyPageBundles(t *testing.T) {
 	dir := t.TempDir()
 	cfg := config.DefaultSiteConfig()
