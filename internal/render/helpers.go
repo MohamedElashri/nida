@@ -1,7 +1,6 @@
 package render
 
 import (
-	"encoding/json"
 	"html"
 	"net/url"
 	"path"
@@ -16,16 +15,13 @@ import (
 )
 
 func redirectHTML(target string) string {
-	jsTarget, err := json.Marshal(target)
-	if err != nil {
-		jsTarget = []byte(`"/"`)
-	}
+	jsTarget := strconv.Quote(target)
 	escapedTarget := html.EscapeString(target)
 	return `<!doctype html>
 <meta charset="utf-8">
 <title>Redirect</title>
 <script>
-  const target = ` + string(jsTarget) + `;
+  const target = ` + jsTarget + `;
   const hash = window.location.hash || "";
   window.location.replace(target + hash);
 </script>
