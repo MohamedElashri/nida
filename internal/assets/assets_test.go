@@ -94,6 +94,84 @@ func TestCopyRejectsStaticSymlink(t *testing.T) {
 	}
 }
 
+func TestSyncChangedCopiesSiteRelativeStaticPath(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.StaticDir = "static"
+	cfg.OutputDir = "public"
+
+	src := filepath.Join(dir, "static", "images", "new-logo.txt")
+	if err := os.MkdirAll(filepath.Dir(src), 0o755); err != nil {
+		t.Fatalf("mkdir static dir: %v", err)
+	}
+	if err := os.WriteFile(src, []byte("fresh asset"), 0o644); err != nil {
+		t.Fatalf("write static file: %v", err)
+	}
+
+	if err := SyncChanged(dir, cfg, []string{"static/images/new-logo.txt"}); err != nil {
+		t.Fatalf("SyncChanged returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, "public", "images", "new-logo.txt"))
+	if err != nil {
+		t.Fatalf("read copied asset: %v", err)
+	}
+	if string(got) != "fresh asset" {
+		t.Fatalf("unexpected copied content %q", string(got))
+	}
+}
+
+func TestSyncChangedCopiesAbsoluteStaticPathUnderSiteRoot(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.StaticDir = "static"
+	cfg.OutputDir = "public"
+
+	src := filepath.Join(dir, "static", "images", "absolute-logo.txt")
+	if err := os.MkdirAll(filepath.Dir(src), 0o755); err != nil {
+		t.Fatalf("mkdir static dir: %v", err)
+	}
+	if err := os.WriteFile(src, []byte("absolute asset"), 0o644); err != nil {
+		t.Fatalf("write static file: %v", err)
+	}
+
+	if err := SyncChanged(dir, cfg, []string{src}); err != nil {
+		t.Fatalf("SyncChanged returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, "public", "images", "absolute-logo.txt"))
+	if err != nil {
+		t.Fatalf("read copied asset: %v", err)
+	}
+	if string(got) != "absolute asset" {
+		t.Fatalf("unexpected copied content %q", string(got))
+	}
+}
+
+func TestSyncChangedIgnoresAbsolutePathOutsideSiteRoot(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.StaticDir = "static"
+	cfg.OutputDir = "public"
+
+	src := filepath.Join(outside, "static", "leak.txt")
+	if err := os.MkdirAll(filepath.Dir(src), 0o755); err != nil {
+		t.Fatalf("mkdir outside static dir: %v", err)
+	}
+	if err := os.WriteFile(src, []byte("outside asset"), 0o644); err != nil {
+		t.Fatalf("write outside static file: %v", err)
+	}
+
+	if err := SyncChanged(dir, cfg, []string{src}); err != nil {
+		t.Fatalf("SyncChanged returned error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "public", "leak.txt")); !os.IsNotExist(err) {
+		t.Fatalf("expected outside asset not to be copied, stat err=%v", err)
+	}
+}
+
 func TestCopyPageBundles(t *testing.T) {
 	dir := t.TempDir()
 	cfg := config.DefaultSiteConfig()

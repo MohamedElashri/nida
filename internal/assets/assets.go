@@ -143,14 +143,26 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 	}
 
 	for _, staticRoot := range staticRoots {
-		staticPrefix := filepath.ToSlash(strings.Trim(staticRoot, "/")) + "/"
+		staticPrefix, err := staticRootPrefix(absSiteRoot, staticRoot)
+		if err != nil {
+			return err
+		}
 		for _, changedPath := range changedPaths {
-			normalized := filepath.ToSlash(strings.TrimSpace(changedPath))
-			if !strings.HasPrefix(normalized, staticPrefix) {
+			normalized, err := changedPathRelativeToSite(absSiteRoot, changedPath)
+			if err != nil {
+				return err
+			}
+			if normalized == "" || pathEscapesRoot(normalized) {
+				continue
+			}
+			if staticPrefix != "" && normalized != strings.TrimSuffix(staticPrefix, "/") && !strings.HasPrefix(normalized, staticPrefix) {
 				continue
 			}
 
 			rel := strings.TrimPrefix(normalized, staticPrefix)
+			if rel == normalized && staticPrefix != "" {
+				rel = ""
+			}
 			if strings.TrimSpace(rel) == "" {
 				continue
 			}
@@ -194,6 +206,44 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 	}
 
 	return nil
+}
+
+func staticRootPrefix(absSiteRoot, staticRoot string) (string, error) {
+	rel, err := filepath.Rel(absSiteRoot, staticRoot)
+	if err != nil {
+		return "", fmt.Errorf("compute static root relative path for %q: %w", staticRoot, err)
+	}
+	rel = filepath.ToSlash(filepath.Clean(rel))
+	if rel == "." {
+		return "", nil
+	}
+	return strings.Trim(rel, "/") + "/", nil
+}
+
+func changedPathRelativeToSite(absSiteRoot, changedPath string) (string, error) {
+	trimmed := strings.TrimSpace(changedPath)
+	if trimmed == "" {
+		return "", nil
+	}
+
+	clean := filepath.Clean(trimmed)
+	if filepath.IsAbs(clean) {
+		rel, err := filepath.Rel(absSiteRoot, clean)
+		if err != nil {
+			return "", fmt.Errorf("compute changed path relative path for %q: %w", changedPath, err)
+		}
+		clean = rel
+	}
+	if clean == "." {
+		return "", nil
+	}
+
+	return filepath.ToSlash(clean), nil
+}
+
+func pathEscapesRoot(path string) bool {
+	clean := filepath.Clean(filepath.FromSlash(path))
+	return clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || filepath.IsAbs(clean)
 }
 
 func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage) error {
