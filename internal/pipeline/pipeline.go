@@ -36,11 +36,13 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 		return nil, fmt.Errorf("check output dir: %w", err)
 	}
 
+	staticExists := true
 	if _, err := os.Stat(staticRoot); err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			staticExists = false
+		} else {
+			return nil, fmt.Errorf("stat static dir: %w", err)
 		}
-		return nil, fmt.Errorf("stat static dir: %w", err)
 	}
 
 	if err := os.MkdirAll(outputRoot, 0o755); err != nil {
@@ -55,8 +57,10 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 		}
 	}
 
-	if err := processStaticFiles(staticRoot, outputRoot, "", staticRoot, cfg, manifest); err != nil {
-		return nil, err
+	if staticExists {
+		if err := processStaticFiles(staticRoot, outputRoot, "", staticRoot, cfg, manifest); err != nil {
+			return nil, err
+		}
 	}
 
 	if len(manifest) > 0 {

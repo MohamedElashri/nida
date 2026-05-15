@@ -83,7 +83,7 @@ func loadInlineCSS(siteRoot string, cfg config.SiteConfig) (string, error) {
 	}
 	data, fallbackErr := os.ReadFile(fallbackPath)
 	if fallbackErr != nil {
-		return "", err
+		return "", fallbackErr
 	}
 	return string(data), nil
 }

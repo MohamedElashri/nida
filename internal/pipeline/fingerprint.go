@@ -70,27 +70,6 @@ func writeManifest(outputRoot string, manifest Manifest) error {
 	return nil
 }
 
-func LoadManifest(outputRoot string) (Manifest, error) {
-	manifestPath, err := safepath.Join(outputRoot, "manifest.json")
-	if err != nil {
-		return nil, err
-	}
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	var m Manifest
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("unmarshal manifest: %w", err)
-	}
-
-	return m, nil
-}
-
 func copyFile(src, dst string) error {
 	if err := safepath.RejectSymlink(src); err != nil {
 		return fmt.Errorf("check src: %w", err)

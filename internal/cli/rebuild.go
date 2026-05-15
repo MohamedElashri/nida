@@ -304,6 +304,9 @@ func rebuildMode(cfg config.SiteConfig, changedPaths []string) string {
 				mode = "assets-only"
 			}
 		case strings.HasPrefix(path, contentPrefix):
+			if !strings.HasSuffix(path, ".md") {
+				return "full"
+			}
 			mode = "partial"
 		default:
 			return "full"

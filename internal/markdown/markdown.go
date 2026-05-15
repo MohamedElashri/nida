@@ -194,17 +194,8 @@ func RenderItem(item content.Page, cfg config.SiteConfig, pathLookup PathLookup)
 	}
 
 	item.BodyHTML = html
-	item.ReadingTime = readingTime(item.BodyMarkdown)
+	item.ReadingTime = content.EstimateReadingTime(item.BodyMarkdown)
 	return item, nil
-}
-
-func readingTime(markdown string) int {
-	words := len(strings.Fields(markdown))
-	minutes := words / 200
-	if minutes < 1 {
-		return 1
-	}
-	return minutes
 }
 
 func RenderItems(items []content.Page, cfg config.SiteConfig, pathLookup PathLookup) ([]content.Page, error) {

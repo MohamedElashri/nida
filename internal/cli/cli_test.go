@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/MohamedElashri/nida/internal/buildinfo"
+	"github.com/MohamedElashri/nida/internal/config"
 )
 
 func TestBuildLoadsConfigFromSiteRoot(t *testing.T) {
@@ -87,6 +88,15 @@ func TestBuildReportsConfigErrors(t *testing.T) {
 	}
 }
 
+func TestRebuildModeTreatsContentResourcesAsFull(t *testing.T) {
+	cfg := testRebuildConfig()
+
+	got := rebuildMode(cfg, []string{"content/posts/bundle/image.png"})
+	if got != "full" {
+		t.Fatalf("expected content resource change to trigger full rebuild, got %q", got)
+	}
+}
+
 func TestVersionReportsReleaseVersionOnly(t *testing.T) {
 	originalVersion := buildinfo.Version
 	originalCommit := buildinfo.Commit
@@ -116,6 +126,14 @@ func TestVersionReportsReleaseVersionOnly(t *testing.T) {
 	if output != "nida version 0.2.0\n" {
 		t.Fatalf("expected release version only, got %q", output)
 	}
+}
+
+func testRebuildConfig() config.SiteConfig {
+	cfg := config.DefaultSiteConfig()
+	cfg.ContentDir = "content"
+	cfg.StaticDir = "static"
+	cfg.TemplateDir = "templates"
+	return cfg
 }
 
 func TestVersionReportsDevBuildMetadata(t *testing.T) {

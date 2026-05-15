@@ -19,35 +19,3 @@ func DocumentDirection(language string) string {
 		return "ltr"
 	}
 }
-
-func MainSections(cfg SiteConfig) []string {
-	values, ok := cfg.Extra["main_sections"]
-	if !ok {
-		return nil
-	}
-
-	switch raw := values.(type) {
-	case []any:
-		sections := make([]string, 0, len(raw))
-		for _, item := range raw {
-			if value, ok := item.(string); ok {
-				value = strings.TrimSpace(value)
-				if value != "" {
-					sections = append(sections, value)
-				}
-			}
-		}
-		return sections
-	case []string:
-		sections := make([]string, 0, len(raw))
-		for _, value := range raw {
-			value = strings.TrimSpace(value)
-			if value != "" {
-				sections = append(sections, value)
-			}
-		}
-		return sections
-	default:
-		return nil
-	}
-}
