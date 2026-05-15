@@ -39,7 +39,8 @@ VERSION=${TAG#v}
 
 or choose a specific release tag:
 
-```bashTAG=v0.2.0
+```bash
+TAG=v0.5.1
 VERSION=${TAG#v}
 ```
 

@@ -2,6 +2,25 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.1] - 2026-05-16
+
+### Added
+
+* Add colorized `nida build` and `nida serve` terminal output for easier-to-scan logs, while keeping redirected output plain and respecting `NO_COLOR` and `TERM=dumb`.
+
+### Fixed
+
+* Fix live static asset synchronization so newly created files under `static/` are copied during `nida serve` rebuilds.
+* Treat non-Markdown changes under `content/` as full rebuild triggers so page bundle resource additions and deletions refresh correctly.
+* Allow theme SCSS to compile even when a site does not have a `static/` directory.
+* Return the real fallback `static/site.css` read error when inline CSS loading fails.
+* Make `make build` use the public Go proxy by default instead of a machine-specific local module cache.
+
+### Changed
+
+* Consolidate reading-time calculation on the shared content helper.
+* Remove stray local debug command code and unused internal helpers.
+
 ## [0.5.0] - 2026-05-10
 
 ### Security
@@ -199,6 +218,8 @@ Template names inside files do not change. For example, `post.html` should still
 * Static asset copying and output writing.
 * GitHub Releases packaging with GoReleaser.
 
+[0.5.1]: https://github.com/MohamedElashri/nida/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/MohamedElashri/nida/compare/v0.4.6...v0.5.0
 [0.4.6]: https://github.com/MohamedElashri/nida/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/MohamedElashri/nida/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/MohamedElashri/nida/compare/v0.4.3...v0.4.4
