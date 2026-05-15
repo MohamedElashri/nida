@@ -124,7 +124,8 @@ func runBuild(stdout, stderr io.Writer, opts commandOptions) int {
 		return writeCommandError(stderr, err)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "nida build: config=%s drafts=%t output=%s pages=%d routes=%d rendered=%d\n", result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.AllPages), len(result.state.Index.RouteRegistry), len(result.pages))
+	colors := colorsFor(stdout)
+	_, _ = fmt.Fprintf(stdout, "%s %s config=%s drafts=%t output=%s pages=%d routes=%d rendered=%d\n", colors.command("nida build:"), colors.success("complete"), result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.AllPages), len(result.state.Index.RouteRegistry), len(result.pages))
 	return 0
 }
 
@@ -153,7 +154,9 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 		return writeCommandError(stderr, err)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "nida serve: config=%s drafts=%t host=%s port=%d routes=%d rendered=%d address=%s\n", current.path, current.cfg.Drafts, current.cfg.Server.Host, current.cfg.Server.Port, len(current.state.Index.RouteRegistry), len(current.pages), instance.Address)
+	stdoutColors := colorsFor(stdout)
+	stderrColors := colorsFor(stderr)
+	_, _ = fmt.Fprintf(stdout, "%s %s config=%s drafts=%t host=%s port=%d routes=%d rendered=%d address=%s\n", stdoutColors.command("nida serve:"), stdoutColors.success("listening"), current.path, current.cfg.Drafts, current.cfg.Server.Host, current.cfg.Server.Port, len(current.state.Index.RouteRegistry), len(current.pages), stdoutColors.highlight(instance.Address))
 
 	var rebuildMu sync.Mutex
 	go func() {
@@ -164,31 +167,31 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 				rebuildMu.Lock()
 				defer rebuildMu.Unlock()
 
-				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild triggered by %s\n", strings.Join(paths, ", "))
+				_, _ = fmt.Fprintf(stdout, "%s rebuild triggered by %s\n", stdoutColors.command("nida serve:"), strings.Join(paths, ", "))
 				next, mode, buildErr := rebuildSite(opts, current, paths)
 				if buildErr != nil {
-					_, _ = fmt.Fprintf(stderr, "error: rebuild failed: %v\n", buildErr)
+					_, _ = fmt.Fprintf(stderr, "%s rebuild failed: %v\n", stderrColors.error("error:"), buildErr)
 					return
 				}
 				if next.cfg.Server.Host != current.cfg.Server.Host || next.cfg.Server.Port != current.cfg.Server.Port {
-					_, _ = fmt.Fprintf(stdout, "nida serve: config changed server address to %s:%d; restart required to apply\n", next.cfg.Server.Host, next.cfg.Server.Port)
+					_, _ = fmt.Fprintf(stdout, "%s %s config changed server address to %s; restart required to apply\n", stdoutColors.command("nida serve:"), stdoutColors.warning("warning:"), stdoutColors.highlight(fmt.Sprintf("%s:%d", next.cfg.Server.Host, next.cfg.Server.Port)))
 				}
 				current = next
 				instance.Reload()
-				_, _ = fmt.Fprintf(stdout, "nida serve: rebuild complete mode=%s pages=%d routes=%d rendered=%d\n", mode, len(current.state.Index.AllPages), len(current.state.Index.RouteRegistry), len(current.pages))
+				_, _ = fmt.Fprintf(stdout, "%s %s mode=%s pages=%d routes=%d rendered=%d\n", stdoutColors.command("nida serve:"), stdoutColors.success("rebuild complete"), stdoutColors.highlight(mode), len(current.state.Index.AllPages), len(current.state.Index.RouteRegistry), len(current.pages))
 			},
 			OnError: func(err error) {
-				_, _ = fmt.Fprintf(stderr, "error: watcher snapshot failed: %v\n", err)
+				_, _ = fmt.Fprintf(stderr, "%s watcher snapshot failed: %v\n", stderrColors.error("error:"), err)
 			},
 		})
 		if err != nil && ctx.Err() == nil {
-			_, _ = fmt.Fprintf(stderr, "error: watcher failed: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "%s watcher failed: %v\n", stderrColors.error("error:"), err)
 			stop()
 		}
 	}()
 
 	<-ctx.Done()
-	_, _ = fmt.Fprintln(stdout, "nida serve: shutting down")
+	_, _ = fmt.Fprintln(stdout, stdoutColors.command("nida serve:"), "shutting down")
 	return 0
 }
 
@@ -309,7 +312,8 @@ func loadCommandConfig(opts commandOptions) (config.SiteConfig, string, error) {
 }
 
 func writeCommandError(stderr io.Writer, err error) int {
-	_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
+	colors := colorsFor(stderr)
+	_, _ = fmt.Fprintf(stderr, "%s %v\n", colors.error("error:"), err)
 	return 1
 }
 

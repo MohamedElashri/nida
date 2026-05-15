@@ -14,8 +14,8 @@ LDFLAGS := -X github.com/MohamedElashri/nida/internal/buildinfo.Version=$(VERSIO
 
 export GOCACHE := $(CURDIR)/.gocache
 export GOMODCACHE := $(CURDIR)/.gomodcache
-export GOPROXY := file:///home/melashri/go/pkg/mod/cache/download
-export GOSUMDB := off
+export GOPROXY ?= https://proxy.golang.org,direct
+export GOSUMDB ?= sum.golang.org
 
 .PHONY: help dev build rebuild test test-cover serve site-build example-build example-serve arabic-example-build arabic-example-serve clean fmt tidy check
 

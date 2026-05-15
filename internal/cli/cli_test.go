@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -164,5 +165,24 @@ func TestHelpIncludesVersionCommand(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "nida version") {
 		t.Fatalf("expected version command in help, got %q", stdout.String())
+	}
+}
+
+func TestColorsDoNotDecorateNonTerminalWriters(t *testing.T) {
+	colors := colorsFor(&bytes.Buffer{})
+
+	got := colors.command("nida build:")
+	if got != "nida build:" {
+		t.Fatalf("expected plain command for non-terminal writer, got %q", got)
+	}
+}
+
+func TestColorsRespectNoColor(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+
+	colors := terminalColors{enabled: writerSupportsColor(os.Stdout)}
+	got := colors.error("error:")
+	if got != "error:" {
+		t.Fatalf("expected plain error with NO_COLOR, got %q", got)
 	}
 }
