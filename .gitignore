@@ -13,3 +13,11 @@ blog*
 bin
 *.github.*
 ar
+*plan.md
+*.log
+*.out
+# Nida documentation build output
+public/
+
+# Local development binaries
+.tmp/

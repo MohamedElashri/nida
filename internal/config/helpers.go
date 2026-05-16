@@ -1,6 +1,10 @@
 package config
 
-import "strings"
+import (
+	"net/url"
+	"path"
+	"strings"
+)
 
 func DocumentDirection(language string) string {
 	primary := strings.ToLower(strings.TrimSpace(language))
@@ -18,4 +22,17 @@ func DocumentDirection(language string) string {
 	default:
 		return "ltr"
 	}
+}
+
+func BasePath(baseURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil {
+		return ""
+	}
+
+	clean := path.Clean("/" + strings.Trim(parsed.EscapedPath(), "/"))
+	if clean == "/" || clean == "." {
+		return ""
+	}
+	return clean
 }

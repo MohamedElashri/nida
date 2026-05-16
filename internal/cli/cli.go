@@ -149,7 +149,7 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 	if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outputDir); err != nil {
 		return writeCommandError(stderr, fmt.Errorf("check output dir: %w", err))
 	}
-	instance, err := server.Start(ctx, outputDir, current.cfg.Server.Host, current.cfg.Server.Port, current.cfg.Server.Livereload)
+	instance, err := server.Start(ctx, outputDir, current.cfg.Server.Host, current.cfg.Server.Port, current.cfg.Server.Livereload, config.BasePath(current.cfg.BaseURL))
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
@@ -173,7 +173,7 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 					_, _ = fmt.Fprintf(stderr, "%s rebuild failed: %v\n", stderrColors.error("error:"), buildErr)
 					return
 				}
-				if next.cfg.Server.Host != current.cfg.Server.Host || next.cfg.Server.Port != current.cfg.Server.Port {
+				if next.cfg.Server.Host != current.cfg.Server.Host || next.cfg.Server.Port != current.cfg.Server.Port || config.BasePath(next.cfg.BaseURL) != config.BasePath(current.cfg.BaseURL) {
 					_, _ = fmt.Fprintf(stdout, "%s %s config changed server address to %s; restart required to apply\n", stdoutColors.command("nida serve:"), stdoutColors.warning("warning:"), stdoutColors.highlight(fmt.Sprintf("%s:%d", next.cfg.Server.Host, next.cfg.Server.Port)))
 				}
 				current = next

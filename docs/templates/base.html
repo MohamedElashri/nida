@@ -1,0 +1,38 @@
+{{- define "base" -}}
+{{- $repoURL := index .Config.Extra "repo_url" -}}
+<!doctype html>
+<html lang="{{ default .Config.Language "en" }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ if ne .Title .Config.Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}</title>
+  <meta name="description" content="{{ default .Description .Config.Description }}">
+  <link rel="canonical" href="{{ .CanonicalURL }}">
+  <link rel="stylesheet" href="{{ .BasePath }}/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="brand" href="{{ .BasePath }}/" aria-label="Nida documentation home">
+        <span class="brand-mark">n</span>
+        <span class="brand-text">Nida</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary navigation">
+        <a{{ if eq .CurrentURL "/" }} class="active"{{ end }} href="{{ .BasePath }}/">Home</a>
+        <a{{ if hasPrefix .CurrentURL "/guide/" }} class="active"{{ end }} href="{{ .BasePath }}/guide/">Guide</a>
+        <a{{ if hasPrefix .CurrentURL "/reference/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/">Reference</a>
+        <a{{ if eq .CurrentURL "/roadmap/" }} class="active"{{ end }} href="{{ .BasePath }}/roadmap/">Roadmap</a>
+        <a href="{{ $repoURL }}">GitHub</a>
+      </nav>
+    </header>
+    <main id="content" class="content-frame">
+      {{- template "content" . }}
+    </main>
+    <footer class="site-footer">
+      <p>Built with Nida, by Nida. Static, small, and a little stubborn in the best way.</p>
+    </footer>
+  </div>
+</body>
+</html>
+{{- end }}

@@ -64,6 +64,7 @@ type Paginator struct {
 type templateContext struct {
 	Title        string
 	Description  string
+	BasePath     string
 	HomeURL      string
 	CurrentURL   string
 	CanonicalURL string
