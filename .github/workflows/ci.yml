@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          files="$(gofmt -l .)"
+          if [[ -n "${files}" ]]; then
+            echo "The following files need gofmt:" >&2
+            echo "${files}" >&2
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build example site
+        run: go run ./cmd/nida build --site ./example-site
+
+      - name: Build Arabic example site
+        run: go run ./cmd/nida build --site ./example-site-ar
