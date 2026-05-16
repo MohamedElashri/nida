@@ -84,11 +84,13 @@ Use `nida serve --site ./my-site` to build, watch, and serve the output director
 enabled = true
 filename = "rss.xml"
 limit = 20
+sections = ["post"]
 
 [atom]
 enabled = false
 filename = "atom.xml"
 limit = 20
+sections = ["post"]
 
 [sitemap]
 enabled = true
@@ -98,6 +100,8 @@ filename = "sitemap.xml"
 enabled = true
 filename = "robots.txt"
 ```
+
+Omit `rss.sections` or `atom.sections`, or set them to an empty array, to include pages from every section. When set, feed entries are limited to pages whose root section matches one of the configured names; for example, `post/notes` matches `post`.
 
 You can also set custom robots content:
 

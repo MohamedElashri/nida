@@ -109,10 +109,7 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 		return nil, nil
 	}
 
-	items := index.AllPages
-	if cfg.RSS.Limit > 0 && len(items) > cfg.RSS.Limit {
-		items = items[:cfg.RSS.Limit]
-	}
+	items := feedItems(index.AllPages, cfg.RSS.Sections, cfg.RSS.Limit)
 
 	doc := rssDocument{
 		Version: "2.0",
@@ -164,10 +161,7 @@ func GenerateAtom(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) 
 		return nil, nil
 	}
 
-	items := index.AllPages
-	if cfg.Atom.Limit > 0 && len(items) > cfg.Atom.Limit {
-		items = items[:cfg.Atom.Limit]
-	}
+	items := feedItems(index.AllPages, cfg.Atom.Sections, cfg.Atom.Limit)
 
 	feedURL, err := feedURL(cfg.BaseURL, cfg.Atom.Filename)
 	if err != nil {
@@ -249,6 +243,42 @@ func latestUpdated(items []content.Page) time.Time {
 		}
 	}
 	return latest
+}
+
+func feedItems(items []content.Page, sections []string, limit int) []content.Page {
+	allowed := map[string]struct{}{}
+	for _, section := range sections {
+		section = rootSectionName(section)
+		if section != "" {
+			allowed[section] = struct{}{}
+		}
+	}
+
+	filtered := items
+	if len(allowed) > 0 {
+		filtered = make([]content.Page, 0, len(items))
+		for _, item := range items {
+			if _, ok := allowed[rootSectionName(item.SectionPath)]; ok {
+				filtered = append(filtered, item)
+			}
+		}
+	}
+
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+	return filtered
+}
+
+func rootSectionName(sectionPath string) string {
+	sectionPath = strings.Trim(sectionPath, "/")
+	if sectionPath == "" {
+		return ""
+	}
+	if index := strings.Index(sectionPath, "/"); index >= 0 {
+		return sectionPath[:index]
+	}
+	return sectionPath
 }
 
 func atomEntryAuthor(item content.Page, cfg config.SiteConfig) *atomAuthor {

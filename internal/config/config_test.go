@@ -70,6 +70,33 @@ categories = "categories/{slug}"
 	}
 }
 
+func TestLoadFeedSections(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, `
+base_url = "https://example.com"
+title = "Feed Sections"
+
+[rss]
+sections = ["post"]
+
+[atom]
+enabled = true
+sections = ["post"]
+`)
+
+	cfg, _, err := Load(Options{SiteRoot: dir})
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if len(cfg.RSS.Sections) != 1 || cfg.RSS.Sections[0] != "post" {
+		t.Fatalf("expected RSS sections [post], got %#v", cfg.RSS.Sections)
+	}
+	if len(cfg.Atom.Sections) != 1 || cfg.Atom.Sections[0] != "post" {
+		t.Fatalf("expected Atom sections [post], got %#v", cfg.Atom.Sections)
+	}
+}
+
 func TestLoadMissingRequiredFields(t *testing.T) {
 	dir := t.TempDir()
 	writeConfig(t, dir, `

@@ -64,15 +64,17 @@ type SectionConfig struct {
 }
 
 type RSSConfig struct {
-	Enabled  bool   `toml:"enabled"`
-	Filename string `toml:"filename"`
-	Limit    int    `toml:"limit"`
+	Enabled  bool     `toml:"enabled"`
+	Filename string   `toml:"filename"`
+	Limit    int      `toml:"limit"`
+	Sections []string `toml:"sections"`
 }
 
 type AtomConfig struct {
-	Enabled  bool   `toml:"enabled"`
-	Filename string `toml:"filename"`
-	Limit    int    `toml:"limit"`
+	Enabled  bool     `toml:"enabled"`
+	Filename string   `toml:"filename"`
+	Limit    int      `toml:"limit"`
+	Sections []string `toml:"sections"`
 }
 
 type SitemapConfig struct {

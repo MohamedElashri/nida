@@ -71,6 +71,77 @@ func TestGenerateRespectsLimit(t *testing.T) {
 	}
 }
 
+func TestGenerateIncludesAllPagesWithoutSections(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+
+	index := site.SiteIndex{
+		AllPages: []content.Page{
+			{Title: "Post", URL: "/post/post/", SectionPath: "post", Date: mustDate(t, "2026-04-13T10:00:00Z")},
+			{Title: "Micro", URL: "/micro/micro/", SectionPath: "micro", Date: mustDate(t, "2026-04-12T10:00:00Z")},
+		},
+	}
+
+	out, err := Generate(cfg, index)
+	if err != nil {
+		t.Fatalf("Generate returned error: %v", err)
+	}
+
+	body := string(out.Content)
+	if !contains(body, "Post") || !contains(body, "Micro") {
+		t.Fatalf("expected unfiltered feed to include all pages, got %s", body)
+	}
+}
+
+func TestGenerateFiltersRSSBySections(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.RSS.Sections = []string{"post"}
+
+	index := site.SiteIndex{
+		AllPages: []content.Page{
+			{Title: "Post", URL: "/post/post/", SectionPath: "post", Date: mustDate(t, "2026-04-13T10:00:00Z")},
+			{Title: "Micro", URL: "/micro/micro/", SectionPath: "micro", Date: mustDate(t, "2026-04-12T10:00:00Z")},
+		},
+	}
+
+	out, err := Generate(cfg, index)
+	if err != nil {
+		t.Fatalf("Generate returned error: %v", err)
+	}
+
+	body := string(out.Content)
+	if !contains(body, "Post") || contains(body, "Micro") {
+		t.Fatalf("expected RSS feed to include only post section pages, got %s", body)
+	}
+}
+
+func TestGenerateAppliesLimitAfterSectionFiltering(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.RSS.Limit = 2
+	cfg.RSS.Sections = []string{"post"}
+
+	index := site.SiteIndex{
+		AllPages: []content.Page{
+			{Title: "Newest Micro", URL: "/micro/newest/", SectionPath: "micro", Date: mustDate(t, "2026-04-14T10:00:00Z")},
+			{Title: "Newest Post", URL: "/post/newest/", SectionPath: "post", Date: mustDate(t, "2026-04-13T10:00:00Z")},
+			{Title: "Older Post", URL: "/post/older/", SectionPath: "post", Date: mustDate(t, "2026-04-12T10:00:00Z")},
+			{Title: "Oldest Post", URL: "/post/oldest/", SectionPath: "post", Date: mustDate(t, "2026-04-11T10:00:00Z")},
+		},
+	}
+
+	out, err := Generate(cfg, index)
+	if err != nil {
+		t.Fatalf("Generate returned error: %v", err)
+	}
+
+	body := string(out.Content)
+	if !contains(body, "Newest Post") || !contains(body, "Older Post") || contains(body, "Newest Micro") || contains(body, "Oldest Post") {
+		t.Fatalf("expected RSS limit to apply after section filtering, got %s", body)
+	}
+}
+
 func TestGenerateAtomGolden(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
@@ -106,6 +177,54 @@ func TestGenerateAtomGolden(t *testing.T) {
 	}
 	if string(out.Content) != string(want) {
 		t.Fatalf("golden mismatch\nwant:\n%s\ngot:\n%s", string(want), string(out.Content))
+	}
+}
+
+func TestGenerateAtomFiltersBySections(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.RSS.Enabled = false
+	cfg.Atom.Enabled = true
+	cfg.Atom.Sections = []string{"post"}
+
+	index := site.SiteIndex{
+		AllPages: []content.Page{
+			{Title: "Post", URL: "/post/post/", SectionPath: "post", Date: mustDate(t, "2026-04-13T10:00:00Z")},
+			{Title: "Micro", URL: "/micro/micro/", SectionPath: "micro", Date: mustDate(t, "2026-04-12T10:00:00Z")},
+		},
+	}
+
+	out, err := GenerateAtom(cfg, index)
+	if err != nil {
+		t.Fatalf("GenerateAtom returned error: %v", err)
+	}
+
+	body := string(out.Content)
+	if !contains(body, "Post") || contains(body, "Micro") {
+		t.Fatalf("expected Atom feed to include only post section pages, got %s", body)
+	}
+}
+
+func TestGenerateFiltersNestedSectionsByRoot(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.RSS.Sections = []string{"post"}
+
+	index := site.SiteIndex{
+		AllPages: []content.Page{
+			{Title: "Nested Post", URL: "/post/notes/nested/", SectionPath: "post/notes", Date: mustDate(t, "2026-04-13T10:00:00Z")},
+			{Title: "Micro", URL: "/micro/micro/", SectionPath: "micro", Date: mustDate(t, "2026-04-12T10:00:00Z")},
+		},
+	}
+
+	out, err := Generate(cfg, index)
+	if err != nil {
+		t.Fatalf("Generate returned error: %v", err)
+	}
+
+	body := string(out.Content)
+	if !contains(body, "Nested Post") || contains(body, "Micro") {
+		t.Fatalf("expected nested post section to match root section filter, got %s", body)
 	}
 }
 

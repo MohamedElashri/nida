@@ -124,6 +124,7 @@ Permalink routes must stay site-relative and safe. Nida validates generated rout
 enabled = true
 filename = "rss.xml"
 limit = 20
+sections = ["post"]
 ```
 
 | Key | Type | Default | Description |
@@ -131,6 +132,7 @@ limit = 20
 | `rss.enabled` | boolean | `true` | Generate an RSS feed. |
 | `rss.filename` | string | `rss.xml` | Output filename for the RSS feed. |
 | `rss.limit` | integer | `20` | Maximum number of feed entries. |
+| `rss.sections` | array of strings | empty | Root content sections to include, such as `["post"]`. Omit or leave empty to include all pages. Nested section paths match by root section, so `post/notes` matches `post`. |
 
 ## Atom
 
@@ -139,6 +141,7 @@ limit = 20
 enabled = false
 filename = "atom.xml"
 limit = 20
+sections = ["post"]
 ```
 
 | Key | Type | Default | Description |
@@ -146,6 +149,7 @@ limit = 20
 | `atom.enabled` | boolean | `false` | Generate an Atom feed. |
 | `atom.filename` | string | `atom.xml` | Output filename for the Atom feed. |
 | `atom.limit` | integer | `20` | Maximum number of feed entries. |
+| `atom.sections` | array of strings | empty | Root content sections to include, such as `["post"]`. Omit or leave empty to include all pages. Nested section paths match by root section, so `post/notes` matches `post`. |
 
 ## Sitemap
 
