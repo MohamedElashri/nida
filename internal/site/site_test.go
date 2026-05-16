@@ -175,17 +175,17 @@ func TestRoutePageEmptyTaxonomyFallsBack(t *testing.T) {
 		t.Fatalf("routePage returned error: %v", err)
 	}
 
-	if route != "//hello/" {
-		t.Fatalf("expected //hello/, got %q", route)
+	if route != "/hello/" {
+		t.Fatalf("expected /hello/, got %q", route)
 	}
 }
 
 func TestExtractTaxonomyValue(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		extra map[string]any
-		tax  string
-		want string
+		tax   string
+		want  string
 	}{
 		{
 			name:  "string slice",

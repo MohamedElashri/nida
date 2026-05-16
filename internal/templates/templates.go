@@ -116,7 +116,7 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 	set := Set{templates: map[string]*template.Template{}}
 	for name, entry := range entries {
 		files := append(append([]string(nil), shared...), entry)
-			tmpl := template.New("root").Funcs(funcMap(siteRoot, cfg))
+		tmpl := template.New("root").Funcs(funcMap(siteRoot, cfg))
 		for _, file := range files {
 			data, err := os.ReadFile(file)
 			if err != nil {

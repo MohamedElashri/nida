@@ -3,7 +3,7 @@ package frontmatter
 import "time"
 
 type Metadata struct {
-	Title          string
+	Title         string
 	Description   string
 	Date          time.Time
 	Updated       time.Time

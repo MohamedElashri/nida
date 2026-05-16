@@ -24,8 +24,8 @@ type NavItem struct {
 
 type Favicon struct {
 	Webmanifest    string
-	Favicon16x16  string
-	Favicon32x32  string
+	Favicon16x16   string
+	Favicon32x32   string
 	AppleTouchIcon string
 }
 

@@ -46,12 +46,12 @@ type rssGUID struct {
 }
 
 type atomDocument struct {
-	XMLName xml.Name   `xml:"http://www.w3.org/2005/Atom feed"`
-	Lang    string     `xml:"xml:lang,attr,omitempty"`
-	Title   string     `xml:"title"`
-	Link    []atomLink `xml:"link"`
-	Updated string    `xml:"updated"`
-	ID      string    `xml:"id"`
+	XMLName xml.Name    `xml:"http://www.w3.org/2005/Atom feed"`
+	Lang    string      `xml:"xml:lang,attr,omitempty"`
+	Title   string      `xml:"title"`
+	Link    []atomLink  `xml:"link"`
+	Updated string      `xml:"updated"`
+	ID      string      `xml:"id"`
 	Author  *atomAuthor `xml:"author,omitempty"`
 	Entries []atomEntry `xml:"entry"`
 }

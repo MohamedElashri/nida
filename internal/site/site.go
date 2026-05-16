@@ -323,7 +323,7 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 			Transparent:      false,
 			GenerateFeeds:    false,
 			Sections:         nil,
-			Pages:           sortPagesBySection(rootPages, rootSection, cfg),
+			Pages:            sortPagesBySection(rootPages, rootSection, cfg),
 			Extra:            map[string]any{},
 		}
 		roots = append(roots, rootSection)

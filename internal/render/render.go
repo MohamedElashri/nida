@@ -255,22 +255,22 @@ func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index si
 			Content:      rendered,
 		})
 
-			// Generate alias redirect pages
-			for _, alias := range page.Aliases {
-				aliasURL := alias
-				if !strings.HasPrefix(aliasURL, "/") {
-					aliasURL = "/" + aliasURL
-				}
-				if !strings.HasSuffix(aliasURL, "/") {
-					aliasURL += "/"
-				}
-				aliasURL, err = site.NormalizeRoute("alias", aliasURL)
-				if err != nil {
-					return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
-				}
-				targetURL := canonicalURL(cfg.BaseURL, page.URL)
-				out = append(out, Page{
-					URL:          aliasURL,
+		// Generate alias redirect pages
+		for _, alias := range page.Aliases {
+			aliasURL := alias
+			if !strings.HasPrefix(aliasURL, "/") {
+				aliasURL = "/" + aliasURL
+			}
+			if !strings.HasSuffix(aliasURL, "/") {
+				aliasURL += "/"
+			}
+			aliasURL, err = site.NormalizeRoute("alias", aliasURL)
+			if err != nil {
+				return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
+			}
+			targetURL := canonicalURL(cfg.BaseURL, page.URL)
+			out = append(out, Page{
+				URL:          aliasURL,
 				CanonicalURL: targetURL,
 				TemplateName: "redirect",
 				Title:        "Redirect",
@@ -311,127 +311,127 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 		singleTemplate := pickExistingTemplate(set, "taxonomy_single", "taxonomy")
 
 		if listTemplate != "" {
-		ctx := templateContext{
-			Title:        collection.Name,
-			Description:  collection.Name,
-			HomeURL:      "/",
-			CurrentURL:   collection.URL,
-			CanonicalURL: collection.CanonicalURL,
-			Config:       cfg,
-			Theme:        theme,
-			Index:        index,
-			Taxonomy:     collection,
-			Terms:        collection.Terms,
-			Robots:       "noai, noimageai",
-		}
-
-		rendered, err := renderTemplate(set, listTemplate, ctx)
-		if err != nil {
-			return nil, fmt.Errorf("render taxonomy list %q: %w", collection.Name, err)
-		}
-
-		pages = append(pages, Page{
-			URL:          collection.URL,
-			CanonicalURL: collection.CanonicalURL,
-			TemplateName: listTemplate,
-			Title:        collection.Name,
-			Content:      rendered,
-		})
-	}
-
-	if singleTemplate == "" {
-		continue
-	}
-
-	perPage := collection.PaginateBy
-	paginatePath := collection.PaginatePath
-	if paginatePath == "" {
-		paginatePath = "page"
-	}
-
-	for _, term := range collection.Terms {
-		if perPage <= 0 {
 			ctx := templateContext{
-				Title:        term.Name,
-				Description:  term.Name,
+				Title:        collection.Name,
+				Description:  collection.Name,
 				HomeURL:      "/",
-				CurrentURL:   term.URL,
-				CanonicalURL: term.CanonicalURL,
+				CurrentURL:   collection.URL,
+				CanonicalURL: collection.CanonicalURL,
 				Config:       cfg,
 				Theme:        theme,
 				Index:        index,
 				Taxonomy:     collection,
-				Term:         term,
-				Pages:        term.Items,
+				Terms:        collection.Terms,
 				Robots:       "noai, noimageai",
 			}
 
-			rendered, err := renderTemplate(set, singleTemplate, ctx)
+			rendered, err := renderTemplate(set, listTemplate, ctx)
 			if err != nil {
-				return nil, fmt.Errorf("render taxonomy term %q: %w", term.Name, err)
+				return nil, fmt.Errorf("render taxonomy list %q: %w", collection.Name, err)
 			}
 
 			pages = append(pages, Page{
-				URL:          term.URL,
-				CanonicalURL: term.CanonicalURL,
-				TemplateName: singleTemplate,
-				Title:        term.Name,
+				URL:          collection.URL,
+				CanonicalURL: collection.CanonicalURL,
+				TemplateName: listTemplate,
+				Title:        collection.Name,
 				Content:      rendered,
 			})
+		}
+
+		if singleTemplate == "" {
 			continue
 		}
 
-		totalPages := max(1, (len(term.Items)+perPage-1)/perPage)
-		for pageNum := 1; pageNum <= totalPages; pageNum++ {
-			start := (pageNum - 1) * perPage
-			end := min(start+perPage, len(term.Items))
-			pageURL := term.URL
-			if pageNum > 1 {
-				pageURL = term.URL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
-			}
-
-			paginator := buildPaginator(term.URL, pageNum, totalPages, term.Items[start:end])
-
-			ctx := templateContext{
-				Title:        term.Name,
-				Description:  term.Name,
-				HomeURL:      "/",
-				CurrentURL:   pageURL,
-				CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
-				Config:       cfg,
-				Theme:        theme,
-				Index:        index,
-				Taxonomy:     collection,
-				Term:         term,
-				Pages:        term.Items[start:end],
-				Paginator:    paginator,
-				Robots:       "noai, noimageai",
-			}
-
-			rendered, err := renderTemplate(set, singleTemplate, ctx)
-			if err != nil {
-				return nil, fmt.Errorf("render taxonomy term %q page %d: %w", term.Name, pageNum, err)
-			}
-
-			pages = append(pages, Page{
-				URL:          pageURL,
-				CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
-				TemplateName: singleTemplate,
-				Title:        term.Name,
-				Content:      rendered,
-			})
+		perPage := collection.PaginateBy
+		paginatePath := collection.PaginatePath
+		if paginatePath == "" {
+			paginatePath = "page"
 		}
 
-		// Generate page/1/ redirect to canonical term URL
-		pageOneURL := term.URL + paginatePath + "/1/"
-		pages = append(pages, Page{
-			URL:          pageOneURL,
-			CanonicalURL: term.CanonicalURL,
-			TemplateName: "redirect",
-			Title:        "Redirect",
-			Content:      redirectHTML(term.CanonicalURL),
-		})
-	}
+		for _, term := range collection.Terms {
+			if perPage <= 0 {
+				ctx := templateContext{
+					Title:        term.Name,
+					Description:  term.Name,
+					HomeURL:      "/",
+					CurrentURL:   term.URL,
+					CanonicalURL: term.CanonicalURL,
+					Config:       cfg,
+					Theme:        theme,
+					Index:        index,
+					Taxonomy:     collection,
+					Term:         term,
+					Pages:        term.Items,
+					Robots:       "noai, noimageai",
+				}
+
+				rendered, err := renderTemplate(set, singleTemplate, ctx)
+				if err != nil {
+					return nil, fmt.Errorf("render taxonomy term %q: %w", term.Name, err)
+				}
+
+				pages = append(pages, Page{
+					URL:          term.URL,
+					CanonicalURL: term.CanonicalURL,
+					TemplateName: singleTemplate,
+					Title:        term.Name,
+					Content:      rendered,
+				})
+				continue
+			}
+
+			totalPages := max(1, (len(term.Items)+perPage-1)/perPage)
+			for pageNum := 1; pageNum <= totalPages; pageNum++ {
+				start := (pageNum - 1) * perPage
+				end := min(start+perPage, len(term.Items))
+				pageURL := term.URL
+				if pageNum > 1 {
+					pageURL = term.URL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
+				}
+
+				paginator := buildPaginator(term.URL, pageNum, totalPages, term.Items[start:end])
+
+				ctx := templateContext{
+					Title:        term.Name,
+					Description:  term.Name,
+					HomeURL:      "/",
+					CurrentURL:   pageURL,
+					CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+					Config:       cfg,
+					Theme:        theme,
+					Index:        index,
+					Taxonomy:     collection,
+					Term:         term,
+					Pages:        term.Items[start:end],
+					Paginator:    paginator,
+					Robots:       "noai, noimageai",
+				}
+
+				rendered, err := renderTemplate(set, singleTemplate, ctx)
+				if err != nil {
+					return nil, fmt.Errorf("render taxonomy term %q page %d: %w", term.Name, pageNum, err)
+				}
+
+				pages = append(pages, Page{
+					URL:          pageURL,
+					CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+					TemplateName: singleTemplate,
+					Title:        term.Name,
+					Content:      rendered,
+				})
+			}
+
+			// Generate page/1/ redirect to canonical term URL
+			pageOneURL := term.URL + paginatePath + "/1/"
+			pages = append(pages, Page{
+				URL:          pageOneURL,
+				CanonicalURL: term.CanonicalURL,
+				TemplateName: "redirect",
+				Title:        "Redirect",
+				Content:      redirectHTML(term.CanonicalURL),
+			})
+		}
 	}
 
 	return pages, nil
@@ -501,4 +501,3 @@ func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) stri
 	b.WriteString("</head><body><main><h1>Page not found</h1><p>The page you requested could not be found.</p><p><a href=\"/\">Return to the homepage</a></p></main></body></html>\n")
 	return b.String()
 }
-

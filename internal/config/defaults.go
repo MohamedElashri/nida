@@ -10,10 +10,10 @@ func DefaultSiteConfig() SiteConfig {
 		OutputDir:     "public",
 		ThemesDir:     "themes",
 		Paginate:      10,
-		Drafts:       false,
-		MinifyHTML:   false,
-		SyntaxTheme:  "github",
-		Taxonomies:   []TaxonomyConfig{},
+		Drafts:        false,
+		MinifyHTML:    false,
+		SyntaxTheme:   "github",
+		Taxonomies:    []TaxonomyConfig{},
 		RSS: RSSConfig{
 			Enabled:  true,
 			Filename: "rss.xml",
@@ -42,8 +42,8 @@ func DefaultSiteConfig() SiteConfig {
 			"categories": "/categories/{slug}/",
 		},
 		Sections: SectionConfig{
-			DefaultSortBy:   "date",
-			PaginatePath:    "page",
+			DefaultSortBy: "date",
+			PaginatePath:  "page",
 		},
 		Pipeline: PipelineConfig{
 			Fingerprint: false,
