@@ -2,8 +2,27 @@
 set -eu
 
 repo="MohamedElashri/nida"
-install_dir="${NIDA_INSTALL_DIR:-/usr/local/bin}"
 version="${NIDA_VERSION:-latest}"
+system_install="${NIDA_INSTALL_SYSTEM:-0}"
+
+default_install_dir() {
+  if [ "$system_install" = "1" ] || [ "$system_install" = "true" ]; then
+    printf '%s\n' "/usr/local/bin"
+    return
+  fi
+  if [ -n "${XDG_BIN_HOME:-}" ]; then
+    printf '%s\n' "$XDG_BIN_HOME"
+    return
+  fi
+  if [ -n "${HOME:-}" ]; then
+    printf '%s\n' "$HOME/.local/bin"
+    return
+  fi
+  echo "nida install: HOME is not set; set NIDA_INSTALL_DIR to a writable directory" >&2
+  exit 1
+}
+
+install_dir="${NIDA_INSTALL_DIR:-$(default_install_dir)}"
 
 need() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -95,17 +114,27 @@ if [ ! -f "$tmp/extract/nida" ]; then
 fi
 chmod +x "$tmp/extract/nida"
 
-if [ -w "$install_dir" ]; then
+if [ "$system_install" = "1" ] || [ "$system_install" = "true" ]; then
+  if [ -w "$install_dir" ]; then
+    mkdir -p "$install_dir"
+    install -m 0755 "$tmp/extract/nida" "$install_dir/nida"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo mkdir -p "$install_dir"
+    sudo install -m 0755 "$tmp/extract/nida" "$install_dir/nida"
+  else
+    echo "nida install: ${install_dir} is not writable and sudo is not available" >&2
+    exit 1
+  fi
+else
   mkdir -p "$install_dir"
   install -m 0755 "$tmp/extract/nida" "$install_dir/nida"
-elif command -v sudo >/dev/null 2>&1; then
-  sudo mkdir -p "$install_dir"
-  sudo install -m 0755 "$tmp/extract/nida" "$install_dir/nida"
-else
-  echo "nida install: ${install_dir} is not writable and sudo is not available" >&2
-  echo "nida install: rerun with NIDA_INSTALL_DIR set to a writable directory" >&2
-  exit 1
 fi
 
 echo "nida install: installed to ${install_dir}/nida"
+case ":${PATH:-}:" in
+  *:"$install_dir":*) ;;
+  *)
+    echo "nida install: add ${install_dir} to PATH to run nida from any shell" >&2
+    ;;
+esac
 "$install_dir/nida" version

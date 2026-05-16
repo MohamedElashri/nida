@@ -27,7 +27,8 @@ curl -fsSL https://melashri.net/nida/install.sh | sh
 nida version
 ```
 
-Set `NIDA_INSTALL_DIR` to install somewhere other than `/usr/local/bin`, or
+By default this installs to `$HOME/.local/bin`. Set `NIDA_INSTALL_SYSTEM=1` for
+a system-wide install, `NIDA_INSTALL_DIR` for a custom directory, or
 `NIDA_VERSION` to install a specific release tag.
 
 ### Homebrew

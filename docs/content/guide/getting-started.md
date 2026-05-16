@@ -11,20 +11,30 @@ Nida keeps the publishing loop intentionally small: write Markdown, render templ
 
 Prebuilt archives are published on [GitHub Releases](https://github.com/MohamedElashri/nida/releases).
 
-
 On Linux or macOS, install the latest prebuilt release:
 
 ```bash
 curl -fsSL https://melashri.net/nida/install.sh | sh
+```
+To confirm installation, run:
+
+```bash
 nida version
 ```
+Will print the installed version, like `nida version v0.5.5`.
 
-The installer detects the operating system and CPU architecture, downloads the matching release archive into a temporary directory, verifies the checksum, and installs `nida` into `/usr/local/bin`.
+The installer detects the operating system and CPU architecture, downloads the matching release archive into a temporary directory, verifies the checksum, and installs `nida` into `$HOME/.local/bin` by default.
 
 To install somewhere else:
 
 ```bash
-curl -fsSL https://melashri.net/nida/install.sh | NIDA_INSTALL_DIR="$HOME/.local/bin" sh
+curl -fsSL https://melashri.net/nida/install.sh | NIDA_INSTALL_DIR="$HOME/bin" sh
+```
+
+For a system-wide install:
+
+```bash
+curl -fsSL https://melashri.net/nida/install.sh | NIDA_INSTALL_SYSTEM=1 sh
 ```
 
 To install a specific version:
@@ -34,7 +44,6 @@ curl -fsSL https://melashri.net/nida/install.sh | NIDA_VERSION=v0.5.1 sh
 ```
 
 {% details(summary="Manual prebuilt archive install") %}
-
 
 Resolve the latest release tag:
 
