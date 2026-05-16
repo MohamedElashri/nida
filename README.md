@@ -217,19 +217,9 @@ The repository includes two example sites:
 * [example-site](./example-site): English example blog
 * [example-site-ar](./example-site-ar): Arabic RTL example blog
 
-Useful starting points:
-
-* [example-site/config.toml](./example-site/config.toml)
-* [example-site/content/posts/launching-nida.md](./example-site/content/posts/launching-nida.md)
-* [example-site/templates/base.html](./example-site/templates/base.html)
-* [example-site/static/site.css](./example-site/static/site.css)
-
 ## Documentation
 
 * [Nida documentation site](https://melashri.net/nida/)
-* [Advanced docs](./docs/content/advanced/_index.md)
-* [Development workflow](./docs/content/advanced/development.md)
-* [Release workflow](./docs/content/advanced/release-workflow.md)
 * [Changelog](./CHANGELOG.md)
 
 ## License
