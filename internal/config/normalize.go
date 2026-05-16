@@ -26,6 +26,13 @@ func normalize(cfg *SiteConfig) {
 	cfg.Search.Filename = cleanRelativePath(cfg.Search.Filename)
 	cfg.Pipeline.SCSS.EntryDir = cleanRelativePath(cfg.Pipeline.SCSS.EntryDir)
 	cfg.Server.Host = strings.TrimSpace(cfg.Server.Host)
+	for name, preset := range cfg.Pipeline.Images.Presets {
+		preset.Sizes = strings.TrimSpace(preset.Sizes)
+		cfg.Pipeline.Images.Presets[strings.TrimSpace(name)] = preset
+		if strings.TrimSpace(name) != name {
+			delete(cfg.Pipeline.Images.Presets, name)
+		}
+	}
 
 	if cfg.Sections.PaginatePath == "" {
 		cfg.Sections.PaginatePath = "page"
@@ -36,6 +43,9 @@ func normalize(cfg *SiteConfig) {
 
 	if cfg.Taxonomies == nil {
 		cfg.Taxonomies = []TaxonomyConfig{}
+	}
+	if cfg.Pipeline.Images.Presets == nil {
+		cfg.Pipeline.Images.Presets = map[string]ImagePresetConfig{}
 	}
 }
 

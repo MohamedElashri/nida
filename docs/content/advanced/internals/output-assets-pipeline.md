@@ -84,7 +84,18 @@ style.css -> style.1a2b3c4d.css
 
 The manifest maps original relative paths to fingerprinted relative paths. After processing, `RewriteOutputFiles` rewrites matching references in generated HTML.
 
-The HTML rewrite handles common `href`, `src`, and `srcset` attributes for CSS, JS, images, and SVG links. It is intentionally conservative and regex-based, so changes should include tests for the exact markup shape being supported.
+For example:
+
+```json
+{
+  "style.css": "style.1a2b3c4d.css",
+  "images/hero.768w.jpg": "images/hero.9f8e7d6c.jpg"
+}
+```
+
+Manifest keys and values are relative to the output root and do not include `base_url` path prefixes. Template helpers such as `asset` emit base-path-aware URLs before rewriting; `RewriteOutputFiles` preserves that prefix when it swaps in fingerprinted filenames.
+
+The HTML rewrite handles common `href`, `src`, and `srcset` attributes for CSS, JS, images, and SVG links. `srcset` candidates are rewritten one URL at a time. It is intentionally conservative and regex-based, so changes should include tests for the exact markup shape being supported.
 
 ## SCSS
 
@@ -101,7 +112,19 @@ Output is written under the configured SCSS entry directory in the output root. 
 
 Image processing supports PNG, JPEG, GIF, and WebP detection, with resized output currently encoded for JPEG, PNG, and GIF.
 
-The pipeline guards image processing with maximum file size, maximum dimensions, and maximum pixel count. Target widths greater than or equal to the original width are skipped.
+The pipeline generates the union of `pipeline.images.widths` and all `pipeline.images.presets.<name>.widths`. Target widths greater than or equal to the original width are skipped.
+
+Templates can use the same presets:
+
+```html
+<img
+  src="{{ asset "images/hero.jpg" }}"
+  srcset="{{ imagePresetSrcset "hero" "images/hero.jpg" }}"
+  sizes="{{ imagePresetSizes "hero" }}"
+  alt="">
+```
+
+The pipeline guards image processing with maximum file size, maximum dimensions, and maximum pixel count.
 
 When fingerprinting is also enabled, both original and resized image paths can be fingerprinted and added to the manifest.
 

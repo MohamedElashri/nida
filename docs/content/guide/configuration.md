@@ -140,6 +140,10 @@ entry_dir = "css"
 enabled = true
 widths = [480, 768, 1200]
 quality = 85
+
+[pipeline.images.presets.hero]
+widths = [768, 1200, 1600]
+sizes = "100vw"
 ```
 
 The pipeline is optional. Keep it disabled when plain static asset copying is enough.

@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -82,7 +83,7 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 		}
 	}
 
-	for _, targetWidth := range cfg.Pipeline.Images.Widths {
+	for _, targetWidth := range imageTargetWidths(cfg.Pipeline.Images) {
 		if targetWidth <= 0 || targetWidth > maxPipelineImageDimension {
 			return fmt.Errorf("invalid image target width %d", targetWidth)
 		}
@@ -160,4 +161,27 @@ func validPipelineImageDimensions(width, height int) bool {
 		return false
 	}
 	return width <= maxPipelineImagePixels/height
+}
+
+func imageTargetWidths(cfg config.ImageConfig) []int {
+	seen := map[int]bool{}
+	widths := make([]int, 0, len(cfg.Widths))
+	for _, width := range cfg.Widths {
+		if seen[width] {
+			continue
+		}
+		seen[width] = true
+		widths = append(widths, width)
+	}
+	for _, preset := range cfg.Presets {
+		for _, width := range preset.Widths {
+			if seen[width] {
+				continue
+			}
+			seen[width] = true
+			widths = append(widths, width)
+		}
+	}
+	slices.Sort(widths)
+	return widths
 }

@@ -51,11 +51,28 @@ Rendered Markdown is available as `.Page.BodyHTML` or `.Section.BodyHTML`.
 </article>
 ```
 
-Use `.BasePath` when linking assets or routes that need to work under a project path such as GitHub Pages:
+Use `asset` when linking static files. It keeps asset URLs under the path prefix from `base_url`, and fingerprinting can rewrite the rendered URL during the asset pipeline step:
 
 ```html
-<link rel="stylesheet" href="{{ .BasePath }}/style.css">
+<link rel="stylesheet" href="{{ asset "style.css" }}">
+<link rel="preload" href="{{ asset "fonts/site.woff2" }}" as="font" type="font/woff2" crossorigin>
+<script src="{{ asset "js/site.js" }}" defer></script>
+```
+
+Use `.BasePath` for route links that need to work under a project path such as GitHub Pages:
+
+```html
 <a href="{{ .BasePath }}/guide/">Guide</a>
+```
+
+For processed responsive images, `imageSrcset` uses `pipeline.images.widths`, while `imagePresetSrcset` and `imagePresetSizes` use a named image preset:
+
+```html
+<img
+  src="{{ asset "images/hero.jpg" }}"
+  srcset="{{ imagePresetSrcset "hero" "images/hero.jpg" }}"
+  sizes="{{ imagePresetSizes "hero" }}"
+  alt="A writing desk">
 ```
 
 Next: publish a site in [Deployment](../deployment/).

@@ -83,6 +83,41 @@ func TestDocumentDirectionTemplateHelper(t *testing.T) {
 	}
 }
 
+func TestAssetTemplateHelperUsesBasePath(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com/docs/"
+
+	got, err := executeTemplateTextWithConfig(`{{ asset "css/site.css" }}`, nil, cfg)
+	if err != nil {
+		t.Fatalf("execute asset helper: %v", err)
+	}
+	if got != "/docs/css/site.css" {
+		t.Fatalf("expected base-path asset URL, got %q", got)
+	}
+}
+
+func TestAssetTemplateHelperRejectsTraversal(t *testing.T) {
+	_, err := executeTemplateText(`{{ asset "../secret.css" }}`, nil)
+	if err == nil {
+		t.Fatal("expected traversal asset path to fail")
+	}
+}
+
+func TestImagePresetTemplateHelpers(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com/blog/"
+
+	got, err := executeTemplateTextWithConfig(`{{ imagePresetSrcset "thumb" "images/photo.jpg" }}|{{ imagePresetSizes "thumb" }}`, nil, cfg)
+	if err != nil {
+		t.Fatalf("execute image preset helpers: %v", err)
+	}
+
+	want := "/blog/images/photo.320w.jpg 320w, /blog/images/photo.640w.jpg 640w|(max-width: 700px) 50vw, 320px"
+	if got != want {
+		t.Fatalf("unexpected preset output\nwant: %q\n got: %q", want, got)
+	}
+}
+
 func TestReadFileRejectsAbsolutePath(t *testing.T) {
 	got, err := executeTemplateText(`{{ readFile "/etc/passwd" }}`, nil)
 	if err == nil {
@@ -102,7 +137,11 @@ func osMkdirAll(path string, mode uint32) error {
 }
 
 func executeTemplateText(text string, data any) (string, error) {
-	tmpl, err := template.New("test").Funcs(funcMap(".")).Parse(text)
+	return executeTemplateTextWithConfig(text, data, config.DefaultSiteConfig())
+}
+
+func executeTemplateTextWithConfig(text string, data any, cfg config.SiteConfig) (string, error) {
+	tmpl, err := template.New("test").Funcs(funcMap(".", cfg)).Parse(text)
 	if err != nil {
 		return "", err
 	}

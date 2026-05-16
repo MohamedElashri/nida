@@ -105,9 +105,15 @@ type PipelineConfig struct {
 }
 
 type ImageConfig struct {
-	Enabled bool  `toml:"enabled"`
-	Widths  []int `toml:"widths"`
-	Quality int   `toml:"quality"`
+	Enabled bool                         `toml:"enabled"`
+	Widths  []int                        `toml:"widths"`
+	Quality int                          `toml:"quality"`
+	Presets map[string]ImagePresetConfig `toml:"presets"`
+}
+
+type ImagePresetConfig struct {
+	Widths []int  `toml:"widths"`
+	Sizes  string `toml:"sizes"`
 }
 
 type SCSSConfig struct {

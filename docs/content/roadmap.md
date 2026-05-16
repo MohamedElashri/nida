@@ -11,9 +11,9 @@ Near-term work is grouped into a few areas.
 
 ## Asset pipeline
 
-Nida already copies static files, fingerprints assets, compiles SCSS, minifies CSS/JS, and can process images. The next step is making those pieces easier to use together.
+Nida already copies static files, fingerprints assets, compiles SCSS, minifies CSS/JS, and can process images. Recent work made those pieces easier to use together.
 
-Planned:
+Done:
 
 - clearer asset URL helpers for templates
 - better manifest docs

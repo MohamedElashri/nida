@@ -45,6 +45,8 @@ The template function map includes helpers for:
 - document direction
 - grouping pages by year
 - current time
+- base-path-aware asset URLs
+- image variant, srcset, and preset helpers
 - reading files
 - image resizing helper support
 - sorting descending

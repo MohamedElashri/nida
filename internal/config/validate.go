@@ -83,6 +83,26 @@ func Validate(cfg SiteConfig) error {
 			problems = append(problems, err.Error())
 		}
 	}
+	if cfg.Pipeline.Images.Enabled {
+		for _, width := range cfg.Pipeline.Images.Widths {
+			if width <= 0 {
+				problems = append(problems, "pipeline.images.widths values must be greater than 0")
+				break
+			}
+		}
+		for name, preset := range cfg.Pipeline.Images.Presets {
+			if strings.TrimSpace(name) == "" {
+				problems = append(problems, "pipeline.images.presets names must not be empty")
+				continue
+			}
+			for _, width := range preset.Widths {
+				if width <= 0 {
+					problems = append(problems, "pipeline.images.presets."+name+".widths values must be greater than 0")
+					break
+				}
+			}
+		}
+	}
 
 	if len(problems) == 0 {
 		return nil

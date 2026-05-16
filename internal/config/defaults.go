@@ -53,6 +53,20 @@ func DefaultSiteConfig() SiteConfig {
 				Enabled: false,
 				Widths:  []int{480, 768, 1200},
 				Quality: 85,
+				Presets: map[string]ImagePresetConfig{
+					"thumb": {
+						Widths: []int{320, 640},
+						Sizes:  "(max-width: 700px) 50vw, 320px",
+					},
+					"content": {
+						Widths: []int{480, 768, 1200},
+						Sizes:  "(max-width: 760px) 100vw, 760px",
+					},
+					"hero": {
+						Widths: []int{768, 1200, 1600},
+						Sizes:  "100vw",
+					},
+				},
 			},
 			SCSS: SCSSConfig{
 				Enabled:  false,

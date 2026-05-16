@@ -35,10 +35,10 @@ base_url = "https://melashri.net/nida/"
 
 Nida derives `.BasePath` from that URL. In this case, `.BasePath` is `/nida`.
 
-Use `.BasePath` in templates for assets and navigation:
+Use `asset` for static files and `.BasePath` for navigation:
 
 ```html
-<link rel="stylesheet" href="{{ .BasePath }}/style.css">
+<link rel="stylesheet" href="{{ asset "style.css" }}">
 <a href="{{ .BasePath }}/guide/">Guide</a>
 ```
 
@@ -150,7 +150,7 @@ This helps catch asset and navigation problems before merging.
 
 ## Common mistakes
 
-If CSS loads as HTML, check that template asset links include `.BasePath` when the site is hosted under a project path.
+If CSS loads as HTML, check that template asset links use `asset` when the site is hosted under a project path.
 
 If the deployment succeeds but the site is blank or missing assets, check the artifact path in `actions/upload-pages-artifact`.
 

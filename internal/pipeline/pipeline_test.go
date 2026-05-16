@@ -50,3 +50,24 @@ func TestProcessCompilesThemeSCSSWithoutSiteStaticDir(t *testing.T) {
 		t.Fatalf("unexpected compiled css %q", string(got))
 	}
 }
+
+func TestImageTargetWidthsIncludesPresetWidths(t *testing.T) {
+	cfg := config.ImageConfig{
+		Widths: []int{768, 480, 768},
+		Presets: map[string]config.ImagePresetConfig{
+			"hero":  {Widths: []int{1200, 768}},
+			"thumb": {Widths: []int{320}},
+		},
+	}
+
+	got := imageTargetWidths(cfg)
+	want := []int{320, 480, 768, 1200}
+	if len(got) != len(want) {
+		t.Fatalf("got widths %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got widths %v, want %v", got, want)
+		}
+	}
+}

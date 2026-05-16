@@ -8,8 +8,8 @@
   <title>{{ if ne .Title .Config.Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}</title>
   <meta name="description" content="{{ default .Description .Config.Description }}">
   <link rel="canonical" href="{{ .CanonicalURL }}">
-  <link rel="icon" href="{{ .BasePath }}/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="{{ .BasePath }}/style.css">
+  <link rel="icon" href="{{ asset "favicon.svg" }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ asset "style.css" }}">
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to content</a>

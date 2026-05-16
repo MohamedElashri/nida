@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Title }} | {{ .Config.Title }}</title>
   <meta name="description" content="{{ default .Page.Description .Config.Description }}">
-  <link rel="stylesheet" href="/site.css">
+  <link rel="stylesheet" href="{{ asset "site.css" }}">
 </head>
 <body>
   <div class="page-shell">

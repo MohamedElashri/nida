@@ -262,7 +262,7 @@ Nida copies page bundle resources next to the rendered page.
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ if .Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}</title>
   <meta name="description" content="{{ default .Description .Config.Description }}">
-  <link rel="stylesheet" href="{{ .BasePath }}/site.css">
+  <link rel="stylesheet" href="{{ asset "site.css" }}">
 </head>
 <body>
   <header class="site-header">

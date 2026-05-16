@@ -18,6 +18,9 @@ func TestDefaultSiteConfig(t *testing.T) {
 	if !cfg.RSS.Enabled {
 		t.Fatal("expected RSS to be enabled by default")
 	}
+	if _, ok := cfg.Pipeline.Images.Presets["content"]; !ok {
+		t.Fatal("expected default content image preset")
+	}
 }
 
 func TestLoadAppliesDefaults(t *testing.T) {
@@ -94,6 +97,38 @@ sections = ["post"]
 	}
 	if len(cfg.Atom.Sections) != 1 || cfg.Atom.Sections[0] != "post" {
 		t.Fatalf("expected Atom sections [post], got %#v", cfg.Atom.Sections)
+	}
+}
+
+func TestLoadImagePresets(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, `
+base_url = "https://example.com"
+title = "Image Presets"
+
+[pipeline.images]
+enabled = true
+widths = [600]
+
+[pipeline.images.presets.card]
+widths = [360, 720]
+sizes = "(max-width: 720px) 100vw, 360px"
+`)
+
+	cfg, _, err := Load(Options{SiteRoot: dir})
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	preset, ok := cfg.Pipeline.Images.Presets["card"]
+	if !ok {
+		t.Fatalf("expected card image preset, got %#v", cfg.Pipeline.Images.Presets)
+	}
+	if len(preset.Widths) != 2 || preset.Widths[0] != 360 || preset.Widths[1] != 720 {
+		t.Fatalf("unexpected preset widths %#v", preset.Widths)
+	}
+	if preset.Sizes != "(max-width: 720px) 100vw, 360px" {
+		t.Fatalf("unexpected preset sizes %q", preset.Sizes)
 	}
 }
 
