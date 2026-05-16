@@ -195,6 +195,60 @@ a:focus-visible {
   font-weight: 700;
 }
 
+.side-nav-group {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.side-nav-group summary {
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.94rem;
+  justify-content: space-between;
+  list-style: none;
+  padding: 0.38rem 0.55rem;
+}
+
+.side-nav-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.side-nav-group summary::after {
+  color: var(--soft);
+  content: "+";
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.side-nav-group[open] summary::after {
+  content: "-";
+}
+
+.side-nav-group summary:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.side-nav-group summary.active {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.side-nav-subpages {
+  border-left: 1px solid var(--border-muted);
+  display: grid;
+  gap: 0.12rem;
+  margin: 0.15rem 0 0.35rem 0.55rem;
+  padding-left: 0.5rem;
+}
+
+.side-nav-subpages a {
+  font-size: 0.88rem;
+  padding: 0.32rem 0.5rem;
+}
+
 .article-shell {
   max-width: var(--content-width);
   min-width: 0;
@@ -304,6 +358,41 @@ h3 {
   background: transparent;
   border: 0;
   padding: 0;
+}
+
+.collapsible-details {
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  margin: 1.1rem 0;
+}
+
+.collapsible-details-summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 0.55rem;
+  font-weight: 700;
+  list-style: none;
+  padding: 0.8rem 0.9rem;
+}
+
+.collapsible-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-details-icon::before {
+  color: var(--soft);
+  content: "+";
+  font-family: var(--mono);
+}
+
+.collapsible-details[open] .collapsible-details-icon::before {
+  content: "-";
+}
+
+.collapsible-details-body {
+  border-top: 1px solid var(--border-muted);
+  padding: 0.1rem 0.9rem 0.9rem;
 }
 
 .prose .z-chroma {

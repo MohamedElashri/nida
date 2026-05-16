@@ -8,6 +8,7 @@
   <title>{{ if ne .Title .Config.Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}</title>
   <meta name="description" content="{{ default .Description .Config.Description }}">
   <link rel="canonical" href="{{ .CanonicalURL }}">
+  <link rel="icon" href="{{ .BasePath }}/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="{{ .BasePath }}/style.css">
 </head>
 <body>
@@ -22,6 +23,7 @@
         <a{{ if eq .CurrentURL "/" }} class="active"{{ end }} href="{{ .BasePath }}/">Home</a>
         <a{{ if hasPrefix .CurrentURL "/guide/" }} class="active"{{ end }} href="{{ .BasePath }}/guide/">Guide</a>
         <a{{ if hasPrefix .CurrentURL "/reference/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/">Reference</a>
+        <a{{ if hasPrefix .CurrentURL "/advanced/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/">Advanced</a>
         <a{{ if eq .CurrentURL "/roadmap/" }} class="active"{{ end }} href="{{ .BasePath }}/roadmap/">Roadmap</a>
         <a href="{{ $repoURL }}">GitHub</a>
       </nav>

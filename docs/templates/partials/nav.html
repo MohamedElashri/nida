@@ -12,6 +12,23 @@
   <a{{ if eq .CurrentURL "/reference/cli/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/cli/">CLI</a>
   <a{{ if eq .CurrentURL "/reference/front-matter/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/front-matter/">Front Matter</a>
   <a{{ if eq .CurrentURL "/reference/config/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/config/">Config</a>
+  <p>Advanced</p>
+  <details class="side-nav-group"{{ if hasPrefix .CurrentURL "/advanced/internals/" }} open{{ end }}>
+    <summary{{ if hasPrefix .CurrentURL "/advanced/internals/" }} class="active"{{ end }}>Internals</summary>
+    <div class="side-nav-subpages">
+      <a{{ if eq .CurrentURL "/advanced/internals/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/">Overview</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/build-flow/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/build-flow/">Build Flow</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/config-paths/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/config-paths/">Config And Paths</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/content-markdown/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/content-markdown/">Content And Markdown</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/site-index-routing/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/site-index-routing/">Site Index And Routing</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/rendering-themes/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/rendering-themes/">Rendering And Themes</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/output-assets-pipeline/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/output-assets-pipeline/">Output And Assets</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/serve-rebuilds/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/serve-rebuilds/">Serve And Rebuilds</a>
+      <a{{ if eq .CurrentURL "/advanced/internals/generated-artifacts/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/internals/generated-artifacts/">Generated Artifacts</a>
+    </div>
+  </details>
+  <a{{ if eq .CurrentURL "/advanced/development/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/development/">Development Workflow</a>
+  <a{{ if eq .CurrentURL "/advanced/release-workflow/" }} class="active"{{ end }} href="{{ .BasePath }}/advanced/release-workflow/">Release Workflow</a>
   <p>Project</p>
   <a{{ if eq .CurrentURL "/roadmap/" }} class="active"{{ end }} href="{{ .BasePath }}/roadmap/">Roadmap</a>
 </nav>

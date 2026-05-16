@@ -18,6 +18,18 @@ a static site you can serve anywhere.
 
 ## Install
 
+### Install Script
+
+On Linux or macOS, install the latest prebuilt release:
+
+```bash
+curl -fsSL https://melashri.net/nida/install.sh | sh
+nida version
+```
+
+Set `NIDA_INSTALL_DIR` to install somewhere other than `/usr/local/bin`, or
+`NIDA_VERSION` to install a specific release tag.
+
 ### Homebrew
 
 ```bash
@@ -201,8 +213,9 @@ Useful starting points:
 ## Documentation
 
 * [Nida documentation site](https://melashri.net/nida/)
-* [Development](./docs/dev.md)
-* [Release process](./docs/release.md)
+* [Advanced docs](./docs/content/advanced/_index.md)
+* [Development workflow](./docs/content/advanced/development.md)
+* [Release workflow](./docs/content/advanced/release-workflow.md)
 * [Changelog](./CHANGELOG.md)
 
 ## License

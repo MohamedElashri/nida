@@ -7,19 +7,34 @@ template = "page"
 
 Nida keeps the publishing loop intentionally small: write Markdown, render templates, and serve the generated static files.
 
-## Install with Homebrew
+## Install with curl
 
-On macOS or Linux with Homebrew:
+Prebuilt archives are published on [GitHub Releases](https://github.com/MohamedElashri/nida/releases).
+
+
+On Linux or macOS, install the latest prebuilt release:
 
 ```bash
-brew tap MohamedElashri/nida
-brew install nida
+curl -fsSL https://melashri.net/nida/install.sh | sh
 nida version
 ```
 
-## Install a prebuilt binary
+The installer detects the operating system and CPU architecture, downloads the matching release archive into a temporary directory, verifies the checksum, and installs `nida` into `/usr/local/bin`.
 
-Prebuilt archives are published on [GitHub Releases](https://github.com/MohamedElashri/nida/releases).
+To install somewhere else:
+
+```bash
+curl -fsSL https://melashri.net/nida/install.sh | NIDA_INSTALL_DIR="$HOME/.local/bin" sh
+```
+
+To install a specific version:
+
+```bash
+curl -fsSL https://melashri.net/nida/install.sh | NIDA_VERSION=v0.5.1 sh
+```
+
+{% details(summary="Manual prebuilt archive install") %}
+
 
 Resolve the latest release tag:
 
@@ -39,6 +54,19 @@ nida version
 ```
 
 For macOS Apple Silicon, use the `darwin_arm64` archive name instead. Windows users can download the `windows_x86_64.zip` archive from the same release page.
+
+{% end %}
+
+## Install with Homebrew
+
+On macOS or Linux with Homebrew:
+
+```bash
+brew tap MohamedElashri/nida
+brew install nida
+nida version
+```
+
 
 ## Install from source
 

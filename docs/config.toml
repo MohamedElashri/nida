@@ -42,6 +42,7 @@ paginate_path = "page"
 [permalinks]
 guide = "/guide/{slug}/"
 reference = "/reference/{slug}/"
+advanced = "/advanced/{slug}/"
 
 [search]
 enabled = false

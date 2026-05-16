@@ -7,80 +7,61 @@ template = "page"
 
 Nida's roadmap is intentionally small. The goal is not to become a giant website framework; it is to make static publishing feel complete, predictable, and pleasant.
 
-These are the product areas that would make Nida more useful while keeping it understandable.
+Near-term work is grouped into a few areas.
 
-## 1. Stronger asset pipeline
+## Asset pipeline
 
-Nida already supports static asset copying, optional fingerprinting, SCSS, CSS/JS minification, and image processing. The next step is making the pipeline more complete and easier to reason about.
+Nida already copies static files, fingerprints assets, compiles SCSS, minifies CSS/JS, and can process images. The next step is making those pieces easier to use together.
 
-Planned direction:
+Planned:
 
 - clearer asset URL helpers for templates
-- better fingerprint manifest documentation
-- more predictable handling for processed images
-- practical presets for common image sizes
-- stronger examples for CSS, JS, fonts, and image assets
+- better manifest docs
+- practical image presets
+- stronger CSS, JS, font, and image examples
 
-Why it matters: static sites often become asset-management projects. Nida should make cache-friendly, deployable assets feel boring in the best way.
+## Theme authoring
 
-## 2. Better theme authoring
+Themes work today, including inheritance and site overrides. They need a smoother authoring path.
 
-Nida supports themes and theme inheritance, but creating a theme should feel more guided.
-
-Planned direction:
+Planned:
 
 - documented minimal theme structure
-- starter themes for common site types
 - clearer template override rules
-- better examples for menus, metadata, and `extra` values
+- examples for menus, metadata, and `extra`
 - theme-friendly asset conventions
+- small starter themes
 
-Why it matters: themes should help people start quickly without hiding how the site is built.
+## Search
 
-## 3. Built-in search experience
+Nida can generate a search index. The missing piece is a simple documented search UI.
 
-Nida already has optional search index generation. The next step is making search practical out of the box.
-
-Planned direction:
+Planned:
 
 - documented search index format
-- small default search UI example
-- template pattern for loading the generated index
-- configuration examples for enabling and disabling search
-- guidance for keeping search lightweight
+- default client-side search example
+- template pattern for loading the index
+- guidance for keeping search small
 
-Why it matters: static sites should be searchable without requiring a heavy application framework.
+## Migration support
 
-## 4. Migration and compatibility tools
+Nida borrows familiar static-site ideas: front matter, sections, permalinks, taxonomies, and `@/` internal links. Migration docs and diagnostics would make trial runs easier.
 
-Nida already includes ideas inspired by Zola, such as front matter, sections, permalinks, and internal links. Migration support could make it easier to try Nida on existing sites.
-
-Planned direction:
+Planned:
 
 - clearer migration guides from Zola-style sites
-- content checks for unsupported front matter or shortcode patterns
-- import diagnostics that explain what needs manual attention
+- checks for unsupported front matter or shortcode patterns
 - compatibility notes for Markdown, permalinks, taxonomies, and aliases
 
-Why it matters: people are more likely to try Nida if they can understand the migration cost before committing.
-
 ## Later, maybe
-
-These ideas are useful but not urgent:
 
 - versioned content or documentation support
 - richer taxonomy pages
 - configurable generated archives
 - deploy presets for common hosts
 
-## How priorities are chosen
+## Principles
 
-Nida should prefer features that are:
+Features should be useful for real static sites, easy to explain, friendly to static output, and small enough to keep the tool understandable.
 
-- useful for real static sites
-- easy to explain
-- static-output friendly
-- template-friendly
-- small enough to keep the tool understandable
-
-If a feature makes Nida more powerful but much harder to reason about, it should earn its place slowly.
+If a feature makes Nida more powerful but harder to reason about, it should earn its place slowly.
