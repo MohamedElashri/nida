@@ -170,7 +170,7 @@ func ResolveSectionURL(section content.Section, cfg config.SiteConfig) (string, 
 		}
 	}
 
-	return route, nil
+	return NormalizeRoute("section route", route)
 }
 
 func buildPathLookup(pages []content.Page, sections []content.Section, cfg config.SiteConfig) markdown.PathLookup {
@@ -207,6 +207,9 @@ func buildPathLookup(pages []content.Page, sections []content.Section, cfg confi
 
 func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 	sectionPath := page.SectionPath
+	if err := ValidatePathComponent("slug", page.Slug); err != nil {
+		return "", fmt.Errorf("invalid slug for %q: %w", page.RelativePath, err)
+	}
 
 	var pattern string
 	if p, ok := cfg.Permalinks[sectionPath]; ok && p != "" {
@@ -244,7 +247,7 @@ func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 		route += "/"
 	}
 
-	return route, nil
+	return NormalizeRoute("page route", route)
 }
 
 func extractTaxonomyValue(extra map[string]any, name string) string {

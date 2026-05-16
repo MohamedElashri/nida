@@ -19,19 +19,25 @@ func compileSCSS(siteRoot, staticRoot, outputRoot string, cfg config.SiteConfig)
 
 	scssRoots := []string{}
 
-	if cfg.Theme != "" {
-		themeSCSSRoot, err := safepath.Join(siteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "scss"))
-		if err != nil {
-			return fmt.Errorf("resolve theme scss dir: %w", err)
+		if cfg.Theme != "" {
+			themeSCSSRoot, err := safepath.Join(siteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "scss"))
+			if err != nil {
+				return fmt.Errorf("resolve theme scss dir: %w", err)
+			}
+			if err := safepath.EnsureNoSymlinkPath(siteRoot, themeSCSSRoot); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("check theme scss dir: %w", err)
+			}
+			if _, err := os.Stat(themeSCSSRoot); err == nil {
+				scssRoots = append(scssRoots, themeSCSSRoot)
+			}
 		}
-		if _, err := os.Stat(themeSCSSRoot); err == nil {
-			scssRoots = append(scssRoots, themeSCSSRoot)
-		}
-	}
 
 	siteSCSSRoot, err := safepath.Join(staticRoot, entryDir)
 	if err != nil {
 		return fmt.Errorf("resolve site scss dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(siteRoot, siteSCSSRoot); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("check site scss dir: %w", err)
 	}
 	if _, err := os.Stat(siteSCSSRoot); err == nil {
 		scssRoots = append(scssRoots, siteSCSSRoot)
@@ -47,6 +53,12 @@ func compileSCSS(siteRoot, staticRoot, outputRoot string, cfg config.SiteConfig)
 }
 
 func compileSCSSDir(scssRoot, outputRoot, entryDir string) error {
+	if err := safepath.RejectSymlink(scssRoot); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("check scss dir: %w", err)
+	}
 	if _, err := os.Stat(scssRoot); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -62,6 +74,9 @@ func compileSCSSDir(scssRoot, outputRoot, entryDir string) error {
 	cssOutput, err := safepath.Join(outputRoot, entryDir)
 	if err != nil {
 		return fmt.Errorf("resolve css output dir: %w", err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(outputRoot, cssOutput); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("check css output dir: %w", err)
 	}
 	if err := os.MkdirAll(cssOutput, 0o755); err != nil {
 		return fmt.Errorf("create css output dir: %w", err)

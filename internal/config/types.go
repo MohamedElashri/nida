@@ -50,7 +50,10 @@ type MarkdownConfig struct {
 	ExternalLinksTargetBlank bool `toml:"external_links_target_blank"`
 	ExternalLinksNoFollow    bool `toml:"external_links_no_follow"`
 	ExternalLinksNoReferrer  bool `toml:"external_links_no_referrer"`
-	UnsafeHTML               bool `toml:"unsafe_html"`
+	// UnsafeHTML is an explicit opt-in for trusted-author sites that need raw
+	// HTML in Markdown. Keep this false when Markdown can come from untrusted
+	// contributors.
+	UnsafeHTML bool `toml:"unsafe_html"`
 }
 
 type SectionConfig struct {

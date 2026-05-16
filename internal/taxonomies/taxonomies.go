@@ -150,7 +150,20 @@ func normalizeRoute(pattern string) (string, error) {
 	if strings.Contains(cleaned, "{") || strings.Contains(cleaned, "}") {
 		return "", fmt.Errorf("unsupported placeholder in %q", pattern)
 	}
+	if containsUnsafeRouteRune(cleaned) {
+		return "", fmt.Errorf("route contains unsafe characters")
+	}
+	if strings.ContainsAny(cleaned, `\?#`) {
+		return "", fmt.Errorf("route must be a URL path without query, fragment, or backslash")
+	}
 	cleaned = strings.Trim(cleaned, "/")
+	if cleaned != "" {
+		for _, segment := range strings.Split(cleaned, "/") {
+			if segment == "" || segment == "." || segment == ".." {
+				return "", fmt.Errorf("route contains unsafe path segment %q", segment)
+			}
+		}
+	}
 	if !strings.HasPrefix(cleaned, "/") {
 		cleaned = "/" + cleaned
 	}
@@ -158,6 +171,15 @@ func normalizeRoute(pattern string) (string, error) {
 		cleaned += "/"
 	}
 	return cleaned, nil
+}
+
+func containsUnsafeRouteRune(value string) bool {
+	for _, r := range value {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
 }
 
 func expandPattern(pattern, slug string) (string, error) {

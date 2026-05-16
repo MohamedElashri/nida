@@ -170,6 +170,20 @@ extends = "base"
 main_menu = [{ name = "Home", url = "/" }]
 ```
 
+## Config Security Notes
+
+Markdown raw HTML is disabled by default. Enable it only for trusted-author
+sites that intentionally need raw HTML in Markdown:
+
+```toml
+[markdown]
+unsafe_html = true
+```
+
+Template helpers named `safeHTML`/`safeCSS` are compatibility aliases for
+trusted template output. Prefer the clearer `unsafeHTML`/`unsafeCSS` names in new
+themes, and do not apply them to untrusted values.
+
 ## Examples
 
 The repository includes two example sites:

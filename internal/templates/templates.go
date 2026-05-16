@@ -63,10 +63,10 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 		return Set{}, fmt.Errorf("load templates: %w", err)
 	}
 
-	return loadFromRoots(templateRoots, absSiteRoot)
+	return loadFromRoots(templateRoots, absSiteRoot, cfg)
 }
 
-func loadFromRoots(roots []string, siteRoot string) (Set, error) {
+func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set, error) {
 	var shared []string
 	entries := map[string]string{}
 
@@ -116,7 +116,7 @@ func loadFromRoots(roots []string, siteRoot string) (Set, error) {
 	set := Set{templates: map[string]*template.Template{}}
 	for name, entry := range entries {
 		files := append(append([]string(nil), shared...), entry)
-		tmpl := template.New("root").Funcs(funcMap(siteRoot))
+			tmpl := template.New("root").Funcs(funcMap(siteRoot, cfg))
 		for _, file := range files {
 			data, err := os.ReadFile(file)
 			if err != nil {
@@ -150,12 +150,18 @@ func (s Set) Execute(name string, data any) (string, error) {
 	return b.String(), nil
 }
 
-func funcMap(siteRoot string) template.FuncMap {
+func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
+	cfg := config.DefaultSiteConfig()
+	if len(cfgs) > 0 {
+		cfg = cfgs[0]
+	}
 	return template.FuncMap{
 		"formatDate":        formatDate,
 		"formatDateWith":    formatDateWith,
-		"safeHTML":          safeHTML,
-		"safeCSS":           safeCSS,
+		"safeHTML":          unsafeHTML,
+		"unsafeHTML":        unsafeHTML,
+		"safeCSS":           unsafeCSS,
+		"unsafeCSS":         unsafeCSS,
 		"join":              joinValues,
 		"add":               add,
 		"sub":               sub,
@@ -170,7 +176,7 @@ func funcMap(siteRoot string) template.FuncMap {
 		"documentDirection": config.DocumentDirection,
 		"groupByYear":       groupByYear,
 		"now":               time.Now,
-		"readFile":          readFileFunc(siteRoot),
+		"readFile":          readFileFunc(siteRoot, cfg),
 		"resizeImage":       resizeImageFunc(siteRoot),
 		"sortDesc":          sortDesc,
 		"dig":               digValue,
@@ -216,11 +222,11 @@ func formatDateWith(value time.Time, format string) string {
 	return value.Format(strftimeToGoLayout(format))
 }
 
-func safeHTML(value string) template.HTML {
+func unsafeHTML(value string) template.HTML {
 	return template.HTML(value)
 }
 
-func safeCSS(value string) template.CSS {
+func unsafeCSS(value string) template.CSS {
 	return template.CSS(value)
 }
 
@@ -286,15 +292,22 @@ func groupByYear(pages []content.Page) []YearGroup {
 	return result
 }
 
-func readFileFunc(siteRoot string) func(string) (string, error) {
+func readFileFunc(siteRoot string, cfg config.SiteConfig) func(string) (string, error) {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {
 		absSiteRoot = siteRoot
 	}
+	allowedRoots := readFileAllowedRoots(absSiteRoot, cfg)
 	return func(path string) (string, error) {
+		if containsHiddenPathSegment(path) {
+			return "", fmt.Errorf("readFile refuses hidden path segment in %q", path)
+		}
 		fullPath, err := safepath.Join(absSiteRoot, path)
 		if err != nil {
 			return "", err
+		}
+		if !pathUnderAnyRoot(allowedRoots, fullPath) {
+			return "", fmt.Errorf("readFile path %q is outside allowed template/static roots", path)
 		}
 		if err := safepath.EnsureNoSymlinkPath(absSiteRoot, fullPath); err != nil {
 			return "", err
@@ -308,6 +321,58 @@ func readFileFunc(siteRoot string) func(string) (string, error) {
 		}
 		return string(data), nil
 	}
+}
+
+func readFileAllowedRoots(absSiteRoot string, cfg config.SiteConfig) []string {
+	candidates := []string{
+		cfg.TemplateDir,
+		cfg.StaticDir,
+	}
+	if strings.TrimSpace(cfg.Theme) != "" {
+		candidates = append(candidates,
+			filepath.Join(cfg.ThemesDir, cfg.Theme, "templates"),
+			filepath.Join(cfg.ThemesDir, cfg.Theme, "static"),
+		)
+	}
+
+	roots := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		root, err := safepath.Join(absSiteRoot, candidate)
+		if err != nil {
+			continue
+		}
+		if containsHiddenPathSegment(candidate) {
+			continue
+		}
+		roots = append(roots, root)
+	}
+	return roots
+}
+
+func pathUnderAnyRoot(roots []string, path string) bool {
+	for _, root := range roots {
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			continue
+		}
+		if rel == "." || (!strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsHiddenPathSegment(path string) bool {
+	clean := filepath.Clean(filepath.FromSlash(strings.TrimSpace(path)))
+	if clean == "." || clean == "" {
+		return false
+	}
+	for _, part := range strings.Split(clean, string(filepath.Separator)) {
+		if strings.HasPrefix(part, ".") {
+			return true
+		}
+	}
+	return false
 }
 
 func sortDesc(values []string) []string {

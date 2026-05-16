@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"html"
 	"slices"
 	"strconv"
 	"strings"
@@ -254,18 +255,22 @@ func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index si
 			Content:      rendered,
 		})
 
-		// Generate alias redirect pages
-		for _, alias := range page.Aliases {
-			aliasURL := alias
-			if !strings.HasPrefix(aliasURL, "/") {
-				aliasURL = "/" + aliasURL
-			}
-			if !strings.HasSuffix(aliasURL, "/") {
-				aliasURL += "/"
-			}
-			targetURL := canonicalURL(cfg.BaseURL, page.URL)
-			out = append(out, Page{
-				URL:          aliasURL,
+			// Generate alias redirect pages
+			for _, alias := range page.Aliases {
+				aliasURL := alias
+				if !strings.HasPrefix(aliasURL, "/") {
+					aliasURL = "/" + aliasURL
+				}
+				if !strings.HasSuffix(aliasURL, "/") {
+					aliasURL += "/"
+				}
+				aliasURL, err = site.NormalizeRoute("alias", aliasURL)
+				if err != nil {
+					return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
+				}
+				targetURL := canonicalURL(cfg.BaseURL, page.URL)
+				out = append(out, Page{
+					URL:          aliasURL,
 				CanonicalURL: targetURL,
 				TemplateName: "redirect",
 				Title:        "Redirect",
@@ -487,14 +492,13 @@ func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) stri
 
 	var b strings.Builder
 	b.WriteString("<!doctype html>\n")
-	b.WriteString(`<html lang="` + language + `" dir="` + direction + `">`)
+	b.WriteString(`<html lang="` + html.EscapeString(language) + `" dir="` + html.EscapeString(direction) + `">`)
 	b.WriteString("<head>")
 	b.WriteString(`<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">`)
-	b.WriteString(`<title>` + pageTitle + `</title>`)
+	b.WriteString(`<title>` + html.EscapeString(pageTitle) + `</title>`)
 	b.WriteString(`<meta name="robots" content="noindex">`)
-	b.WriteString(`<link rel="canonical" href="` + canonicalURL + `">`)
+	b.WriteString(`<link rel="canonical" href="` + html.EscapeString(canonicalURL) + `">`)
 	b.WriteString("</head><body><main><h1>Page not found</h1><p>The page you requested could not be found.</p><p><a href=\"/\">Return to the homepage</a></p></main></body></html>\n")
 	return b.String()
 }
-
 
