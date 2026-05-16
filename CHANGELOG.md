@@ -2,6 +2,12 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.6] - 2026-05-17
+
+### Added
+
+* Add configurable RSS and Atom section filtering with `sections = ["post"]`, preserving all-page feeds when omitted or empty and applying feed limits after filtering.
+
 ## [0.5.5] - 2026-05-16
 
 ### Added
