@@ -18,6 +18,7 @@ ar
 *.out
 # Nida documentation build output
 public/
+/docs/content/release-notes.md
 
 # Local development binaries
 .tmp/

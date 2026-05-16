@@ -109,6 +109,9 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
+      - name: Generate release notes page
+        run: go run ./scripts/generate_release_notes.go
+
       - name: Build documentation site
         run: go run ./cmd/nida build --site ./docs
 

@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "docs/**"
+      - "CHANGELOG.md"
+      - "scripts/generate_release_notes.go"
       - "cmd/**"
       - "internal/**"
       - "go.mod"
@@ -37,6 +39,9 @@ jobs:
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+
+      - name: Generate release notes page
+        run: go run ./scripts/generate_release_notes.go
 
       - name: Build documentation site
         run: go run ./cmd/nida build --site ./docs

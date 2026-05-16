@@ -23,7 +23,7 @@ That list is passed to `output.ValidateWritePlan` so conflicts fail before outpu
 
 `internal/feeds.GenerateAll` can generate RSS and Atom.
 
-Both feed types use `state.Index.AllPages`, which is already sorted and draft-filtered by the site index. Optional RSS and Atom section filters select pages by root section before feed limits are applied.
+Both feed types start from `state.Index.AllPages`, which is already sorted and draft-filtered by the site index. When `rss.sections` or `atom.sections` is set, feed generation narrows that list to pages whose root section matches one of the configured names before applying the feed limit. When the section list is omitted or empty, the feed keeps the all-page behavior.
 
 RSS uses page title, canonical link, GUID, publish date, and description. Atom includes feed metadata, author metadata where available, page summary, and rendered HTML content.
 

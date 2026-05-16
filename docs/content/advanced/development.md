@@ -21,6 +21,7 @@ The repository includes a `Makefile`:
 make build
 make test
 make site-build
+make docs-build
 make serve
 make example-build
 make example-serve
@@ -39,6 +40,10 @@ go run ./cmd/nida build -s ./example-site
 go run ./cmd/nida serve -s ./example-site
 go run ./cmd/nida build -s ./example-site-ar
 ```
+
+Use `make docs-build` for the documentation site. It regenerates
+`docs/content/release-notes.md` from `CHANGELOG.md` before running the Nida
+build.
 
 If the normal Go cache is not writable, keep the cache inside the repository:
 
@@ -116,4 +121,4 @@ Theme templates load before site templates, so site templates override theme def
 
 `.github/workflows/ci.yml` runs on branch pushes and pull requests. It checks formatting with `gofmt`, runs `go vet ./...`, runs `go test ./...`, and builds both example sites.
 
-`.github/workflows/pages.yml` builds the documentation site from `docs/` and deploys it to GitHub Pages when docs or source files change on `main`.
+`.github/workflows/pages.yml` regenerates the release notes page from `CHANGELOG.md`, builds the documentation site from `docs/`, and deploys it to GitHub Pages when docs, changelog, or source files change on `main`.

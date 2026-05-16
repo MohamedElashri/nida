@@ -2,11 +2,17 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.7] - 2026-05-17
+
+### Added
+
+* Generate the docs release notes page from `CHANGELOG.md` during docs builds.
+* Add `nida init [PATH]` to create a buildable example site with sample posts, tags, feeds, search, and page-bundle content in a new or empty directory.
+
 ## [0.5.6] - 2026-05-17
 
 ### Added
 
-* Add `nida init [PATH]` to create a buildable example site with sample posts, tags, feeds, search, and page-bundle content in a new or empty directory.
 * Add configurable RSS and Atom section filtering with `sections = ["post"]`, preserving all-page feeds when omitted or empty and applying feed limits after filtering.
 
 ## [0.5.5] - 2026-05-16

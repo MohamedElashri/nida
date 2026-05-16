@@ -97,9 +97,7 @@ Create an example site:
 nida init ./my-site
 ```
 
-This writes a small example site into a new or empty directory. It includes a
-config file, a home section, an about page, several posts, tags, a page bundle,
-templates, generated feeds/search settings, and a small CSS file.
+This writes a small example site into a new or empty directory. It includes a config file, a home section, an about page, several posts, tags, a page bundle, templates, generated feeds/search settings, and a small CSS file.
 
 Run Nida against a site directory:
 

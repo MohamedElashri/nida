@@ -2,6 +2,7 @@ SHELL := /bin/zsh
 
 GO ?= go
 SITE ?= ./example-site
+DOCS_SITE ?= ./docs
 EXAMPLE_SITE ?= ./example-site
 ARABIC_EXAMPLE_SITE ?= ./example-site-ar
 BINARY ?= nida
@@ -17,7 +18,7 @@ export GOMODCACHE := $(CURDIR)/.gomodcache
 export GOPROXY ?= https://proxy.golang.org,direct
 export GOSUMDB ?= sum.golang.org
 
-.PHONY: help dev build rebuild test test-cover serve site-build example-build example-serve arabic-example-build arabic-example-serve clean fmt tidy check
+.PHONY: help dev build rebuild test test-cover serve site-build docs-release-notes docs-build docs-serve example-build example-serve arabic-example-build arabic-example-serve clean fmt tidy check
 
 help:
 	@printf "Available targets:\n"
@@ -27,6 +28,8 @@ help:
 	@printf "  make test-cover   Run tests with coverage output\n"
 	@printf "  make serve        Run nida serve against SITE=%s\n" "$(SITE)"
 	@printf "  make site-build   Build nida against SITE=%s\n" "$(SITE)"
+	@printf "  make docs-build   Generate release notes and build the docs site\n"
+	@printf "  make docs-serve   Generate release notes and serve the docs site\n"
 	@printf "  make example-build Build the example website\n"
 	@printf "  make example-serve Serve the example website locally\n"
 	@printf "  make arabic-example-build Build the Arabic example website\n"
@@ -53,6 +56,15 @@ serve:
 
 site-build:
 	$(GO) run ./cmd/nida build --site $(SITE)
+
+docs-release-notes:
+	$(GO) run ./scripts/generate_release_notes.go
+
+docs-build: docs-release-notes
+	$(GO) run ./cmd/nida build --site $(DOCS_SITE)
+
+docs-serve: docs-release-notes
+	$(GO) run ./cmd/nida serve --site $(DOCS_SITE)
 
 example-build:
 	$(GO) run ./cmd/nida build --site $(EXAMPLE_SITE)
