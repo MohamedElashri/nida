@@ -1,5 +1,5 @@
 +++
-title = "Nida"
+title = "Nida Docs"
 description = "A small Go static site generator for calm, predictable publishing."
 sort_by = "weight"
 +++
