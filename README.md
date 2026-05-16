@@ -200,6 +200,7 @@ Useful starting points:
 
 ## Documentation
 
+* [Nida documentation site](https://melashri.net/nida/)
 * [Development](./docs/dev.md)
 * [Release process](./docs/release.md)
 * [Changelog](./CHANGELOG.md)

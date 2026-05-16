@@ -2,6 +2,14 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.5] - 2026-05-16
+
+### Added
+
+* Add a Nida-built documentation site under `docs/` and a GitHub Pages deployment workflow.
+* Derive and expose a template `.BasePath` from `base_url` for project-hosted sites such as GitHub Pages.
+* Teach `nida serve` to serve local previews from the configured base path.
+
 ## [0.5.2] - 2026-05-16
 
 ### Security

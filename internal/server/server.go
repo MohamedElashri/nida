@@ -32,6 +32,10 @@ func FileHandler(outputDir string) (http.Handler, error) {
 }
 
 func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
+	return fileHandlerWithBasePath(outputDir, "", injectLiveReload, reloader)
+}
+
+func fileHandlerWithBasePath(outputDir, basePath string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
 	absOutputDir, err := filepath.Abs(outputDir)
 	if err != nil {
 		return nil, fmt.Errorf("resolve output directory %q: %w", outputDir, err)
@@ -45,17 +49,17 @@ func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker
 		fileServer.ServeHTTP(rec, r)
 
 		if rec.Code != http.StatusNotFound || r.URL.Path == "/404.html" {
-			writeRecordedResponse(w, rec, injectLiveReload)
+			writeRecordedResponse(w, rec, injectLiveReload, basePath)
 			return
 		}
 
 		if err := safepath.EnsureNoSymlinkPath(absOutputDir, notFoundPath); err != nil {
-			writeRecordedResponse(w, rec, injectLiveReload)
+			writeRecordedResponse(w, rec, injectLiveReload, basePath)
 			return
 		}
 		body, err := os.ReadFile(notFoundPath)
 		if err != nil {
-			writeRecordedResponse(w, rec, injectLiveReload)
+			writeRecordedResponse(w, rec, injectLiveReload, basePath)
 			return
 		}
 
@@ -67,20 +71,20 @@ func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker
 			return
 		}
 		if injectLiveReload {
-			body = injectReloadSnippet(body)
+			body = injectReloadSnippet(body, basePath)
 		}
 		_, _ = w.Write(body)
 	})
 
 	if !injectLiveReload || reloader == nil {
-		return fileHandler, nil
+		return withBasePath(fileHandler, basePath), nil
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/_nida/livereload", reloader)
-	mux.HandleFunc("/_nida/livereload.js", liveReloadScriptHandler)
+	mux.HandleFunc("/_nida/livereload.js", liveReloadScriptHandler(basePath))
 	mux.Handle("/", fileHandler)
-	return mux, nil
+	return withBasePath(mux, basePath), nil
 }
 
 type noSymlinkFS struct {
@@ -104,13 +108,13 @@ func (f noSymlinkFS) Open(name string) (http.File, error) {
 	return http.Dir(f.root).Open(name)
 }
 
-func Start(ctx context.Context, outputDir, host string, port int, livereload bool) (*Instance, error) {
+func Start(ctx context.Context, outputDir, host string, port int, livereload bool, basePath string) (*Instance, error) {
 	var reloader *reloadBroker
 	if livereload {
 		reloader = newReloadBroker()
 	}
 
-	handler, err := fileHandler(outputDir, livereload, reloader)
+	handler, err := fileHandlerWithBasePath(outputDir, basePath, livereload, reloader)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +160,7 @@ func (i *Instance) Reload() {
 	i.reloader.Reload()
 }
 
-func writeRecordedResponse(w http.ResponseWriter, rec *httptest.ResponseRecorder, injectLiveReload bool) {
+func writeRecordedResponse(w http.ResponseWriter, rec *httptest.ResponseRecorder, injectLiveReload bool, basePath string) {
 	res := rec.Result()
 	defer res.Body.Close()
 
@@ -167,7 +171,7 @@ func writeRecordedResponse(w http.ResponseWriter, rec *httptest.ResponseRecorder
 	}
 	body, _ := io.ReadAll(res.Body)
 	if injectLiveReload && isHTMLResponse(res, body) {
-		body = injectReloadSnippet(body)
+		body = injectReloadSnippet(body, basePath)
 		w.Header().Del("Content-Length")
 	}
 
@@ -184,8 +188,8 @@ func isHTMLResponse(res *http.Response, body []byte) bool {
 	return bytes.HasPrefix(bytes.ToLower(trimmed), []byte("<!doctype html")) || bytes.HasPrefix(bytes.ToLower(trimmed), []byte("<html"))
 }
 
-func injectReloadSnippet(body []byte) []byte {
-	snippet := []byte(`<script src="/_nida/livereload.js"></script>`)
+func injectReloadSnippet(body []byte, basePath string) []byte {
+	snippet := []byte(`<script src="` + normalizeBasePath(basePath) + `/_nida/livereload.js"></script>`)
 	lower := strings.ToLower(string(body))
 	index := strings.LastIndex(lower, "</body>")
 	if index == -1 {
@@ -199,18 +203,56 @@ func injectReloadSnippet(body []byte) []byte {
 	return out
 }
 
-func liveReloadScriptHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	_, _ = io.WriteString(w, liveReloadScript)
+func liveReloadScriptHandler(basePath string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = io.WriteString(w, strings.ReplaceAll(liveReloadScript, "{{BASE_PATH}}", normalizeBasePath(basePath)))
+	}
 }
 
 const liveReloadScript = `
 (() => {
-  const source = new EventSource("/_nida/livereload");
+  const source = new EventSource("{{BASE_PATH}}/_nida/livereload");
   source.onmessage = () => window.location.reload();
 })();
 `
+
+func withBasePath(handler http.Handler, basePath string) http.Handler {
+	basePath = normalizeBasePath(basePath)
+	if basePath == "" {
+		return handler
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		originalPath := r.URL.Path
+		if originalPath == basePath {
+			clone := r.Clone(r.Context())
+			clone.URL.Path = "/"
+			handler.ServeHTTP(w, clone)
+			return
+		}
+		if strings.HasPrefix(originalPath, basePath+"/") {
+			clone := r.Clone(r.Context())
+			clone.URL.Path = strings.TrimPrefix(originalPath, basePath)
+			if clone.URL.Path == "" {
+				clone.URL.Path = "/"
+			}
+			handler.ServeHTTP(w, clone)
+			return
+		}
+		handler.ServeHTTP(w, r)
+	})
+}
+
+func normalizeBasePath(basePath string) string {
+	basePath = strings.TrimSpace(basePath)
+	if basePath == "" || basePath == "/" {
+		return ""
+	}
+	basePath = "/" + strings.Trim(basePath, "/")
+	return path.Clean(basePath)
+}
 
 type reloadBroker struct {
 	mu          sync.Mutex

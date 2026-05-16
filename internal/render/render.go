@@ -438,6 +438,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 }
 
 func renderTemplate(set templates.Set, name string, data templateContext) (string, error) {
+	data.BasePath = config.BasePath(data.Config.BaseURL)
 	out, err := set.Execute(name, data)
 	if err != nil {
 		return "", fmt.Errorf("render %s page: %w", name, err)
@@ -489,6 +490,7 @@ func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) stri
 	}
 	language := defaultLanguage(cfg.Language)
 	direction := config.DocumentDirection(cfg.Language)
+	homeURL := config.BasePath(cfg.BaseURL) + "/"
 
 	var b strings.Builder
 	b.WriteString("<!doctype html>\n")
@@ -498,6 +500,6 @@ func defaultNotFoundHTML(cfg config.SiteConfig, canonicalURL, title string) stri
 	b.WriteString(`<title>` + html.EscapeString(pageTitle) + `</title>`)
 	b.WriteString(`<meta name="robots" content="noindex">`)
 	b.WriteString(`<link rel="canonical" href="` + html.EscapeString(canonicalURL) + `">`)
-	b.WriteString("</head><body><main><h1>Page not found</h1><p>The page you requested could not be found.</p><p><a href=\"/\">Return to the homepage</a></p></main></body></html>\n")
+	b.WriteString("</head><body><main><h1>Page not found</h1><p>The page you requested could not be found.</p><p><a href=\"" + html.EscapeString(homeURL) + "\">Return to the homepage</a></p></main></body></html>\n")
 	return b.String()
 }
