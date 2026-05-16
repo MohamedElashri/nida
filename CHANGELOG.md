@@ -10,6 +10,7 @@ All notable changes to Nida are documented here.
 
 ### Changed
 
+* Change the default `nida serve` port and bundled site configs to `2906`.
 * Include page and section descriptions in generated search index documents and unescape HTML entities in indexed body text.
 
 ## [0.5.7] - 2026-05-17
@@ -174,7 +175,7 @@ The `nida migrate` command is temporary and will be removed in a future release 
 * Add lazy-loading support for images
 
 ### Changed
-* Change the default port for `nida serve` to `1307`.
+* Change the default port for `nida serve` to `2906`.
 
 
 ## [0.3.2] - 2026-04-24

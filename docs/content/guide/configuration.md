@@ -71,7 +71,7 @@ Supported placeholders include `{section}`, `{slug}`, `{year}`, `{month}`, `{day
 ```toml
 [server]
 host = "127.0.0.1"
-port = 1307
+port = 2906
 livereload = true
 ```
 

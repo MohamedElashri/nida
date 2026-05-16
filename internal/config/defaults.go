@@ -34,7 +34,7 @@ func DefaultSiteConfig() SiteConfig {
 		},
 		Server: ServerConfig{
 			Host:       "127.0.0.1",
-			Port:       1307,
+			Port:       2906,
 			Livereload: true,
 		},
 		Permalinks: PermalinkConfig{

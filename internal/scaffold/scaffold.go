@@ -26,7 +26,7 @@ var exampleSiteFiles = []fileSpec{
 	{
 		path: "config.toml",
 		content: `config_version = "0.4"
-base_url = "http://127.0.0.1:1307"
+base_url = "http://127.0.0.1:2906"
 title = "Nida Website"
 description = "A small example site built with Nida."
 language = "en"
@@ -66,7 +66,7 @@ filename = "robots.txt"
 
 [server]
 host = "127.0.0.1"
-port = 1307
+port = 2906
 livereload = true
 
 [permalinks]
