@@ -12,6 +12,7 @@
   <a{{ if eq .CurrentURL "/reference/cli/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/cli/">CLI</a>
   <a{{ if eq .CurrentURL "/reference/front-matter/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/front-matter/">Front Matter</a>
   <a{{ if eq .CurrentURL "/reference/config/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/config/">Config</a>
+  <a{{ if eq .CurrentURL "/reference/search/" }} class="active"{{ end }} href="{{ .BasePath }}/reference/search/">Search</a>
   <p>Advanced</p>
   <details class="side-nav-group"{{ if hasPrefix .CurrentURL "/advanced/internals/" }} open{{ end }}>
     <summary{{ if hasPrefix .CurrentURL "/advanced/internals/" }} class="active"{{ end }}>Internals</summary>

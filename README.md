@@ -145,8 +145,9 @@ nida serve --site ./my-site
 ```
 
 `nida init` creates a buildable example site in a new or empty directory. The
-example includes sample posts, tags, feeds, search settings, a page bundle, and
-templates you can edit. It refuses to write into a non-empty directory.
+example includes sample posts, tags, feeds, a search page, search settings, a
+page bundle, and templates you can edit. It refuses to write into a non-empty
+directory.
 
 ```text
 site/

@@ -57,7 +57,7 @@ tags = ["docs", "release"]
 
 Nida can generate RSS, Atom, sitemap, robots.txt, and a JavaScript search index.
 
-These features are controlled from `config.toml`, so small sites can disable what they do not need.
+These features are controlled from `config.toml`, so small sites can disable what they do not need. The generated search index is a plain `window.searchIndex` script that templates can load for client-side search.
 
 ## Static assets and pipeline
 

@@ -2,6 +2,16 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.8] - 2026-05-17
+
+### Added
+
+* Add documented search support with a generated index format reference, a header search UI in the Nida docs, and a scaffolded client-side search example for `nida init`.
+
+### Changed
+
+* Include page and section descriptions in generated search index documents and unescape HTML entities in indexed body text.
+
 ## [0.5.7] - 2026-05-17
 
 ### Added

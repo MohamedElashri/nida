@@ -55,6 +55,7 @@ The current shape is:
     "docs": {
       "/page/url/": {
         "title": "Title",
+        "description": "Optional description",
         "body": "Plain text"
       }
     }
@@ -62,7 +63,7 @@ The current shape is:
 }
 ```
 
-Pages and sections are included. HTML is stripped with a simple tag scanner and whitespace is collapsed.
+Pages and sections are included. HTML is stripped with a simple tag scanner, entities are unescaped, and whitespace is collapsed.
 
 ## Adding Artifacts
 

@@ -45,7 +45,8 @@ reference = "/reference/{slug}/"
 advanced = "/advanced/{slug}/"
 
 [search]
-enabled = false
+enabled = true
+filename = "search_index.en.js"
 
 [pipeline]
 fingerprint = false

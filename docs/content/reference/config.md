@@ -192,6 +192,9 @@ filename = "search_index.en.js"
 | `search.enabled` | boolean | `false` | Generate a JavaScript search index. |
 | `search.filename` | string | `search_index.en.js` | Output filename for the search index. |
 
+See [Search](@/reference/search.md) for the generated index format and a small
+client-side template pattern.
+
 ## Server
 
 ```toml

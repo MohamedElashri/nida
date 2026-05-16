@@ -114,6 +114,16 @@ The route for this page comes from the ` + "`pages`" + ` permalink in
 `,
 	},
 	{
+		path: "content/pages/search.md",
+		content: `+++
+title = "Search"
+description = "Search this example site."
+template = "search"
+slug = "search"
++++
+`,
+	},
+	{
 		path: "content/posts/_index.md",
 		content: `+++
 title = "Posts"
@@ -260,6 +270,7 @@ Nida copies page bundle resources next to the rendered page.
     <nav class="site-nav" aria-label="Primary">
       <a href="{{ .BasePath }}/posts/">Posts</a>
       <a href="{{ .BasePath }}/tags/">Tags</a>
+      <a href="{{ .BasePath }}/search/">Search</a>
       <a href="{{ .BasePath }}/about/">About</a>
     </nav>
   </header>
@@ -329,6 +340,105 @@ Nida copies page bundle resources next to the rendered page.
     {{ if .Page.Description }}<p class="lede">{{ .Page.Description }}</p>{{ end }}
     {{ unsafeHTML .Page.BodyHTML }}
   </article>
+{{- end }}
+`,
+	},
+	{
+		path: "templates/search.html",
+		content: `{{- define "search" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  <section class="search-page">
+    <h1>{{ .Page.Title }}</h1>
+    {{ if .Page.Description }}<p class="lede">{{ .Page.Description }}</p>{{ end }}
+    <form class="search-form" role="search" data-search-form data-base-path="{{ .BasePath }}">
+      <label for="search-query">Search</label>
+      <input id="search-query" type="search" name="q" autocomplete="off" placeholder="Search posts and pages" data-search-input>
+    </form>
+    <p class="search-status" data-search-status></p>
+    <ol class="search-results" data-search-results></ol>
+  </section>
+  <script src="{{ .BasePath }}/{{ .Config.Search.Filename }}"></script>
+  <script>
+  (function () {
+    var form = document.querySelector("[data-search-form]");
+    var input = document.querySelector("[data-search-input]");
+    var results = document.querySelector("[data-search-results]");
+    var status = document.querySelector("[data-search-status]");
+    if (!form || !input || !results || !status) return;
+
+    var basePath = form.getAttribute("data-base-path") || "";
+    var store = window.searchIndex && window.searchIndex.documentStore;
+    var docs = store && store.docs ? store.docs : {};
+    var entries = Object.keys(docs).map(function (url) {
+      var doc = docs[url] || {};
+      return {
+        url: url,
+        title: doc.title || url,
+        description: doc.description || "",
+        body: doc.body || ""
+      };
+    });
+
+    function termsFor(query) {
+      return query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    }
+
+    function entryScore(entry, terms) {
+      var title = entry.title.toLowerCase();
+      var description = entry.description.toLowerCase();
+      var body = entry.body.toLowerCase();
+      var total = 0;
+      terms.forEach(function (term) {
+        if (title.indexOf(term) !== -1) total += 8;
+        if (description.indexOf(term) !== -1) total += 4;
+        if (body.indexOf(term) !== -1) total += 1;
+      });
+      return total;
+    }
+
+    function summaryFor(entry) {
+      if (entry.description) return entry.description;
+      return entry.body.slice(0, 160);
+    }
+
+    function render(query) {
+      var terms = termsFor(query);
+      results.replaceChildren();
+      if (terms.length === 0) {
+        status.textContent = "";
+        return;
+      }
+
+      var matches = entries.map(function (entry) {
+        return { entry: entry, score: entryScore(entry, terms) };
+      }).filter(function (match) {
+        return match.score > 0;
+      }).sort(function (a, b) {
+        return b.score - a.score || a.entry.title.localeCompare(b.entry.title);
+      }).slice(0, 10);
+
+      status.textContent = matches.length === 1 ? "1 result" : matches.length + " results";
+      matches.forEach(function (match) {
+        var item = document.createElement("li");
+        var link = document.createElement("a");
+        var summary = document.createElement("p");
+        link.href = basePath + match.entry.url;
+        link.textContent = match.entry.title;
+        summary.textContent = summaryFor(match.entry);
+        item.append(link, summary);
+        results.append(item);
+      });
+    }
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      render(input.value);
+    });
+    input.addEventListener("input", function () {
+      render(input.value);
+    });
+  })();
+  </script>
 {{- end }}
 `,
 	},
@@ -484,6 +594,57 @@ a {
 
 .tag-list-large a {
   font-size: 1.05rem;
+}
+
+.search-form {
+  display: grid;
+  gap: 0.35rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.search-form label {
+  color: #627d98;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.search-form input {
+  border: 1px solid #bcccdc;
+  border-radius: 4px;
+  color: #1f2933;
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+}
+
+.search-form input:focus {
+  border-color: #0969da;
+  outline: 3px solid #dbeafe;
+}
+
+.search-status {
+  color: #627d98;
+  min-height: 1.5rem;
+}
+
+.search-results {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  padding-left: 0;
+}
+
+.search-results li {
+  border-bottom: 1px solid #d9e2ec;
+  padding-bottom: 0.75rem;
+}
+
+.search-results a {
+  font-weight: 700;
+}
+
+.search-results p {
+  color: #52606d;
+  margin: 0.25rem 0 0;
 }
 
 .site-footer {

@@ -60,6 +60,7 @@ func TestInitCreatesBuildableExampleSite(t *testing.T) {
 		"config.toml",
 		"content/_index.md",
 		"content/pages/about.md",
+		"content/pages/search.md",
 		"content/posts/_index.md",
 		"content/posts/welcome.md",
 		"content/posts/markdown-tour.md",
@@ -69,6 +70,7 @@ func TestInitCreatesBuildableExampleSite(t *testing.T) {
 		"templates/index.html",
 		"templates/post.html",
 		"templates/page.html",
+		"templates/search.html",
 		"templates/list.html",
 		"templates/taxonomy.html",
 		"static/site.css",
@@ -95,6 +97,9 @@ func TestInitCreatesBuildableExampleSite(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(target, "public", "tags", "workflow", "index.html")); err != nil {
 		t.Fatalf("expected generated taxonomy page: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "public", "search", "index.html")); err != nil {
+		t.Fatalf("expected generated search page: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(target, "public", "search_index.en.js")); err != nil {
 		t.Fatalf("expected generated search index: %v", err)

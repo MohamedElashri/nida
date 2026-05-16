@@ -3,6 +3,7 @@ package searchindex
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
@@ -18,8 +19,9 @@ type DocumentStore struct {
 }
 
 type Doc struct {
-	Title string `json:"title"`
-	Body  string `json:"body"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	Body        string `json:"body"`
 }
 
 func Generate(cfg config.SiteConfig, state site.State) (*Output, error) {
@@ -40,8 +42,9 @@ func Generate(cfg config.SiteConfig, state site.State) (*Output, error) {
 		}
 		body := stripHTML(page.BodyHTML)
 		docs[url] = Doc{
-			Title: page.Title,
-			Body:  body,
+			Title:       page.Title,
+			Description: page.Description,
+			Body:        body,
 		}
 	}
 
@@ -53,8 +56,9 @@ func Generate(cfg config.SiteConfig, state site.State) (*Output, error) {
 		}
 		body := stripHTML(section.BodyHTML)
 		docs[url] = Doc{
-			Title: section.Title,
-			Body:  body,
+			Title:       section.Title,
+			Description: section.Description,
+			Body:        body,
 		}
 	}
 
@@ -81,11 +85,11 @@ type Output struct {
 	Content  []byte
 }
 
-func stripHTML(html string) string {
+func stripHTML(markup string) string {
 	// Very basic HTML stripping for search indexing
 	var result strings.Builder
 	inTag := false
-	for _, r := range html {
+	for _, r := range markup {
 		switch r {
 		case '<':
 			inTag = true
@@ -97,5 +101,5 @@ func stripHTML(html string) string {
 			}
 		}
 	}
-	return strings.Join(strings.Fields(result.String()), " ")
+	return strings.Join(strings.Fields(html.UnescapeString(result.String())), " ")
 }

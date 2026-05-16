@@ -34,14 +34,18 @@ Planned:
 
 ## Search
 
-Nida can generate a search index. The missing piece is a simple documented search UI.
+Nida can generate a search index and the docs now include a small client-side search UI.
 
-Planned:
+Done:
 
 - documented search index format
 - default client-side search example
 - template pattern for loading the index
 - guidance for keeping search small
+
+Planned:
+
+- optional controls for trimming or shaping large indexes
 
 ## Migration support
 
