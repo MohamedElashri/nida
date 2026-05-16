@@ -2,6 +2,24 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.2] - 2026-05-16
+
+### Security
+
+* Escape fallback built-in `404.html` values in their correct HTML contexts.
+* Validate custom slugs, aliases, generated routes, and taxonomy permalink routes to reject unsafe path segments, control characters, query strings, fragments, and backslashes.
+* Reject symlinked SCSS input and output paths before invoking the external `sass` compiler.
+* Restrict template `readFile` to template/static roots and refuse hidden path segments.
+
+### Fixed
+
+* Use JavaScript-string-safe quoting for redirect page targets.
+
+### Changed
+
+* Add clearer `unsafeHTML` and `unsafeCSS` template helper aliases while keeping `safeHTML` and `safeCSS` for compatibility.
+* Document `markdown.unsafe_html` as an explicit trusted-author opt-in feature.
+
 ## [0.5.1] - 2026-05-16
 
 ### Added
