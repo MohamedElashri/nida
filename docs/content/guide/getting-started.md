@@ -91,16 +91,26 @@ go build ./cmd/nida
 
 ## Build a site
 
+Create an example site:
+
+```bash
+nida init ./my-site
+```
+
+This writes a small example site into a new or empty directory. It includes a
+config file, a home section, an about page, several posts, tags, a page bundle,
+templates, generated feeds/search settings, and a small CSS file.
+
 Run Nida against a site directory:
 
 ```bash
-nida build --site ./example-site
+nida build --site ./my-site
 ```
 
 During development, use the local server:
 
 ```bash
-nida serve --site ./example-site
+nida serve --site ./my-site
 ```
 
 The server builds the site, watches for changes, and serves the configured output directory.

@@ -7,6 +7,18 @@ template = "page"
 
 Nida intentionally keeps the command surface small.
 
+## Init
+
+```bash
+nida init ./my-site
+```
+
+Creates a buildable example site in a new or empty directory. The example
+includes sample posts, tags, feeds, search settings, a page bundle, and editable
+templates. If no path is provided, Nida initializes the current directory.
+
+`nida init` refuses to write into a non-empty directory.
+
 ## Build
 
 ```bash

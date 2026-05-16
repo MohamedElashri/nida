@@ -129,12 +129,24 @@ http://127.0.0.1:1307
 Commands:
 
 ```bash
+nida init [PATH]
 nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts]
 nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-p PORT] [--port PORT]
 nida version
 ```
 
 ## Site Layout
+
+Create an example site:
+
+```bash
+nida init ./my-site
+nida serve --site ./my-site
+```
+
+`nida init` creates a buildable example site in a new or empty directory. The
+example includes sample posts, tags, feeds, search settings, a page bundle, and
+templates you can edit. It refuses to write into a non-empty directory.
 
 ```text
 site/

@@ -43,6 +43,84 @@ func TestBuildLoadsArabicExampleSite(t *testing.T) {
 	}
 }
 
+func TestInitCreatesBuildableExampleSite(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	target := filepath.Join(t.TempDir(), "my-site")
+
+	code := run(stdout, stderr, []string{"init", target})
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "nida init: created") {
+		t.Fatalf("expected init summary in output, got %q", stdout.String())
+	}
+
+	for _, path := range []string{
+		"config.toml",
+		"content/_index.md",
+		"content/pages/about.md",
+		"content/posts/_index.md",
+		"content/posts/welcome.md",
+		"content/posts/markdown-tour.md",
+		"content/posts/content-model/index.md",
+		"content/posts/content-model/bundle-note.txt",
+		"templates/base.html",
+		"templates/index.html",
+		"templates/post.html",
+		"templates/page.html",
+		"templates/list.html",
+		"templates/taxonomy.html",
+		"static/site.css",
+	} {
+		if _, err := os.Stat(filepath.Join(target, filepath.FromSlash(path))); err != nil {
+			t.Fatalf("expected scaffolded file %s: %v", path, err)
+		}
+	}
+
+	buildOut := &bytes.Buffer{}
+	buildErr := &bytes.Buffer{}
+	code = run(buildOut, buildErr, []string{"build", "--site", target})
+	if code != 0 {
+		t.Fatalf("expected scaffolded site to build, got %d stderr=%s", code, buildErr.String())
+	}
+	if !strings.Contains(buildOut.String(), "rendered=") {
+		t.Fatalf("expected build summary in output, got %q", buildOut.String())
+	}
+	if _, err := os.Stat(filepath.Join(target, "public", "index.html")); err != nil {
+		t.Fatalf("expected generated homepage: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "public", "posts", "markdown-tour", "index.html")); err != nil {
+		t.Fatalf("expected generated markdown tour: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "public", "tags", "workflow", "index.html")); err != nil {
+		t.Fatalf("expected generated taxonomy page: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "public", "search_index.en.js")); err != nil {
+		t.Fatalf("expected generated search index: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "public", "posts", "content-model", "bundle-note.txt")); err != nil {
+		t.Fatalf("expected copied bundle resource: %v", err)
+	}
+}
+
+func TestInitRefusesNonEmptyDirectory(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	target := t.TempDir()
+	if err := os.WriteFile(filepath.Join(target, "keep.txt"), []byte("existing"), 0o644); err != nil {
+		t.Fatalf("write existing file: %v", err)
+	}
+
+	code := run(stdout, stderr, []string{"init", target})
+	if code == 0 {
+		t.Fatal("expected non-zero exit code")
+	}
+	if !strings.Contains(stderr.String(), "is not empty") {
+		t.Fatalf("expected non-empty error, got %q", stderr.String())
+	}
+}
+
 func TestLoadCommandConfigAppliesServeOverrides(t *testing.T) {
 	cfg, _, err := loadCommandConfig(commandOptions{
 		siteRoot: filepath.Join("..", "..", "example-site"),
@@ -183,6 +261,9 @@ func TestHelpIncludesVersionCommand(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "nida version") {
 		t.Fatalf("expected version command in help, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "nida init [PATH]") {
+		t.Fatalf("expected init command in help, got %q", stdout.String())
 	}
 }
 

@@ -22,6 +22,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/scaffold"
 	"github.com/MohamedElashri/nida/internal/searchindex"
 	"github.com/MohamedElashri/nida/internal/server"
 	"github.com/MohamedElashri/nida/internal/site"
@@ -41,6 +42,10 @@ type commandOptions struct {
 	port       int
 }
 
+type initOptions struct {
+	targetDir string
+}
+
 type buildResult struct {
 	cfg   config.SiteConfig
 	path  string
@@ -55,6 +60,12 @@ func run(stdout, stderr io.Writer, args []string) int {
 	}
 
 	switch args[0] {
+	case "init":
+		opts, err := parseInitFlags(args[1:])
+		if err != nil {
+			return writeCommandError(stderr, err)
+		}
+		return runInit(stdout, stderr, opts)
 	case "build":
 		opts, err := parseBuildFlags(args[1:])
 		if err != nil {
@@ -78,6 +89,24 @@ func run(stdout, stderr io.Writer, args []string) int {
 		writeUsage(stderr)
 		return 1
 	}
+}
+
+func parseInitFlags(args []string) (initOptions, error) {
+	fs := flag.NewFlagSet("init", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	if err := fs.Parse(args); err != nil {
+		return initOptions{}, err
+	}
+	if fs.NArg() > 1 {
+		return initOptions{}, fmt.Errorf("init accepts at most one path argument")
+	}
+
+	opts := initOptions{targetDir: "."}
+	if fs.NArg() == 1 {
+		opts.targetDir = fs.Arg(0)
+	}
+	return opts, nil
 }
 
 func parseBuildFlags(args []string) (commandOptions, error) {
@@ -116,6 +145,18 @@ func parseServeFlags(args []string) (commandOptions, error) {
 		return commandOptions{}, err
 	}
 	return opts, nil
+}
+
+func runInit(stdout, stderr io.Writer, opts initOptions) int {
+	result, err := scaffold.Init(scaffold.Options{TargetDir: opts.targetDir})
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+
+	colors := colorsFor(stdout)
+	_, _ = fmt.Fprintf(stdout, "%s %s path=%s files=%d\n", colors.command("nida init:"), colors.success("created"), result.TargetDir, len(result.Files))
+	_, _ = fmt.Fprintf(stdout, "Next: nida serve --site %s\n", result.TargetDir)
+	return 0
 }
 
 func runBuild(stdout, stderr io.Writer, opts commandOptions) int {
@@ -319,11 +360,13 @@ func writeCommandError(stderr io.Writer, err error) int {
 
 func writeUsage(w io.Writer) {
 	_, _ = io.WriteString(w, `Usage:
+  nida init [PATH]
   nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-p PORT] [--port PORT]
   nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts]
   nida version
 
 Commands:
+  init    Create a minimal new site
   serve   Build, watch, and serve the local site
   build   Build the site into the configured output directory
   version Show nida build and version information
