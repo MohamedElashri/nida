@@ -21,7 +21,7 @@ To confirm installation, run:
 ```bash
 nida version
 ```
-Will print the installed version, like `nida version v0.5.5`.
+Will print the installed version, like `nida version vX.Y.Z`.
 
 The installer detects the operating system and CPU architecture, downloads the matching release archive into a temporary directory, verifies the checksum, and installs `nida` into `$HOME/.local/bin` by default.
 
@@ -40,7 +40,7 @@ curl -fsSL https://melashri.net/nida/install.sh | NIDA_INSTALL_SYSTEM=1 sh
 To install a specific version:
 
 ```bash
-curl -fsSL https://melashri.net/nida/install.sh | NIDA_VERSION=v0.5.1 sh
+curl -fsSL https://melashri.net/nida/install.sh | NIDA_VERSION=vX.Y.Z sh
 ```
 
 {% details(summary="Manual prebuilt archive install") %}

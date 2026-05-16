@@ -9,13 +9,14 @@ The build flow starts in `internal/cli`. Both `nida build` and the first pass of
 
 ## Entry Points
 
-`cmd/nida/main.go` delegates to `internal/cli.Run`. `Run` dispatches one of three public commands:
+`cmd/nida/main.go` delegates to `internal/cli.Run`. `Run` dispatches the public commands:
 
+- `init`
 - `build`
 - `serve`
 - `version`
 
-The command parser supports long and short flags for site root, config path, drafts, and serve port. Parsed values are stored in `commandOptions`.
+`init` accepts an optional target path. The build and serve command parsers support long and short flags for site root, config path, drafts, and serve port. Parsed build and serve values are stored in `commandOptions`.
 
 ## Full Build
 

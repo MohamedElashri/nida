@@ -10,7 +10,7 @@ a static site you can serve anywhere.
 * Go template themes using `.html` files with override chains
 * loadable themes with template inheritance
 * tags and categories
-* RSS and sitemap generation
+* RSS, Atom, sitemap, robots.txt, and search index generation
 * static asset copying
 * local development server with watch mode and livereload
 * optional custom `404.html`
@@ -53,7 +53,7 @@ VERSION=${TAG#v}
 or choose a specific release tag:
 
 ```bash
-TAG=v0.5.1
+TAG=vX.Y.Z
 VERSION=${TAG#v}
 ```
 

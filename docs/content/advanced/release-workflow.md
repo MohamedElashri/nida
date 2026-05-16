@@ -39,6 +39,7 @@ go test ./...
 go build ./...
 go run ./cmd/nida build -s ./example-site
 go run ./cmd/nida build -s ./example-site-ar
+make docs-build
 go run ./cmd/nida version
 goreleaser check
 ```
