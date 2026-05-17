@@ -17,6 +17,9 @@ This roadmap is directional, not a release contract. Items move when real usage,
 | Search | Shipped in 0.5.7 | Generated client-side search index. |
 | Theme authoring | Next | A clearer path for building, overriding, and sharing small themes. |
 | Migration support | Next | Better guidance and diagnostics for trying Nida with existing static sites. |
+| Content diagnostics | Future | Catch broken links, missing assets, and unsupported patterns before publishing. |
+| Page table of contents | Future | Structured heading data and anchor links for long-form content. |
+| Local data files | Future | Reusable TOML, YAML, or JSON data for templates. |
 | Publishing workflows | Later | More examples for common hosts and project-hosted sites. |
 
 ## Current focus
@@ -53,6 +56,9 @@ These are useful ideas, but they should wait until the current surface area is w
 
 | Candidate | Why it might matter |
 | --- | --- |
+| Content diagnostics | Catch broken links, missing assets, duplicate routes, and migration issues earlier. |
+| Page table of contents | Improve docs, manuals, and long posts without custom parsing in templates. |
+| Local data files | Make reusable structured data available to templates without turning Nida into a CMS. |
 | Versioned documentation | Support docs for multiple release lines. |
 | Richer taxonomy pages | Better navigation for larger blogs and knowledge bases. |
 | Generated archive pages | A simple built-in archive pattern. |
