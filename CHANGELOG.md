@@ -18,6 +18,8 @@ All notable changes to Nida are documented here.
 * Include page and section descriptions in generated search index documents and unescape HTML entities in indexed body text.
 * Improve asset manifest rewriting so fingerprinted CSS, JS, font, image, and `srcset` URLs preserve configured base paths.
 
+## Fixed 
+- `readFile` now allows paths under content_dir as well as templates/static. Otherwise, it was impossible to read files from page bundles or sections, which limited the usefulness of the function for content-driven generation.
 
 ## [0.5.6] - 2026-05-17
 
