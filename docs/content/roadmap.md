@@ -1,71 +1,65 @@
 +++
 title = "Nida Roadmap"
-description = "Where Nida is likely to grow next."
+description = "A practical view of what is shipped, what is next, and what is being considered."
 weight = 90
 template = "page"
 +++
 
-Nida's roadmap is intentionally small. The goal is not to become a giant website framework; it is to make static publishing feel complete, predictable, and pleasant.
+Nida's roadmap is intentionally focused. The project is not trying to become a large website framework; it is trying to make static publishing feel complete, predictable, and pleasant.
 
-Near-term work is grouped into a few areas.
+This roadmap is directional, not a release contract. Items move when real usage, maintenance cost, or compatibility work changes the order.
 
-## Asset pipeline
+## Roadmap at a glance
 
-Nida already copies static files, fingerprints assets, compiles SCSS, minifies CSS/JS, and can process images. Recent work made those pieces easier to use together.
+| Area | Status | Outcome |
+| --- | --- | --- |
+| Asset pipeline ergonomics | Shipped in 0.5.7 | Easier asset URLs and responsive image presets. |
+| Search | Shipped in 0.5.7 | Generated client-side search index. |
+| Theme authoring | Next | A clearer path for building, overriding, and sharing small themes. |
+| Migration support | Next | Better guidance and diagnostics for trying Nida with existing static sites. |
+| Publishing workflows | Later | More examples for common hosts and project-hosted sites. |
 
-Done:
+## Current focus
 
-- clearer asset URL helpers for templates
-- better manifest docs
-- practical image presets
-- stronger CSS, JS, font, and image examples
+### Theme authoring
 
-## Theme authoring
+Themes work today, including inheritance and site-level overrides. The next step is making theme creation easier to understand without reading internals.
 
-Themes work today, including inheritance and site overrides. They need a smoother authoring path.
+Planned outcomes:
 
-Planned:
+- Minimal theme structure.
+- Clear template override rules.
+- Theme patterns for menus, metadata, and assets.
+- Small starter themes.
 
-- documented minimal theme structure
-- clearer template override rules
-- examples for menus, metadata, and `extra`
-- theme-friendly asset conventions
-- small starter themes
+### Migration support
 
-## Search
+Nida already borrows familiar static-site ideas: front matter, sections, permalinks, taxonomies, aliases, and `@/` internal links. Migration support should make trial runs easier and less mysterious.
 
-Nida can generate a search index and the docs now include a small client-side search UI.
+Planned outcomes:
 
-Done:
+- Migration guidance for Zola-style sites.
+- Compatibility notes for Markdown, shortcodes, permalinks, and taxonomies.
+- Diagnostics for unsupported front matter and shortcode patterns.
 
-- documented search index format
-- default client-side search example
-- template pattern for loading the index
-- guidance for keeping search small
+## Recently shipped
 
-Planned:
+- Asset pipeline ergonomics: clearer template helpers, responsive image presets, and base-path-aware manifest rewriting.
+- Search: generated client-side search indexes for small static sites.
 
-- optional controls for trimming or shaping large indexes
+## Later candidates
 
-## Migration support
+These are useful ideas, but they should wait until the current surface area is well documented and stable.
 
-Nida borrows familiar static-site ideas: front matter, sections, permalinks, taxonomies, and `@/` internal links. Migration docs and diagnostics would make trial runs easier.
+| Candidate | Why it might matter |
+| --- | --- |
+| Versioned documentation | Support docs for multiple release lines. |
+| Richer taxonomy pages | Better navigation for larger blogs and knowledge bases. |
+| Generated archive pages | A simple built-in archive pattern. |
+| Deploy presets | Less setup for common static hosts. |
 
-Planned:
+## Product principles
 
-- clearer migration guides from Zola-style sites
-- checks for unsupported front matter or shortcode patterns
-- compatibility notes for Markdown, permalinks, taxonomies, and aliases
+Nida features should be useful for real static sites, easy to explain, friendly to static output, and small enough to keep the tool understandable.
 
-## Later, maybe
-
-- versioned content or documentation support
-- richer taxonomy pages
-- configurable generated archives
-- deploy presets for common hosts
-
-## Principles
-
-Features should be useful for real static sites, easy to explain, friendly to static output, and small enough to keep the tool understandable.
-
-If a feature makes Nida more powerful but harder to reason about, it should earn its place slowly.
+When a feature makes Nida more powerful but harder to reason about, it should earn its place through clear examples, tests, and documentation.

@@ -9,11 +9,13 @@ All notable changes to Nida are documented here.
 * Generate the docs release notes page from `CHANGELOG.md` during docs builds.
 * Add `nida init [PATH]` to create a buildable example site with sample posts, tags, feeds, search, and page-bundle content in a new or empty directory.
 * Add documented search support with a generated index format reference, a header search UI in the Nida docs, and a scaffolded client-side search example for `nida init`.
+* Add asset URL template helpers, responsive image helpers, and default `thumb`, `content`, and `hero` image presets for the asset pipeline.
 
 ### Changed
 
 * Change the default `nida serve` port and bundled site configs to `2906`.
 * Include page and section descriptions in generated search index documents and unescape HTML entities in indexed body text.
+* Improve asset manifest rewriting so fingerprinted CSS, JS, font, image, and `srcset` URLs preserve configured base paths.
 
 
 ## [0.5.6] - 2026-05-17
