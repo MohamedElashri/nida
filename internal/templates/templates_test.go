@@ -132,6 +132,26 @@ func TestReadFileRejectsTraversal(t *testing.T) {
 	}
 }
 
+func TestReadFileAllowsContentBundleResource(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	path := filepath.Join(dir, cfg.ContentDir, "publications", "example-paper")
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("mkdir content bundle: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(path, "cite.bib"), []byte("@article{example}"), 0o644); err != nil {
+		t.Fatalf("write bundle resource: %v", err)
+	}
+
+	got, err := executeTemplateTextWithSiteRoot(`{{ readFile "content/publications/example-paper/cite.bib" }}`, nil, dir, cfg)
+	if err != nil {
+		t.Fatalf("expected content bundle resource to be readable: %v", err)
+	}
+	if got != "@article{example}" {
+		t.Fatalf("unexpected content bundle resource\nwant: %q\n got: %q", "@article{example}", got)
+	}
+}
+
 func osMkdirAll(path string, mode uint32) error {
 	return os.MkdirAll(path, os.FileMode(mode))
 }
@@ -141,7 +161,11 @@ func executeTemplateText(text string, data any) (string, error) {
 }
 
 func executeTemplateTextWithConfig(text string, data any, cfg config.SiteConfig) (string, error) {
-	tmpl, err := template.New("test").Funcs(funcMap(".", cfg)).Parse(text)
+	return executeTemplateTextWithSiteRoot(text, data, ".", cfg)
+}
+
+func executeTemplateTextWithSiteRoot(text string, data any, siteRoot string, cfg config.SiteConfig) (string, error) {
+	tmpl, err := template.New("test").Funcs(funcMap(siteRoot, cfg)).Parse(text)
 	if err != nil {
 		return "", err
 	}

@@ -313,7 +313,7 @@ func readFileFunc(siteRoot string, cfg config.SiteConfig) func(string) (string, 
 			return "", err
 		}
 		if !pathUnderAnyRoot(allowedRoots, fullPath) {
-			return "", fmt.Errorf("readFile path %q is outside allowed template/static roots", path)
+			return "", fmt.Errorf("readFile path %q is outside allowed content/template/static roots", path)
 		}
 		if err := safepath.EnsureNoSymlinkPath(absSiteRoot, fullPath); err != nil {
 			return "", err
@@ -331,6 +331,7 @@ func readFileFunc(siteRoot string, cfg config.SiteConfig) func(string) (string, 
 
 func readFileAllowedRoots(absSiteRoot string, cfg config.SiteConfig) []string {
 	candidates := []string{
+		cfg.ContentDir,
 		cfg.TemplateDir,
 		cfg.StaticDir,
 	}
