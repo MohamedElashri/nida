@@ -7,7 +7,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ if ne .Title .Config.Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}</title>
   <meta name="description" content="{{ default .Description .Config.Description }}">
+  <meta name="author" content="{{ .Config.Author }}">
   <link rel="canonical" href="{{ .CanonicalURL }}">
+  <meta property="og:title" content="{{ if ne .Title .Config.Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}">
+  <meta property="og:description" content="{{ default .Description .Config.Description }}">
+  <meta property="og:url" content="{{ .CanonicalURL }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ .Config.Title }}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{ if ne .Title .Config.Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}">
+  <meta name="twitter:description" content="{{ default .Description .Config.Description }}">
+  <meta name="robots" content="index, follow">
   <link rel="icon" href="{{ asset "favicon.svg" }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ asset "style.css" }}">
 </head>
@@ -43,6 +53,7 @@
     </main>
     <footer class="site-footer">
       <p>Built with Nida, for Nida. Static, small, and a little stubborn in the best way.</p>
+      <p>&copy; Mohamed Elashri</p>
     </footer>
   </div>
   {{ if .Config.Search.Enabled }}
