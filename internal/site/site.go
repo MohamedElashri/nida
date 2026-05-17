@@ -8,6 +8,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/diagnostics"
 	"github.com/MohamedElashri/nida/internal/markdown"
 	"github.com/MohamedElashri/nida/internal/taxonomies"
 )
@@ -36,6 +37,11 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 	}
 
 	pathLookup := buildPathLookup(pages, sections, cfg)
+	if cfg.Diagnostics.Enabled {
+		if err := diagnostics.Check(siteRoot, cfg, pages, sections, pathLookup); err != nil {
+			return State{}, err
+		}
+	}
 
 	renderedPages, err := markdown.RenderPages(pages, cfg, pathLookup)
 	if err != nil {

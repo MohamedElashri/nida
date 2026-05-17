@@ -257,6 +257,7 @@ func TestResolveInternalPath(t *testing.T) {
 		want string
 	}{
 		{"@/posts/hello.md", "/posts/hello/"},
+		{"@/posts/hello.md#intro", "/posts/hello/#intro"},
 		{"@/posts/hello", "/posts/hello/"},
 		{"/about/", "/about/"},
 		{"https://example.com", "https://example.com"},

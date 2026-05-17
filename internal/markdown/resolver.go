@@ -14,16 +14,26 @@ func ResolveInternalPath(path string, lookup PathLookup) string {
 		return path
 	}
 
-	relative := strings.TrimPrefix(path, "@/")
+	relative, suffix := SplitReferenceSuffix(strings.TrimPrefix(path, "@/"))
 
 	if url, ok := lookup[relative]; ok {
-		return url
+		return url + suffix
 	}
 
 	withoutExt := strings.TrimSuffix(relative, ".md")
 	if url, ok := lookup[withoutExt]; ok {
-		return url
+		return url + suffix
 	}
 
 	return path
+}
+
+func SplitReferenceSuffix(value string) (string, string) {
+	suffixIndex := len(value)
+	for _, marker := range []string{"?", "#"} {
+		if index := strings.Index(value, marker); index >= 0 && index < suffixIndex {
+			suffixIndex = index
+		}
+	}
+	return value[:suffixIndex], value[suffixIndex:]
 }

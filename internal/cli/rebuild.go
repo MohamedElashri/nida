@@ -9,6 +9,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/assets"
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/diagnostics"
 	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/markdown"
 	"github.com/MohamedElashri/nida/internal/output"
@@ -176,6 +177,13 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	}
 	for _, page := range changedByRelPath {
 		merged = append(merged, page)
+	}
+
+	if cfg.Diagnostics.Enabled {
+		nextLookup := buildPathLookupFromPages(merged, previous.state.Sections, cfg)
+		if err := diagnostics.Check(opts.siteRoot, cfg, merged, previous.state.Sections, nextLookup); err != nil {
+			return buildResult{}, err
+		}
 	}
 
 	index, sortedPages, err := site.BuildIndex(merged, previous.state.Sections, cfg)

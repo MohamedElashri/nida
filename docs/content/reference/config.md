@@ -195,6 +195,17 @@ filename = "search_index.en.js"
 See [Search](@/reference/search.md) for the generated index format and a small
 client-side template pattern.
 
+## Diagnostics
+
+```toml
+[diagnostics]
+enabled = false
+```
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `diagnostics.enabled` | boolean | `false` | Check content before rendering and fail builds for broken `@/` internal links or missing Markdown image assets. |
+
 ## Server
 
 ```toml

@@ -76,6 +76,9 @@ pages = "/{slug}/"
 [search]
 enabled = true
 filename = "search_index.en.js"
+
+[diagnostics]
+enabled = true
 `,
 	},
 	{

@@ -1,6 +1,7 @@
 package site
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -85,6 +86,32 @@ func TestLoadOrchestratesDiscoveryRenderAndIndex(t *testing.T) {
 		if p.BodyHTML == "" {
 			t.Fatalf("expected rendered body in page %q", p.RelativePath)
 		}
+	}
+}
+
+func TestLoadRunsContentDiagnostics(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "content", "posts"), 0o755); err != nil {
+		t.Fatalf("mkdir content: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "content", "_index.md"), []byte("+++\ntitle = \"Home\"\n+++\n"), 0o644); err != nil {
+		t.Fatalf("write root section: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "content", "posts", "hello.md"), []byte("+++\ntitle = \"Hello\"\n+++\n\n[Missing](@/posts/missing.md)\n"), 0o644); err != nil {
+		t.Fatalf("write page: %v", err)
+	}
+
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Title = "Diagnostics"
+	cfg.Diagnostics.Enabled = true
+
+	_, err := Load(dir, cfg)
+	if err == nil {
+		t.Fatal("expected diagnostics error")
+	}
+	if !strings.Contains(err.Error(), "broken internal link") {
+		t.Fatalf("expected broken internal link diagnostic, got %v", err)
 	}
 }
 

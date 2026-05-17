@@ -77,5 +77,8 @@ func DefaultSiteConfig() SiteConfig {
 			Enabled:  false,
 			Filename: "search_index.en.js",
 		},
+		Diagnostics: DiagnosticsConfig{
+			Enabled: false,
+		},
 	}
 }

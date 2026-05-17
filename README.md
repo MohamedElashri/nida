@@ -12,6 +12,7 @@ a static site you can serve anywhere.
 * tags and categories
 * RSS, Atom, sitemap, robots.txt, and search index generation
 * static asset copying
+* content diagnostics for broken internal links and missing Markdown images
 * local development server with watch mode and livereload
 * optional custom `404.html`
 * RTL document support for languages such as Arabic/Persian

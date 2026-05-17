@@ -21,6 +21,9 @@ func TestDefaultSiteConfig(t *testing.T) {
 	if _, ok := cfg.Pipeline.Images.Presets["content"]; !ok {
 		t.Fatal("expected default content image preset")
 	}
+	if cfg.Diagnostics.Enabled {
+		t.Fatal("expected diagnostics to be disabled by default")
+	}
 }
 
 func TestLoadAppliesDefaults(t *testing.T) {

@@ -10,6 +10,7 @@ All notable changes to Nida are documented here.
 * Add `nida init [PATH]` to create a buildable example site with sample posts, tags, feeds, search, and page-bundle content in a new or empty directory.
 * Add documented search support with a generated index format reference, a header search UI in the Nida docs, and a scaffolded client-side search example for `nida init`.
 * Add asset URL template helpers, responsive image helpers, and default `thumb`, `content`, and `hero` image presets for the asset pipeline.
+* Add opt-in content diagnostics that fail builds on broken `@/` internal links and missing Markdown image assets.
 
 ### Changed
 

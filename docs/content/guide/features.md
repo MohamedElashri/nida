@@ -59,6 +59,10 @@ Nida can generate RSS, Atom, sitemap, robots.txt, and a JavaScript search index.
 
 These features are controlled from `config.toml`, so small sites can disable what they do not need. The generated search index is a plain `window.searchIndex` script that templates can load for client-side search.
 
+## Content diagnostics
+
+Nida can check content before rendering and report broken `@/` internal links and missing Markdown image assets.
+
 ## Static assets and pipeline
 
 Files under `static/` are copied to the output directory. Nida also includes optional pipeline features for fingerprinting, CSS/JS minification, SCSS compilation, and image processing.
