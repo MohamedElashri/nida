@@ -38,7 +38,7 @@ jobs:
           cache: true
 
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Generate release notes page
         run: go run ./scripts/generate_release_notes.go
