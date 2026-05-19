@@ -38,7 +38,7 @@ jobs:
           cache: true
 
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # sanad: ref=v5
 
       - name: Generate release notes page
         run: go run ./scripts/generate_release_notes.go
@@ -47,7 +47,7 @@ jobs:
         run: go run ./cmd/nida build --site ./docs
 
       - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # sanad: ref=v4
         with:
           path: docs/public
 
@@ -60,4 +60,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # sanad: ref=v4
