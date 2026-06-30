@@ -143,7 +143,7 @@ nida serve --site ./docs
 If `base_url` contains a path like `/nida/`, Nida serves that path locally too. For the Nida docs site, preview the GitHub Pages shape at:
 
 ```text
-http://127.0.0.1:2906/nida/
+http://127.0.0.1:1702/nida/
 ```
 
 This helps catch asset and navigation problems before merging.

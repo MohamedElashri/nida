@@ -34,7 +34,7 @@ Flags:
 ## Serve
 
 ```bash
-nida serve --site ./my-site --port 2906
+nida serve --site ./my-site --port 1702
 ```
 
 Flags:

@@ -211,14 +211,14 @@ enabled = false
 ```toml
 [server]
 host = "127.0.0.1"
-port = 2906
+port = 1702
 livereload = true
 ```
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `server.host` | string | `127.0.0.1` | Host for `nida serve`. |
-| `server.port` | integer | `2906` | Port for `nida serve`. Must be between 1 and 65535. |
+| `server.port` | integer | `1702` | Port for `nida serve`. Must be between 1 and 65535. |
 | `server.livereload` | boolean | `true` | Inject live reload during local development. |
 
 ## Pipeline

@@ -124,7 +124,7 @@ nida serve --site ./example-site
 The default local address is:
 
 ```text
-http://127.0.0.1:2906
+http://127.0.0.1:1702
 ```
 
 Commands:
