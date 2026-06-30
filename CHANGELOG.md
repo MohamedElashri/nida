@@ -2,6 +2,15 @@
 
 All notable changes to Nida are documented here.
 
+
+## [0.5.8] - 2026-06-30
+
+### Changed
+* nida default port is now 1702
+* depndencies updates
+
+
+
 ## [0.5.7] - 2026-05-17
 
 ### Added
