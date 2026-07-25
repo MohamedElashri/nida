@@ -3,6 +3,21 @@
 All notable changes to Nida are documented here.
 
 
+## [0.5.9] - 2026-07-25
+
+### Added
+* Enabled pagination for the home page.
+
+### Changed
+* Refactored section tree construction to use pointer-based, bottom-up building to ensure parent/child states are correctly synchronized.
+* Fixed implicit section generation to use correct relative paths, restoring the ability to use `@/` internal links in markdown files.
+* Fixed taxonomy term slugs to correctly use original config patterns during interpolation instead of stripped URLs.
+* Updated asset compilation so site-level static files correctly override theme static files without destroying generated pipeline outputs.
+* Resolved various codebase warnings found by `golangci-lint` (errcheck, staticcheck, ineffassign).
+
+## Developer Notes
+* Added the `lint` target in `Makefile`.
+
 ## [0.5.8] - 2026-06-30
 
 ### Changed
