@@ -49,17 +49,17 @@ func fileHandlerWithBasePath(outputDir, basePath string, injectLiveReload bool, 
 		fileServer.ServeHTTP(rec, r)
 
 		if rec.Code != http.StatusNotFound || r.URL.Path == "/404.html" {
-			writeRecordedResponse(w, rec, injectLiveReload, basePath)
+			writeRecordedResponse(w, rec, injectLiveReload, basePath, r)
 			return
 		}
 
 		if err := safepath.EnsureNoSymlinkPath(absOutputDir, notFoundPath); err != nil {
-			writeRecordedResponse(w, rec, injectLiveReload, basePath)
+			writeRecordedResponse(w, rec, injectLiveReload, basePath, r)
 			return
 		}
 		body, err := os.ReadFile(notFoundPath)
 		if err != nil {
-			writeRecordedResponse(w, rec, injectLiveReload, basePath)
+			writeRecordedResponse(w, rec, injectLiveReload, basePath, r)
 			return
 		}
 
@@ -160,7 +160,7 @@ func (i *Instance) Reload() {
 	i.reloader.Reload()
 }
 
-func writeRecordedResponse(w http.ResponseWriter, rec *httptest.ResponseRecorder, injectLiveReload bool, basePath string) {
+func writeRecordedResponse(w http.ResponseWriter, rec *httptest.ResponseRecorder, injectLiveReload bool, basePath string, r *http.Request) {
 	res := rec.Result()
 	defer res.Body.Close()
 
@@ -170,7 +170,7 @@ func writeRecordedResponse(w http.ResponseWriter, rec *httptest.ResponseRecorder
 		}
 	}
 	body, _ := io.ReadAll(res.Body)
-	if injectLiveReload && isHTMLResponse(res, body) {
+	if injectLiveReload && r.Method == http.MethodGet && res.StatusCode == http.StatusOK && isHTMLResponse(res, body) {
 		body = injectReloadSnippet(body, basePath)
 		w.Header().Del("Content-Length")
 	}
@@ -286,6 +286,9 @@ func (b *reloadBroker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
+
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
 
 	for {
 		select {

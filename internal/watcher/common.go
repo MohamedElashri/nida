@@ -85,14 +85,13 @@ func snapshot(siteRoot, outputDir string) (map[string]fileState, error) {
 
 	files := make(map[string]fileState)
 	err = filepath.WalkDir(absSiteRoot, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-
 		if shouldSkipPath(path, absOutputDir) {
-			if d.IsDir() {
+			if d != nil && d.IsDir() {
 				return fs.SkipDir
 			}
+			return nil
+		}
+		if walkErr != nil {
 			return nil
 		}
 

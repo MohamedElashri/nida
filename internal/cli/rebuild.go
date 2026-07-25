@@ -294,33 +294,48 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 }
 
 func rebuildMode(cfg config.SiteConfig, changedPaths []string) string {
-	staticPrefix := filepath.ToSlash(strings.Trim(cfg.StaticDir, "/")) + "/"
+	staticPrefix := filepath.ToSlash(strings.Trim(cfg.StaticDir, "/"))
+	if staticPrefix != "" {
+		staticPrefix += "/"
+	}
 	contentPrefix := filepath.ToSlash(strings.Trim(cfg.ContentDir, "/")) + "/"
 	templatePrefix := filepath.ToSlash(strings.Trim(cfg.TemplateDir, "/")) + "/"
 	configName := filepath.Base(config.DefaultConfigName)
 
-	mode := "partial"
+	needsFull := false
+	needsPartial := false
+	needsAssets := false
+
 	for _, changedPath := range changedPaths {
 		path := filepath.ToSlash(strings.TrimSpace(changedPath))
 		switch {
 		case path == configName || strings.HasSuffix(path, "/"+configName):
-			return "full"
+			needsFull = true
 		case strings.HasPrefix(path, templatePrefix):
-			return "full"
-		case strings.HasPrefix(path, staticPrefix):
-			if mode == "partial" {
-				mode = "assets-only"
-			}
+			needsFull = true
+		case staticPrefix != "" && strings.HasPrefix(path, staticPrefix):
+			needsAssets = true
 		case strings.HasPrefix(path, contentPrefix):
 			if !strings.HasSuffix(path, ".md") {
-				return "full"
+				needsFull = true
+			} else {
+				needsPartial = true
 			}
-			mode = "partial"
 		default:
-			return "full"
+			needsFull = true
 		}
 	}
-	return mode
+
+	if needsFull {
+		return "full"
+	}
+	if needsPartial {
+		return "partial"
+	}
+	if needsAssets {
+		return "assets-only"
+	}
+	return "partial"
 }
 
 func diffRenderedPages(previous, next []render.Page) ([]render.Page, []string) {
@@ -372,7 +387,12 @@ func changedStaticPaths(cfg config.SiteConfig, changedPaths []string) []string {
 	if len(changedPaths) == 0 {
 		return nil
 	}
-	prefix := filepath.ToSlash(strings.Trim(cfg.StaticDir, "/")) + "/"
+	prefix := filepath.ToSlash(strings.Trim(cfg.StaticDir, "/"))
+	if prefix == "" {
+		return nil
+	}
+	prefix += "/"
+	
 	out := make([]string, 0, len(changedPaths))
 	for _, path := range changedPaths {
 		if strings.HasPrefix(filepath.ToSlash(path), prefix) {

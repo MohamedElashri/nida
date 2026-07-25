@@ -108,11 +108,10 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	var out string
 	var err error
 
-	// For the root section or when pagination is disabled, render the section once
-	// without a paginator. For non-root sections with pagination, paginated page 1
-	// occupies sectionURL, so rendering a separate non-paginated page would produce
-	// a URL conflict.
-	paginateSection := perPage > 0 && section.SectionPath != ""
+	// When pagination is disabled, render the section once without a paginator.
+	// For sections with pagination, paginated page 1 occupies sectionURL, so 
+	// rendering a separate non-paginated page would produce a URL conflict.
+	paginateSection := perPage > 0
 	if !paginateSection && set.Has(templateName) {
 		canonical := canonicalURL(cfg.BaseURL, "/"+section.SectionPath)
 
@@ -147,7 +146,14 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	}
 
 	if paginateSection {
-		totalPages := max(1, (len(section.Pages)+perPage-1)/perPage)
+		var paginatePages []content.Page
+		if section.SectionPath == "" {
+			paginatePages = index.AllPages
+		} else {
+			paginatePages = section.Pages
+		}
+
+		totalPages := max(1, (len(paginatePages)+perPage-1)/perPage)
 		paginatePath := section.PaginatePath
 		if paginatePath == "" {
 			paginatePath = "page"
@@ -155,13 +161,13 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 		for pageNum := 1; pageNum <= totalPages; pageNum++ {
 			start := (pageNum - 1) * perPage
-			end := min(start+perPage, len(section.Pages))
+			end := min(start+perPage, len(paginatePages))
 			pageURL := sectionURL
 			if pageNum > 1 {
 				pageURL = sectionURL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 			}
 
-			paginator := buildPaginator(sectionURL, pageNum, totalPages, section.Pages[start:end])
+			paginator := buildPaginator(sectionURL, pageNum, totalPages, paginatePages[start:end])
 
 			ctx := templateContext{
 				Title:        section.Title,
@@ -173,7 +179,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 				Theme:        theme,
 				Index:        index,
 				Section:      section,
-				Pages:        section.Pages[start:end],
+				Pages:        paginatePages[start:end],
 				Paginator:    paginator,
 				Robots:       "noai, noimageai",
 			}
