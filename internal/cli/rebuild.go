@@ -154,15 +154,6 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 		changedByRelPath[page.RelativePath] = page
 	}
 
-	changedPages := make([]content.Page, 0, len(changedByRelPath))
-	for _, page := range changedByRelPath {
-		changedPages = append(changedPages, page)
-	}
-	removedPaths := make([]string, 0, len(removedByRelPath))
-	for p := range removedByRelPath {
-		removedPaths = append(removedPaths, p)
-	}
-
 	merged := make([]content.Page, 0, len(previous.state.Pages))
 	for _, prevPage := range previous.state.Pages {
 		if removedByRelPath[prevPage.RelativePath] {
@@ -392,7 +383,7 @@ func changedStaticPaths(cfg config.SiteConfig, changedPaths []string) []string {
 		return nil
 	}
 	prefix += "/"
-	
+
 	out := make([]string, 0, len(changedPaths))
 	for _, path := range changedPaths {
 		if strings.HasPrefix(filepath.ToSlash(path), prefix) {

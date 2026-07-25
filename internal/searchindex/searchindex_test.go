@@ -41,6 +41,7 @@ func TestGenerateIncludesDescriptionsAndPlainText(t *testing.T) {
 	}
 	if out == nil {
 		t.Fatal("expected search output")
+		return
 	}
 
 	raw := strings.TrimSuffix(strings.TrimPrefix(string(out.Content), "window.searchIndex = "), ";\n")

@@ -131,10 +131,10 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 		case "gif":
 			err = gif.Encode(outFile, resized, nil)
 		default:
-			outFile.Close()
+			_ = outFile.Close()
 			return fmt.Errorf("unsupported image format %q", format)
 		}
-		outFile.Close()
+		_ = outFile.Close()
 		if err != nil {
 			return fmt.Errorf("encode resized image: %w", err)
 		}
@@ -144,7 +144,7 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 			if err != nil {
 				return fmt.Errorf("fingerprint resized: %w", err)
 			}
-			os.Remove(resizedPath)
+			_ = os.Remove(resizedPath)
 			manifestKey := base + "." + widthSuffix + ext
 			manifest[manifestKey] = fpPath
 		}

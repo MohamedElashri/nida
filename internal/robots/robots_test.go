@@ -15,6 +15,7 @@ func TestGenerateRobotsWithCustomContent(t *testing.T) {
 	out := Generate(cfg)
 	if out == nil {
 		t.Fatal("expected robots output")
+		return
 	}
 	if string(out.Content) != "User-agent: TestBot\nDisallow: /\n" {
 		t.Fatalf("unexpected robots content %q", string(out.Content))
@@ -29,5 +30,6 @@ func TestGenerateDefaultRobotsIncludesSitemap(t *testing.T) {
 	out := Generate(cfg)
 	if out == nil || !strings.Contains(string(out.Content), "Sitemap: https://example.com/sitemap.xml") {
 		t.Fatalf("expected sitemap in default robots, got %+v", out)
+		return
 	}
 }

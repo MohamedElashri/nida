@@ -89,7 +89,6 @@ func tryStringList(value any) ([]string, bool) {
 }
 
 func buildCollection(tc config.TaxonomyConfig, termMap map[string][]content.Page, cfg config.SiteConfig) (Collection, error) {
-	rootURL := "/" + strings.ToLower(strings.TrimSpace(tc.Name)) + "/"
 	pattern := tc.Name
 
 	if p, ok := cfg.Permalinks[tc.Name]; ok && p != "" {
@@ -118,7 +117,7 @@ func buildCollection(tc config.TaxonomyConfig, termMap map[string][]content.Page
 			return Collection{}, fmt.Errorf("build %s taxonomy: empty slug for term %q", tc.Name, termName)
 		}
 
-		route, err := expandPattern(rootURL, slug)
+		route, err := expandPattern(pattern, slug)
 		if err != nil {
 			return Collection{}, fmt.Errorf("build %s taxonomy term %q: %w", tc.Name, termName, err)
 		}

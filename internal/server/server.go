@@ -162,7 +162,7 @@ func (i *Instance) Reload() {
 
 func writeRecordedResponse(w http.ResponseWriter, rec *httptest.ResponseRecorder, injectLiveReload bool, basePath string, r *http.Request) {
 	res := rec.Result()
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	for key, values := range res.Header {
 		for _, value := range values {

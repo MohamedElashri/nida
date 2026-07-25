@@ -18,12 +18,13 @@ export GOMODCACHE := $(CURDIR)/.gomodcache
 export GOPROXY ?= https://proxy.golang.org,direct
 export GOSUMDB ?= sum.golang.org
 
-.PHONY: help dev build rebuild test test-cover serve site-build docs-release-notes docs-build docs-serve example-build example-serve arabic-example-build arabic-example-serve clean fmt tidy check
+.PHONY: help dev build rebuild lint test test-cover serve site-build docs-release-notes docs-build docs-serve example-build example-serve arabic-example-build arabic-example-serve clean fmt tidy check
 
 help:
 	@printf "Available targets:\n"
 	@printf "  make build        Build the nida binary\n"
 	@printf "  make rebuild      Clean and rebuild the binary\n"
+	@printf "  make lint         Run lint\n"
 	@printf "  make test         Run the full Go test suite\n"
 	@printf "  make test-cover   Run tests with coverage output\n"
 	@printf "  make serve        Run nida serve against SITE=%s\n" "$(SITE)"
@@ -45,6 +46,8 @@ build:
 
 rebuild: clean build
 
+lint:
+	golangci-lint run ./...
 test:
 	$(GO) test ./...
 
@@ -84,7 +87,7 @@ fmt:
 tidy:
 	$(GO) mod tidy
 
-check: fmt test site-build
+check: fmt lint test site-build
 
 dev: check
 

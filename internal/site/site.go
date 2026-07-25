@@ -280,43 +280,62 @@ func extractTaxonomyValue(extra map[string]any, name string) string {
 }
 
 func buildSectionTree(sections []content.Section, allPages []content.Page, cfg config.SiteConfig) ([]content.Section, map[string]content.Section) {
-	sectionMap := map[string]content.Section{}
-	childrenMap := map[string][]content.Section{}
-
-	for i := range sections {
-		s := sections[i]
-		sectionMap[s.SectionPath] = s
-	}
-
-	for path, s := range sectionMap {
-		if path != "" {
-			dir := filepath.ToSlash(filepath.Dir(path))
-			if dir == "." {
-				dir = ""
-			}
-			childrenMap[dir] = append(childrenMap[dir], s)
-		}
-	}
+	ptrMap := make(map[string]*content.Section, len(sections))
 
 	for i := range sections {
 		s := &sections[i]
-		if children, ok := childrenMap[s.SectionPath]; ok {
-			s.Sections = children
-		}
 		pagesInSection := filterPagesForSection(allPages, s.SectionPath)
 		s.Pages = sortPagesBySection(pagesInSection, *s, cfg)
-		sectionMap[s.SectionPath] = *s
+		ptrMap[s.SectionPath] = s
+	}
+
+	sortedPaths := make([]string, 0, len(ptrMap))
+	for path := range ptrMap {
+		sortedPaths = append(sortedPaths, path)
+	}
+	slices.SortFunc(sortedPaths, func(a, b string) int {
+		depthA := strings.Count(a, "/")
+		depthB := strings.Count(b, "/")
+		if depthA != depthB {
+			return depthB - depthA
+		}
+		return strings.Compare(a, b)
+	})
+
+	for _, path := range sortedPaths {
+		if path == "" {
+			continue
+		}
+		s := ptrMap[path]
+		dir := filepath.ToSlash(filepath.Dir(path))
+		if dir == "." {
+			dir = ""
+		}
+		if parent, ok := ptrMap[dir]; ok {
+			parent.Sections = append(parent.Sections, *s)
+		}
+	}
+
+	sectionMap := map[string]content.Section{}
+	for path, s := range ptrMap {
+		sectionMap[path] = *s
 	}
 
 	var roots []content.Section
 	rootSection := content.Section{}
 	rootPages := filterPagesForSection(allPages, "")
 
-	if existingRoot, ok := sectionMap[""]; ok {
-		rootSection = existingRoot
-		rootSection.Pages = sortPagesBySection(rootPages, rootSection, cfg)
+	if existingRoot, ok := ptrMap[""]; ok {
+		rootSection = *existingRoot
 		roots = append(roots, rootSection)
 	} else if len(rootPages) > 0 {
+		var topLevelSections []content.Section
+		for _, path := range sortedPaths {
+			dir := filepath.ToSlash(filepath.Dir(path))
+			if path != "" && (dir == "." || dir == "") {
+				topLevelSections = append(topLevelSections, *ptrMap[path])
+			}
+		}
 		rootSection = content.Section{
 			SectionPath:      "",
 			Title:            "Home",
@@ -328,17 +347,17 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 			SortBy:           "date",
 			Transparent:      false,
 			GenerateFeeds:    false,
-			Sections:         nil,
+			Sections:         topLevelSections,
 			Pages:            sortPagesBySection(rootPages, rootSection, cfg),
 			Extra:            map[string]any{},
 		}
 		roots = append(roots, rootSection)
 	}
 
-	for i := range sections {
-		s := sections[i]
+	for _, path := range sortedPaths {
+		s := ptrMap[path]
 		if s.SectionPath != "" && s.Transparent {
-			roots = append(roots, s)
+			roots = append(roots, *s)
 		}
 	}
 

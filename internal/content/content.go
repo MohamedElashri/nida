@@ -14,6 +14,18 @@ import (
 	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
+func titleCase(s string) string {
+	words := strings.Fields(s)
+	for i, w := range words {
+		runes := []rune(w)
+		if len(runes) > 0 {
+			runes[0] = unicode.ToUpper(runes[0])
+			words[i] = string(runes)
+		}
+	}
+	return strings.Join(words, " ")
+}
+
 func Discover(siteRoot string, cfg config.SiteConfig) ([]Page, []Section, error) {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {
@@ -153,9 +165,9 @@ func synthesizeImplicitSections(contentRoot string, pages []Page, sections []Sec
 		base := filepath.Base(dirPath)
 		implicit = append(implicit, Section{
 			SourcePath:       "",
-			RelativePath:     filepath.Join(contentRoot, dirPath, "_index.md"),
+			RelativePath:     filepath.ToSlash(filepath.Join(dirPath, "_index.md")),
 			SectionPath:      dirPath,
-			Title:            strings.Title(strings.ReplaceAll(base, "-", " ")),
+			Title:            titleCase(strings.ReplaceAll(base, "-", " ")),
 			Slug:             DeriveSlug(base),
 			URL:              "/" + dirPath + "/",
 			PaginateBy:       0,
@@ -405,7 +417,6 @@ func DeriveSlug(value string) string {
 		case unicode.IsLetter(r) || unicode.IsNumber(r):
 			if !lastHyphen && b.Len() > 0 {
 				b.WriteByte('-')
-				lastHyphen = true
 			}
 			b.WriteRune(unicode.ToLower(r))
 			lastHyphen = false

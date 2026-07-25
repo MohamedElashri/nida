@@ -10,7 +10,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/safepath"
@@ -91,7 +90,7 @@ func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 		if err != nil {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		if info, err := f.Stat(); err != nil || info.Size() > maxImageBytes {
 			return "/" + strings.TrimPrefix(srcPath, "/")
@@ -123,7 +122,7 @@ func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 		if err != nil {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
-		defer outFile.Close()
+		defer func() { _ = outFile.Close() }()
 
 		// Encode based on format
 		switch ext {
@@ -150,9 +149,4 @@ func validResizeDimensions(width, height int) bool {
 		return false
 	}
 	return width <= maxResizePixels/height
-}
-
-func intValue(s string) int {
-	v, _ := strconv.Atoi(s)
-	return v
 }

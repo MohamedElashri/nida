@@ -19,7 +19,7 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 	if err != nil {
 		return err
 	}
-	defer syscall.Close(fd)
+	defer func() { _ = syscall.Close(fd) }()
 
 	absSiteRoot, err := filepath.Abs(opts.SiteRoot)
 	if err != nil {

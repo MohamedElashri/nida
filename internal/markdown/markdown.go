@@ -324,10 +324,23 @@ func (r *imageRenderer) renderImage(w util.BufWriter, source []byte, node ast.No
 	dest := string(n.Destination)
 	resolved := ResolveInternalPath(dest, r.pathLookup)
 	resolved = safeMarkdownURL(resolved, imageURL)
-	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(n.Text(source))) + `" loading="lazy" decoding="async"`)
+	altText := extractTextFromInline(n, source)
+	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(altText)) + `" loading="lazy" decoding="async"`)
 	if n.Title != nil {
 		_, _ = w.WriteString(` title="` + string(util.EscapeHTML(n.Title)) + `"`)
 	}
 	_, _ = w.WriteString(">")
 	return ast.WalkSkipChildren, nil
+}
+
+func extractTextFromInline(n ast.Node, source []byte) []byte {
+	var b []byte
+	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		if text, ok := c.(*ast.Text); ok {
+			b = append(b, text.Segment.Value(source)...)
+		} else {
+			b = append(b, extractTextFromInline(c, source)...)
+		}
+	}
+	return b
 }

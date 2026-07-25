@@ -18,6 +18,6 @@ func EstimateReadingTime(markdown string) int {
 
 func countWords(text string) int {
 	return len(strings.FieldsFunc(text, func(r rune) bool {
-		return !(unicode.IsLetter(r) || unicode.IsNumber(r))
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
 	}))
 }
