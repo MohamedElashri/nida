@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -91,8 +92,14 @@ func stringSliceValue(value any) []string {
 }
 
 func boolValue(value any) bool {
-	if b, ok := value.(bool); ok {
-		return b
+	switch v := value.(type) {
+	case bool:
+		return v
+	case string:
+		parsed, err := strconv.ParseBool(strings.TrimSpace(v))
+		if err == nil {
+			return parsed
+		}
 	}
 	return false
 }
