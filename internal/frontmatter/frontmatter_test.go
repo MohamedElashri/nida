@@ -33,6 +33,21 @@ slug = "hello"
 	}
 }
 
+func TestParseQuotedBooleanValues(t *testing.T) {
+	doc, err := Parse([]byte(`---
+draft: "true"
+---
+
+Body
+`))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if !doc.Metadata.Draft {
+		t.Fatal("expected draft to be true when supplied as a quoted YAML string")
+	}
+}
+
 func TestSplitMissingOpeningDelimiter(t *testing.T) {
 	_, _, _, err := Split([]byte("title = \"oops\""))
 	if err == nil {
