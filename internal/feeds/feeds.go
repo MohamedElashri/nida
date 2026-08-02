@@ -6,6 +6,7 @@ import (
 	"html"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,14 +21,14 @@ type Output struct {
 }
 
 type atomDocument struct {
-	XMLName xml.Name    `xml:"http://www.w3.org/2005/Atom feed"`
-	Lang    string      `xml:"xml:lang,attr,omitempty"`
-	Title   string      `xml:"title"`
-	Link    []atomLink  `xml:"link"`
-	Updated string      `xml:"updated"`
-	ID      string      `xml:"id"`
-	Author  *atomAuthor `xml:"author,omitempty"`
-	Entries []atomEntry `xml:"entry"`
+	XMLName xml.Name     `xml:"http://www.w3.org/2005/Atom feed"`
+	Lang    string       `xml:"xml:lang,attr,omitempty"`
+	Title   string       `xml:"title"`
+	Link    []atomLink   `xml:"link"`
+	Updated string       `xml:"updated"`
+	ID      string       `xml:"id"`
+	Authors []atomAuthor `xml:"author,omitempty"`
+	Entries []atomEntry  `xml:"entry"`
 }
 
 type atomLink struct {
@@ -37,14 +38,16 @@ type atomLink struct {
 }
 
 type atomAuthor struct {
-	Name string `xml:"name"`
+	Name  string `xml:"name"`
+	URI   string `xml:"uri,omitempty"`
+	Email string `xml:"email,omitempty"`
 }
 
 type atomEntry struct {
 	Title     string       `xml:"title"`
 	Link      atomLink     `xml:"link"`
 	ID        string       `xml:"id"`
-	Author    *atomAuthor  `xml:"author,omitempty"`
+	Authors   []atomAuthor `xml:"author,omitempty"`
 	Published string       `xml:"published,omitempty"`
 	Updated   string       `xml:"updated"`
 	Summary   string       `xml:"summary,omitempty"`
@@ -95,28 +98,25 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 		Entries: make([]atomEntry, 0, len(items)),
 	}
 	if strings.TrimSpace(cfg.Author) != "" {
-		doc.Author = &atomAuthor{Name: strings.TrimSpace(cfg.Author)}
+		doc.Authors = []atomAuthor{{Name: strings.TrimSpace(cfg.Author)}}
 	}
 
 	for _, item := range items {
 		link := canonicalURL(cfg.BaseURL, item.URL)
 
-		summary := strings.TrimSpace(item.Description)
-		if summary == "" {
-			summary = item.Title
-		}
+		summary := stripHTML(strings.TrimSpace(item.Description))
 
 		doc.Entries = append(doc.Entries, atomEntry{
 			Title:     stripHTML(item.Title),
 			Link:      atomLink{Href: link, Rel: "alternate", Type: "text/html"},
 			ID:        link,
-			Author:    atomEntryAuthor(item, cfg),
+			Authors:   atomEntryAuthors(item, cfg),
 			Published: formatAtomDate(item.Date),
 			Updated:   formatAtomDate(item.Date),
 			Summary:   summary,
 			Content: &atomContent{
 				Type:  "html",
-				Value: item.BodyHTML,
+				Value: absolutizeHTML(item.BodyHTML, cfg.BaseURL, item.URL),
 			},
 		})
 	}
@@ -188,36 +188,51 @@ func rootSectionName(sectionPath string) string {
 	return sectionPath
 }
 
-func atomEntryAuthor(item content.Page, cfg config.SiteConfig) *atomAuthor {
-	if authors := stringListExtra(item.Extra, "authors"); len(authors) > 0 {
-		return &atomAuthor{Name: strings.Join(authors, ", ")}
+func atomEntryAuthors(item content.Page, cfg config.SiteConfig) []atomAuthor {
+	if raw, ok := item.Extra["authors"]; ok {
+		if authors := parseAuthorsExtra(raw); len(authors) > 0 {
+			return authors
+		}
 	}
 	if strings.TrimSpace(cfg.Author) != "" {
-		return &atomAuthor{Name: strings.TrimSpace(cfg.Author)}
+		return []atomAuthor{{Name: strings.TrimSpace(cfg.Author)}}
 	}
 	return nil
 }
 
-func stringListExtra(values map[string]any, key string) []string {
-	raw, ok := values[key]
-	if !ok {
-		return nil
-	}
+func parseAuthorsExtra(raw any) []atomAuthor {
+	var out []atomAuthor
 	switch v := raw.(type) {
 	case []string:
-		return v
-	case []any:
-		out := make([]string, 0, len(v))
-		for _, item := range v {
-			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
-				out = append(out, strings.TrimSpace(s))
+		for _, s := range v {
+			if strings.TrimSpace(s) != "" {
+				out = append(out, atomAuthor{Name: strings.TrimSpace(s)})
 			}
 		}
-		return out
-	default:
-		return nil
+	case []any:
+		for _, item := range v {
+			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+				out = append(out, atomAuthor{Name: strings.TrimSpace(s)})
+			} else if m, ok := item.(map[string]any); ok {
+				author := atomAuthor{}
+				if name, ok := m["name"].(string); ok {
+					author.Name = strings.TrimSpace(name)
+				}
+				if email, ok := m["email"].(string); ok {
+					author.Email = strings.TrimSpace(email)
+				}
+				if uri, ok := m["uri"].(string); ok {
+					author.URI = strings.TrimSpace(uri)
+				}
+				if author.Name != "" {
+					out = append(out, author)
+				}
+			}
+		}
 	}
+	return out
 }
+
 
 func feedURL(baseURL, filename string) (string, error) {
 	baseURL = strings.TrimSpace(baseURL)
@@ -259,4 +274,51 @@ func stripHTML(markup string) string {
 		}
 	}
 	return strings.Join(strings.Fields(html.UnescapeString(result.String())), " ")
+}
+
+var htmlURLRegex = regexp.MustCompile(`(?i)(href|src)=["']([^"']+)["']`)
+
+func resolveURL(baseURL, itemURL, rawURL string) string {
+	if u, err := url.Parse(rawURL); err == nil && (u.Scheme != "" || u.Host != "") {
+		return rawURL
+	}
+	if strings.HasPrefix(rawURL, "data:") || strings.HasPrefix(rawURL, "#") || strings.HasPrefix(rawURL, "mailto:") {
+		return rawURL
+	}
+
+	rel, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+
+	var route string
+	if strings.HasPrefix(rel.Path, "/") {
+		route = rel.Path
+	} else {
+		route = path.Join(itemURL, rel.Path)
+	}
+
+	resolved := canonicalURL(baseURL, route)
+
+	if resURL, err := url.Parse(resolved); err == nil {
+		resURL.RawQuery = rel.RawQuery
+		resURL.Fragment = rel.Fragment
+		return resURL.String()
+	}
+
+	return resolved
+}
+
+func absolutizeHTML(htmlStr string, baseURL string, itemURL string) string {
+	return htmlURLRegex.ReplaceAllStringFunc(htmlStr, func(match string) string {
+		parts := htmlURLRegex.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return match
+		}
+		attr := parts[1]
+		rawURL := parts[2]
+
+		resolved := resolveURL(baseURL, itemURL, rawURL)
+		return fmt.Sprintf(`%s="%s"`, attr, resolved)
+	})
 }
