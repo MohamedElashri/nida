@@ -14,14 +14,9 @@ func DefaultSiteConfig() SiteConfig {
 		MinifyHTML:    false,
 		SyntaxTheme:   "github",
 		Taxonomies:    []TaxonomyConfig{},
-		RSS: RSSConfig{
+		Feed: FeedConfig{
 			Enabled:  true,
-			Filename: "rss.xml",
-			Limit:    20,
-		},
-		Atom: AtomConfig{
-			Enabled:  false,
-			Filename: "atom.xml",
+			Filename: "feed.xml",
 			Limit:    20,
 		},
 		Sitemap: SitemapConfig{

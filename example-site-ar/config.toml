@@ -24,9 +24,9 @@ name = "categories"
 path = "categories"
 render = false
 
-[rss]
+[feed]
 enabled = true
-filename = "rss.xml"
+filename = "feed.xml"
 limit = 20
 
 [sitemap]

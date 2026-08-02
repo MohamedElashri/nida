@@ -15,10 +15,7 @@ drafts = false
 syntax_theme = "github"
 minify_html = false
 
-[rss]
-enabled = false
-
-[atom]
+[feed]
 enabled = false
 
 [sitemap]

@@ -15,8 +15,8 @@ func TestDefaultSiteConfig(t *testing.T) {
 	if cfg.Server.Port != 1702 {
 		t.Fatalf("expected default server port 1702, got %d", cfg.Server.Port)
 	}
-	if !cfg.RSS.Enabled {
-		t.Fatal("expected RSS to be enabled by default")
+	if !cfg.Feed.Enabled {
+		t.Fatal("expected Feed to be enabled by default")
 	}
 	if _, ok := cfg.Pipeline.Images.Presets["content"]; !ok {
 		t.Fatal("expected default content image preset")
@@ -82,11 +82,7 @@ func TestLoadFeedSections(t *testing.T) {
 base_url = "https://example.com"
 title = "Feed Sections"
 
-[rss]
-sections = ["post"]
-
-[atom]
-enabled = true
+[feed]
 sections = ["post"]
 `)
 
@@ -95,11 +91,8 @@ sections = ["post"]
 		t.Fatalf("Load returned error: %v", err)
 	}
 
-	if len(cfg.RSS.Sections) != 1 || cfg.RSS.Sections[0] != "post" {
-		t.Fatalf("expected RSS sections [post], got %#v", cfg.RSS.Sections)
-	}
-	if len(cfg.Atom.Sections) != 1 || cfg.Atom.Sections[0] != "post" {
-		t.Fatalf("expected Atom sections [post], got %#v", cfg.Atom.Sections)
+	if len(cfg.Feed.Sections) != 1 || cfg.Feed.Sections[0] != "post" {
+		t.Fatalf("expected Feed sections [post], got %#v", cfg.Feed.Sections)
 	}
 }
 

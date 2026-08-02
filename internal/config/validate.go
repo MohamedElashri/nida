@@ -30,11 +30,8 @@ func Validate(cfg SiteConfig) error {
 		problems = append(problems, "paginate must be greater than 0")
 	}
 
-	if cfg.RSS.Enabled && cfg.RSS.Limit <= 0 {
-		problems = append(problems, "rss.limit must be greater than 0 when RSS is enabled")
-	}
-	if cfg.Atom.Enabled && cfg.Atom.Limit <= 0 {
-		problems = append(problems, "atom.limit must be greater than 0 when Atom is enabled")
+	if cfg.Feed.Enabled && cfg.Feed.Limit <= 0 {
+		problems = append(problems, "feed.limit must be greater than 0 when Feed is enabled")
 	}
 
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
@@ -60,8 +57,7 @@ func Validate(cfg SiteConfig) error {
 		"static_dir":       cfg.StaticDir,
 		"output_dir":       cfg.OutputDir,
 		"themes_dir":       cfg.ThemesDir,
-		"rss.filename":     cfg.RSS.Filename,
-		"atom.filename":    cfg.Atom.Filename,
+		"feed.filename":    cfg.Feed.Filename,
 		"sitemap.filename": cfg.Sitemap.Filename,
 		"robots.filename":  cfg.Robots.Filename,
 		"search.filename":  cfg.Search.Filename,
