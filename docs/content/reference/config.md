@@ -12,18 +12,18 @@ The implementation lives in [`internal/config`](https://github.com/MohamedElashr
 ## Minimal config
 
 ```toml
-config_version = "0.4"
+
 base_url = "https://example.com/"
 title = "My Site"
 ```
 
-`base_url`, `title`, and `config_version` are the important starting points. Most other settings have defaults.
+`base_url` and `title` are the important starting points. Most other settings have defaults.
 
 ## Top-level settings
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `config_version` | string | required | Config format version. Current value is `0.4`. |
+
 | `base_url` | string | required | Absolute `http` or `https` URL for the site. May include a path such as `/nida/`. |
 | `title` | string | required | Site title. |
 | `description` | string | empty | Site description used by templates and generated metadata. |

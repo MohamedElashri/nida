@@ -3,7 +3,7 @@ title = "مدونة نداء"
 description = "مثال عربي بسيط لموقع مبني باستخدام nida."
 language = "ar"
 author = "Mohamed Elashri"
-config_version = "0.4"
+
 
 content_dir = "content"
 template_dir = "templates"

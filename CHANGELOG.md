@@ -9,6 +9,7 @@ All notable changes to Nida are documented here.
 
 ### Changed
 * Changed the default feed protocol from RSS to Atom. Updated the default feeds generator as well
+* Removed the `config_version` field from configuration files and the core engine. Nida no longer tracks configuration versions.
 
 ### Fixed
 * N/A

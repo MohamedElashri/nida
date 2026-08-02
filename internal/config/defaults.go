@@ -2,18 +2,18 @@ package config
 
 func DefaultSiteConfig() SiteConfig {
 	return SiteConfig{
-		ConfigVersion: ConfigVersion,
-		Language:      "en",
-		ContentDir:    "content",
-		TemplateDir:   "templates",
-		StaticDir:     "static",
-		OutputDir:     "public",
-		ThemesDir:     "themes",
-		Paginate:      10,
-		Drafts:        false,
-		MinifyHTML:    false,
-		SyntaxTheme:   "github",
-		Taxonomies:    []TaxonomyConfig{},
+
+		Language:    "en",
+		ContentDir:  "content",
+		TemplateDir: "templates",
+		StaticDir:   "static",
+		OutputDir:   "public",
+		ThemesDir:   "themes",
+		Paginate:    10,
+		Drafts:      false,
+		MinifyHTML:  false,
+		SyntaxTheme: "github",
+		Taxonomies:  []TaxonomyConfig{},
 		Feed: FeedConfig{
 			Enabled:  true,
 			Filename: "feed.xml",
