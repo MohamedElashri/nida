@@ -2,6 +2,17 @@
 
 All notable changes to Nida are documented here.
 
+## [0.6.0] - Unreleased
+
+### Added
+* N/A
+
+### Changed
+* Changed the default feed protocol from RSS to Atom. Updated the default feeds generator as well
+
+### Fixed
+* N/A
+
 ## [0.5.10] - 2026-08-02
 
 ### Fixed
