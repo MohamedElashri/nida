@@ -11,8 +11,6 @@ import (
 
 const DefaultConfigName = "config.toml"
 
-
-
 func Load(opts Options) (SiteConfig, string, error) {
 	siteRoot := opts.SiteRoot
 	if siteRoot == "" {
@@ -43,7 +41,6 @@ func Load(opts Options) (SiteConfig, string, error) {
 	if err := toml.Unmarshal(data, &cfg); err != nil {
 		return SiteConfig{}, "", fmt.Errorf("parse config %q: %w", configPath, err)
 	}
-
 
 	normalize(&cfg)
 	if err := Validate(cfg); err != nil {
