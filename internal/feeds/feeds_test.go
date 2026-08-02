@@ -16,6 +16,7 @@ func TestGenerateGolden(t *testing.T) {
 	cfg.BaseURL = "https://example.com"
 	cfg.Title = "Fixture Site"
 	cfg.Description = "Fixture feed"
+	cfg.Author = "Fixture Author"
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{
@@ -24,6 +25,7 @@ func TestGenerateGolden(t *testing.T) {
 				URL:         "/posts/hello-world/",
 				Description: "A fixture post for early tests.",
 				Date:        mustDate(t, "2026-04-12T10:00:00Z"),
+				BodyHTML:    "<p>Hello feed.</p>\n",
 			},
 		},
 		CanonicalLookup: map[string]string{
@@ -36,7 +38,7 @@ func TestGenerateGolden(t *testing.T) {
 		t.Fatalf("Generate returned error: %v", err)
 	}
 
-	want, err := os.ReadFile(filepath.Join("testdata", "rss.golden.xml"))
+	want, err := os.ReadFile(filepath.Join("testdata", "feed.golden.xml"))
 	if err != nil {
 		t.Fatalf("read golden: %v", err)
 	}
@@ -48,7 +50,7 @@ func TestGenerateGolden(t *testing.T) {
 func TestGenerateRespectsLimit(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	cfg.RSS.Limit = 1
+	cfg.Feed.Limit = 1
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{
@@ -93,10 +95,10 @@ func TestGenerateIncludesAllPagesWithoutSections(t *testing.T) {
 	}
 }
 
-func TestGenerateFiltersRSSBySections(t *testing.T) {
+func TestGenerateFiltersFeedBySections(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	cfg.RSS.Sections = []string{"post"}
+	cfg.Feed.Sections = []string{"post"}
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{
@@ -112,15 +114,15 @@ func TestGenerateFiltersRSSBySections(t *testing.T) {
 
 	body := string(out.Content)
 	if !contains(body, "Post") || contains(body, "Micro") {
-		t.Fatalf("expected RSS feed to include only post section pages, got %s", body)
+		t.Fatalf("expected Feed feed to include only post section pages, got %s", body)
 	}
 }
 
 func TestGenerateAppliesLimitAfterSectionFiltering(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	cfg.RSS.Limit = 2
-	cfg.RSS.Sections = []string{"post"}
+	cfg.Feed.Limit = 2
+	cfg.Feed.Sections = []string{"post"}
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{
@@ -138,77 +140,14 @@ func TestGenerateAppliesLimitAfterSectionFiltering(t *testing.T) {
 
 	body := string(out.Content)
 	if !contains(body, "Newest Post") || !contains(body, "Older Post") || contains(body, "Newest Micro") || contains(body, "Oldest Post") {
-		t.Fatalf("expected RSS limit to apply after section filtering, got %s", body)
-	}
-}
-
-func TestGenerateAtomGolden(t *testing.T) {
-	cfg := config.DefaultSiteConfig()
-	cfg.BaseURL = "https://example.com"
-	cfg.Title = "Fixture Site"
-	cfg.Description = "Fixture feed"
-	cfg.Author = "Fixture Author"
-	cfg.RSS.Enabled = false
-	cfg.Atom.Enabled = true
-
-	index := site.SiteIndex{
-		AllPages: []content.Page{
-			{
-				Title:       "Hello World",
-				URL:         "/posts/hello-world/",
-				Description: "A fixture post for early tests.",
-				Date:        mustDate(t, "2026-04-12T10:00:00Z"),
-				BodyHTML:    "<p>Hello feed.</p>\n",
-			},
-		},
-		CanonicalLookup: map[string]string{
-			"/posts/hello-world/": "https://example.com/posts/hello-world/",
-		},
-	}
-
-	out, err := GenerateAtom(cfg, index)
-	if err != nil {
-		t.Fatalf("GenerateAtom returned error: %v", err)
-	}
-
-	want, err := os.ReadFile(filepath.Join("testdata", "atom.golden.xml"))
-	if err != nil {
-		t.Fatalf("read golden: %v", err)
-	}
-	if string(out.Content) != string(want) {
-		t.Fatalf("golden mismatch\nwant:\n%s\ngot:\n%s", string(want), string(out.Content))
-	}
-}
-
-func TestGenerateAtomFiltersBySections(t *testing.T) {
-	cfg := config.DefaultSiteConfig()
-	cfg.BaseURL = "https://example.com"
-	cfg.RSS.Enabled = false
-	cfg.Atom.Enabled = true
-	cfg.Atom.Sections = []string{"post"}
-
-	index := site.SiteIndex{
-		AllPages: []content.Page{
-			{Title: "Post", URL: "/post/post/", SectionPath: "post", Date: mustDate(t, "2026-04-13T10:00:00Z")},
-			{Title: "Micro", URL: "/micro/micro/", SectionPath: "micro", Date: mustDate(t, "2026-04-12T10:00:00Z")},
-		},
-	}
-
-	out, err := GenerateAtom(cfg, index)
-	if err != nil {
-		t.Fatalf("GenerateAtom returned error: %v", err)
-	}
-
-	body := string(out.Content)
-	if !contains(body, "Post") || contains(body, "Micro") {
-		t.Fatalf("expected Atom feed to include only post section pages, got %s", body)
+		t.Fatalf("expected Feed limit to apply after section filtering, got %s", body)
 	}
 }
 
 func TestGenerateFiltersNestedSectionsByRoot(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	cfg.RSS.Sections = []string{"post"}
+	cfg.Feed.Sections = []string{"post"}
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{
@@ -231,8 +170,7 @@ func TestGenerateFiltersNestedSectionsByRoot(t *testing.T) {
 func TestGenerateAllReturnsEnabledFeeds(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	cfg.RSS.Enabled = true
-	cfg.Atom.Enabled = true
+	cfg.Feed.Enabled = true
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{{Title: "Post", URL: "/posts/post/"}},
@@ -245,14 +183,14 @@ func TestGenerateAllReturnsEnabledFeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateAll returned error: %v", err)
 	}
-	if len(outputs) != 2 {
-		t.Fatalf("expected 2 feeds, got %+v", outputs)
+	if len(outputs) != 1 {
+		t.Fatalf("expected 1 feed, got %+v", outputs)
 	}
 }
 
 func TestGenerateDisabledFeed(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
-	cfg.RSS.Enabled = false
+	cfg.Feed.Enabled = false
 
 	out, err := Generate(cfg, site.SiteIndex{})
 	if err != nil {

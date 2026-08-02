@@ -21,8 +21,7 @@ type SiteConfig struct {
 	SyntaxTheme   string            `toml:"syntax_theme"`
 	Markdown      MarkdownConfig    `toml:"markdown"`
 	Taxonomies    []TaxonomyConfig  `toml:"taxonomies"`
-	RSS           RSSConfig         `toml:"rss"`
-	Atom          AtomConfig        `toml:"atom"`
+	Feed          FeedConfig        `toml:"feed"`
 	Sitemap       SitemapConfig     `toml:"sitemap"`
 	Robots        RobotsConfig      `toml:"robots"`
 	Server        ServerConfig      `toml:"server"`
@@ -68,14 +67,7 @@ type SectionConfig struct {
 	PaginatePath        string `toml:"paginate_path"`
 }
 
-type RSSConfig struct {
-	Enabled  bool     `toml:"enabled"`
-	Filename string   `toml:"filename"`
-	Limit    int      `toml:"limit"`
-	Sections []string `toml:"sections"`
-}
-
-type AtomConfig struct {
+type FeedConfig struct {
 	Enabled  bool     `toml:"enabled"`
 	Filename string   `toml:"filename"`
 	Limit    int      `toml:"limit"`

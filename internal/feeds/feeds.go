@@ -18,33 +18,6 @@ type Output struct {
 	Content  []byte
 }
 
-type rssDocument struct {
-	XMLName xml.Name   `xml:"rss"`
-	Version string     `xml:"version,attr"`
-	Channel rssChannel `xml:"channel"`
-}
-
-type rssChannel struct {
-	Title       string    `xml:"title"`
-	Link        string    `xml:"link"`
-	Description string    `xml:"description,omitempty"`
-	Language    string    `xml:"language,omitempty"`
-	Items       []rssItem `xml:"item"`
-}
-
-type rssItem struct {
-	Title       string  `xml:"title"`
-	Link        string  `xml:"link"`
-	GUID        rssGUID `xml:"guid"`
-	PubDate     string  `xml:"pubDate,omitempty"`
-	Description string  `xml:"description,omitempty"`
-}
-
-type rssGUID struct {
-	IsPermaLink bool   `xml:"isPermaLink,attr"`
-	Value       string `xml:",chardata"`
-}
-
 type atomDocument struct {
 	XMLName xml.Name    `xml:"http://www.w3.org/2005/Atom feed"`
 	Lang    string      `xml:"xml:lang,attr,omitempty"`
@@ -83,89 +56,29 @@ type atomContent struct {
 }
 
 func GenerateAll(cfg config.SiteConfig, index site.SiteIndex) ([]Output, error) {
-	outputs := make([]Output, 0, 2)
+	outputs := make([]Output, 0, 1)
 
-	rssOutput, err := Generate(cfg, index)
+	feedOutput, err := Generate(cfg, index)
 	if err != nil {
 		return nil, err
 	}
-	if rssOutput != nil {
-		outputs = append(outputs, *rssOutput)
-	}
-
-	atomOutput, err := GenerateAtom(cfg, index)
-	if err != nil {
-		return nil, err
-	}
-	if atomOutput != nil {
-		outputs = append(outputs, *atomOutput)
+	if feedOutput != nil {
+		outputs = append(outputs, *feedOutput)
 	}
 
 	return outputs, nil
 }
 
 func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
-	if !cfg.RSS.Enabled {
+	if !cfg.Feed.Enabled {
 		return nil, nil
 	}
 
-	items := feedItems(index.AllPages, cfg.RSS.Sections, cfg.RSS.Limit)
+	items := feedItems(index.AllPages, cfg.Feed.Sections, cfg.Feed.Limit)
 
-	doc := rssDocument{
-		Version: "2.0",
-		Channel: rssChannel{
-			Title:       cfg.Title,
-			Link:        strings.TrimSpace(cfg.BaseURL),
-			Description: cfg.Description,
-			Language:    cfg.Language,
-			Items:       make([]rssItem, 0, len(items)),
-		},
-	}
-
-	for _, item := range items {
-		link := canonicalURL(cfg.BaseURL, item.URL)
-
-		description := strings.TrimSpace(item.Description)
-		if description == "" {
-			description = item.Title
-		}
-
-		doc.Channel.Items = append(doc.Channel.Items, rssItem{
-			Title: item.Title,
-			Link:  link,
-			GUID: rssGUID{
-				IsPermaLink: true,
-				Value:       link,
-			},
-			PubDate:     formatPubDate(item.Date),
-			Description: description,
-		})
-	}
-
-	data, err := xml.MarshalIndent(doc, "", "  ")
+	feedURL, err := feedURL(cfg.BaseURL, cfg.Feed.Filename)
 	if err != nil {
-		return nil, fmt.Errorf("generate RSS XML: %w", err)
-	}
-
-	data = append([]byte(xml.Header), data...)
-	data = append(data, '\n')
-
-	return &Output{
-		Filename: cfg.RSS.Filename,
-		Content:  data,
-	}, nil
-}
-
-func GenerateAtom(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
-	if !cfg.Atom.Enabled {
-		return nil, nil
-	}
-
-	items := feedItems(index.AllPages, cfg.Atom.Sections, cfg.Atom.Limit)
-
-	feedURL, err := feedURL(cfg.BaseURL, cfg.Atom.Filename)
-	if err != nil {
-		return nil, fmt.Errorf("generate Atom: %w", err)
+		return nil, fmt.Errorf("generate Feed: %w", err)
 	}
 
 	updated := latestUpdated(items)
@@ -209,23 +122,16 @@ func GenerateAtom(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) 
 
 	data, err := xml.MarshalIndent(doc, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("generate Atom XML: %w", err)
+		return nil, fmt.Errorf("generate Feed XML: %w", err)
 	}
 
 	data = append([]byte(xml.Header), data...)
 	data = append(data, '\n')
 
 	return &Output{
-		Filename: cfg.Atom.Filename,
+		Filename: cfg.Feed.Filename,
 		Content:  data,
 	}, nil
-}
-
-func formatPubDate(value time.Time) string {
-	if value.IsZero() {
-		return ""
-	}
-	return value.UTC().Format(time.RFC1123Z)
 }
 
 func formatAtomDate(value time.Time) string {

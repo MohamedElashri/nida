@@ -253,11 +253,8 @@ func buildSite(opts commandOptions) (buildResult, error) {
 	}
 
 	artifacts := make([]output.Artifact, 0, 3)
-	if cfg.RSS.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
-	}
-	if cfg.Atom.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Atom.Filename})
+	if cfg.Feed.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.Feed.Filename})
 	}
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})

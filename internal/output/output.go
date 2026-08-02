@@ -1,11 +1,13 @@
 package output
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/render"
@@ -76,8 +78,37 @@ func RemovePages(siteRoot string, cfg config.SiteConfig, routes []string) error 
 		if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("remove rendered page %q: %w", targetPath, err)
 		}
+		if err := removeEmptyParents(outputDir, targetPath); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+// removeEmptyParents removes ancestor directories left empty by a page
+// removal, stopping at (and never including) the output root. Without this,
+// Go's http.FileServer serves a directory listing (HTTP 200) for a removed
+// page's URL instead of 404.
+func removeEmptyParents(outputDir, removedPath string) error {
+	dir := filepath.Clean(filepath.Dir(removedPath))
+	for dir != outputDir {
+		rel, err := filepath.Rel(outputDir, dir)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+			return fmt.Errorf("refuse to remove directory %q outside output root %q", dir, outputDir)
+		}
+
+		err = os.Remove(dir)
+		switch {
+		case err == nil:
+		case os.IsNotExist(err), errors.Is(err, syscall.ENOTEMPTY), errors.Is(err, syscall.EEXIST):
+			return nil
+		default:
+			return fmt.Errorf("remove empty directory %q: %w", dir, err)
+		}
+
+		dir = filepath.Dir(dir)
+	}
 	return nil
 }
 

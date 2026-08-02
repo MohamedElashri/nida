@@ -74,11 +74,8 @@ func buildSiteState(opts commandOptions) (buildResult, error) {
 
 func buildArtifactList(cfg config.SiteConfig) []output.Artifact {
 	artifacts := make([]output.Artifact, 0, 5)
-	if cfg.RSS.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
-	}
-	if cfg.Atom.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Atom.Filename})
+	if cfg.Feed.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.Feed.Filename})
 	}
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
@@ -359,11 +356,8 @@ func diffRenderedPages(previous, next []render.Page) ([]render.Page, []string) {
 
 func artifactPaths(cfg config.SiteConfig) []string {
 	paths := make([]string, 0, 2)
-	if cfg.RSS.Enabled {
-		paths = append(paths, cfg.RSS.Filename)
-	}
-	if cfg.Atom.Enabled {
-		paths = append(paths, cfg.Atom.Filename)
+	if cfg.Feed.Enabled {
+		paths = append(paths, cfg.Feed.Filename)
 	}
 	if cfg.Sitemap.Enabled {
 		paths = append(paths, cfg.Sitemap.Filename)
