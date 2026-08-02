@@ -2,6 +2,15 @@
 
 All notable changes to Nida are documented here.
 
+## [0.5.10] - 2026-08-02
+
+### Fixed
+* Bug: Draft flag not respected
+
+## Developer Notes
+* Update all the github actions versions
+
+
 
 ## [0.5.9] - 2026-07-25
 
