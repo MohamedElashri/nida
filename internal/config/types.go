@@ -1,9 +1,7 @@
 package config
 
-const ConfigVersion = "0.4"
 
 type SiteConfig struct {
-	ConfigVersion string            `toml:"config_version"`
 	BaseURL       string            `toml:"base_url"`
 	Title         string            `toml:"title"`
 	Description   string            `toml:"description"`

@@ -1,4 +1,4 @@
-config_version = "0.4"
+
 base_url = "https://melashri.net/nida/"
 title = "Nida Docs"
 description = "A small Go static site generator for calm, predictable publishing."

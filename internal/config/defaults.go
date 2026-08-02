@@ -2,7 +2,7 @@ package config
 
 func DefaultSiteConfig() SiteConfig {
 	return SiteConfig{
-		ConfigVersion: ConfigVersion,
+
 		Language:      "en",
 		ContentDir:    "content",
 		TemplateDir:   "templates",

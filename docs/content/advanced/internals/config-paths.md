@@ -16,17 +16,11 @@ template = "page"
 3. read TOML
 4. start from `DefaultSiteConfig`
 5. decode TOML into the default config
-6. reject missing `config_version`
-7. normalize values
-8. validate values
+6. normalize values
+7. validate values
 
 Starting from defaults means new optional fields should usually be added to `DefaultSiteConfig`, not patched after loading.
 
-## Config Version
-
-The current format is `config_version = "0.4"`.
-
-If `config_version` is missing, Nida returns `ConfigMigrationError`. That is deliberate: old configs should fail loudly instead of being guessed into the current shape.
 
 ## Normalization
 

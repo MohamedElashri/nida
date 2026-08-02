@@ -25,8 +25,7 @@ type fileSpec struct {
 var exampleSiteFiles = []fileSpec{
 	{
 		path: "config.toml",
-		content: `config_version = "0.4"
-base_url = "http://127.0.0.1:1702"
+		content: `base_url = "http://127.0.0.1:1702"
 title = "Nida Website"
 description = "A small example site built with Nida."
 language = "en"

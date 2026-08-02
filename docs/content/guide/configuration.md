@@ -8,7 +8,7 @@ template = "page"
 Every Nida site starts with `config.toml` in the site root.
 
 ```toml
-config_version = "0.4"
+
 base_url = "https://example.com/"
 title = "My Site"
 description = "Notes from a quiet corner of the web."
@@ -27,7 +27,7 @@ output_dir = "public"
 
 `title` names the site.
 
-`config_version` tells Nida which config shape the site expects.
+
 
 ## Directory values
 

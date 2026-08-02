@@ -3,7 +3,7 @@ title = "Nida Journal"
 description = "Notes on building a calm, focused publishing workflow with Nida."
 language = "en"
 author = "Mohamed Elashri"
-config_version = "0.4"
+
 
 content_dir = "content"
 template_dir = "templates"

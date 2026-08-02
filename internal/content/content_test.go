@@ -115,7 +115,7 @@ func writeSiteConfig(t *testing.T, dir string) {
 	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(`
 base_url = "https://example.com"
 title = "Test Site"
-config_version = "0.4"
+
 `), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
