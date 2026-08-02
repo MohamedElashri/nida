@@ -3,6 +3,7 @@ package feeds
 import (
 	"encoding/xml"
 	"fmt"
+	"html"
 	"net/url"
 	"path"
 	"strings"
@@ -84,7 +85,7 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 	updated := latestUpdated(items)
 	doc := atomDocument{
 		Lang:  cfg.Language,
-		Title: cfg.Title,
+		Title: stripHTML(cfg.Title),
 		Link: []atomLink{
 			{Href: feedURL, Rel: "self", Type: "application/atom+xml"},
 			{Href: strings.TrimSpace(cfg.BaseURL), Rel: "alternate", Type: "text/html"},
@@ -106,7 +107,7 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 		}
 
 		doc.Entries = append(doc.Entries, atomEntry{
-			Title:     item.Title,
+			Title:     stripHTML(item.Title),
 			Link:      atomLink{Href: link, Rel: "alternate", Type: "text/html"},
 			ID:        link,
 			Author:    atomEntryAuthor(item, cfg),
@@ -240,4 +241,22 @@ func canonicalURL(baseURL, route string) string {
 		base.Path += "/"
 	}
 	return base.String()
+}
+
+func stripHTML(markup string) string {
+	var result strings.Builder
+	inTag := false
+	for _, r := range markup {
+		switch r {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				result.WriteRune(r)
+			}
+		}
+	}
+	return strings.Join(strings.Fields(html.UnescapeString(result.String())), " ")
 }
