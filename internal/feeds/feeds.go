@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MohamedElashri/nida/internal/buildinfo"
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/site"
@@ -21,14 +22,21 @@ type Output struct {
 }
 
 type atomDocument struct {
-	XMLName xml.Name     `xml:"http://www.w3.org/2005/Atom feed"`
-	Lang    string       `xml:"xml:lang,attr,omitempty"`
-	Title   string       `xml:"title"`
-	Link    []atomLink   `xml:"link"`
-	Updated string       `xml:"updated"`
-	ID      string       `xml:"id"`
-	Authors []atomAuthor `xml:"author,omitempty"`
-	Entries []atomEntry  `xml:"entry"`
+	XMLName   xml.Name       `xml:"http://www.w3.org/2005/Atom feed"`
+	Lang      string         `xml:"xml:lang,attr,omitempty"`
+	Title     string         `xml:"title"`
+	Generator *atomGenerator `xml:"generator,omitempty"`
+	Link      []atomLink     `xml:"link"`
+	Updated   string         `xml:"updated"`
+	ID        string         `xml:"id"`
+	Authors   []atomAuthor   `xml:"author,omitempty"`
+	Entries   []atomEntry    `xml:"entry"`
+}
+
+type atomGenerator struct {
+	URI     string `xml:"uri,attr,omitempty"`
+	Version string `xml:"version,attr,omitempty"`
+	Value   string `xml:",chardata"`
 }
 
 type atomLink struct {
@@ -43,15 +51,20 @@ type atomAuthor struct {
 	Email string `xml:"email,omitempty"`
 }
 
+type atomCategory struct {
+	Term string `xml:"term,attr"`
+}
+
 type atomEntry struct {
-	Title     string       `xml:"title"`
-	Link      atomLink     `xml:"link"`
-	ID        string       `xml:"id"`
-	Authors   []atomAuthor `xml:"author,omitempty"`
-	Published string       `xml:"published,omitempty"`
-	Updated   string       `xml:"updated"`
-	Summary   string       `xml:"summary,omitempty"`
-	Content   *atomContent `xml:"content,omitempty"`
+	Title      string         `xml:"title"`
+	Link       atomLink       `xml:"link"`
+	ID         string         `xml:"id"`
+	Authors    []atomAuthor   `xml:"author,omitempty"`
+	Categories []atomCategory `xml:"category,omitempty"`
+	Published  string         `xml:"published,omitempty"`
+	Updated    string         `xml:"updated"`
+	Summary    string         `xml:"summary,omitempty"`
+	Content    *atomContent   `xml:"content,omitempty"`
 }
 
 type atomContent struct {
@@ -89,6 +102,11 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 	doc := atomDocument{
 		Lang:  cfg.Language,
 		Title: stripHTML(cfg.Title),
+		Generator: &atomGenerator{
+			URI:     "https://github.com/MohamedElashri/nida",
+			Version: buildinfo.Version,
+			Value:   "Nida",
+		},
 		Link: []atomLink{
 			{Href: feedURL, Rel: "self", Type: "application/atom+xml"},
 			{Href: strings.TrimSpace(cfg.BaseURL), Rel: "alternate", Type: "text/html"},
@@ -107,13 +125,14 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 		summary := stripHTML(strings.TrimSpace(item.Description))
 
 		doc.Entries = append(doc.Entries, atomEntry{
-			Title:     stripHTML(item.Title),
-			Link:      atomLink{Href: link, Rel: "alternate", Type: "text/html"},
-			ID:        link,
-			Authors:   atomEntryAuthors(item, cfg),
-			Published: formatAtomDate(item.Date),
-			Updated:   formatAtomDate(item.Date),
-			Summary:   summary,
+			Title:      stripHTML(item.Title),
+			Link:       atomLink{Href: link, Rel: "alternate", Type: "text/html"},
+			ID:         link,
+			Authors:    atomEntryAuthors(item, cfg),
+			Categories: atomEntryCategories(item),
+			Published:  formatAtomDate(item.Date),
+			Updated:    formatAtomDate(item.Date),
+			Summary:    summary,
 			Content: &atomContent{
 				Type:  "html",
 				Value: absolutizeHTML(item.BodyHTML, cfg.BaseURL, item.URL),
@@ -188,6 +207,42 @@ func rootSectionName(sectionPath string) string {
 	return sectionPath
 }
 
+func atomEntryCategories(item content.Page) []atomCategory {
+	var cats []atomCategory
+
+	// Add tags
+	if raw, ok := item.Extra["tags"]; ok {
+		if tags, ok := raw.([]string); ok {
+			for _, t := range tags {
+				cats = append(cats, atomCategory{Term: strings.TrimSpace(t)})
+			}
+		} else if tagList, ok := raw.([]any); ok {
+			for _, t := range tagList {
+				if s, ok := t.(string); ok {
+					cats = append(cats, atomCategory{Term: strings.TrimSpace(s)})
+				}
+			}
+		}
+	}
+
+	// Add categories
+	if raw, ok := item.Extra["categories"]; ok {
+		if categories, ok := raw.([]string); ok {
+			for _, c := range categories {
+				cats = append(cats, atomCategory{Term: strings.TrimSpace(c)})
+			}
+		} else if catList, ok := raw.([]any); ok {
+			for _, c := range catList {
+				if s, ok := c.(string); ok {
+					cats = append(cats, atomCategory{Term: strings.TrimSpace(s)})
+				}
+			}
+		}
+	}
+
+	return cats
+}
+
 func atomEntryAuthors(item content.Page, cfg config.SiteConfig) []atomAuthor {
 	if raw, ok := item.Extra["authors"]; ok {
 		if authors := parseAuthorsExtra(raw); len(authors) > 0 {
@@ -232,7 +287,6 @@ func parseAuthorsExtra(raw any) []atomAuthor {
 	}
 	return out
 }
-
 
 func feedURL(baseURL, filename string) (string, error) {
 	baseURL = strings.TrimSpace(baseURL)

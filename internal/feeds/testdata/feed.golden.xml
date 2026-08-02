@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
   <title>Fixture Site</title>
+  <generator uri="https://github.com/MohamedElashri/nida" version="dev">Nida</generator>
   <link href="https://example.com/feed.xml" rel="self" type="application/atom+xml"></link>
   <link href="https://example.com" rel="alternate" type="text/html"></link>
   <updated>2026-04-12T10:00:00Z</updated>
