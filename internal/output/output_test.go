@@ -193,6 +193,65 @@ func TestValidateWritePlanRejectsEscapingArtifactPath(t *testing.T) {
 	}
 }
 
+func TestRemovePagesCleansEmptyDirectories(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = "public"
+
+	pages := []render.Page{
+		{URL: "/posts/hello/", Content: "post"},
+		{URL: "/posts/world/", Content: "post"},
+		{URL: "/posts/", Content: "listing"},
+	}
+	if err := WriteSite(dir, cfg, pages); err != nil {
+		t.Fatalf("WriteSite returned error: %v", err)
+	}
+
+	if err := RemovePages(dir, cfg, []string{"/posts/hello/"}); err != nil {
+		t.Fatalf("RemovePages returned error: %v", err)
+	}
+
+	helloDir := filepath.Join(dir, "public", "posts", "hello")
+	if _, err := os.Stat(helloDir); !os.IsNotExist(err) {
+		t.Fatalf("expected empty directory %q removed, stat err=%v", helloDir, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "public", "posts", "world", "index.html")); err != nil {
+		t.Fatalf("expected sibling page preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "public", "posts", "index.html")); err != nil {
+		t.Fatalf("expected listing page preserved: %v", err)
+	}
+}
+
+func TestRemovePagesKeepsNonEmptyDirectories(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.OutputDir = "public"
+
+	pages := []render.Page{
+		{URL: "/", Content: "home"},
+		{URL: "/bundle/", Content: "post"},
+	}
+	if err := WriteSite(dir, cfg, pages); err != nil {
+		t.Fatalf("WriteSite returned error: %v", err)
+	}
+	bundleDir := filepath.Join(dir, "public", "bundle")
+	if err := os.WriteFile(filepath.Join(bundleDir, "note.txt"), []byte("resource"), 0o644); err != nil {
+		t.Fatalf("write bundle resource: %v", err)
+	}
+
+	if err := RemovePages(dir, cfg, []string{"/bundle/"}); err != nil {
+		t.Fatalf("RemovePages returned error: %v", err)
+	}
+
+	if _, err := os.Stat(bundleDir); err != nil {
+		t.Fatalf("expected non-empty directory preserved, stat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "public", "index.html")); err != nil {
+		t.Fatalf("expected output root preserved: %v", err)
+	}
+}
+
 func assertFile(t *testing.T, path string, want string) {
 	t.Helper()
 
