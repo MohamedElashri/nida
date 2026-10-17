@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/themes"
 )
@@ -295,6 +296,11 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 			}
 			if err := copyFile(src, dst); err != nil {
 				return fmt.Errorf("copy page resource %q: %w", res, err)
+			}
+			if cfg.Pipeline.Images.Enabled {
+				if err := pipeline.ResizeVariants(src, filepath.Dir(dst), cfg); err != nil {
+					return fmt.Errorf("resize page resource %q: %w", res, err)
+				}
 			}
 		}
 	}

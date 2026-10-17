@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/safepath"
@@ -97,7 +98,7 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 			return fmt.Errorf("refuse static symlink %q", srcPath)
 		}
 
-		if cfg.Pipeline.Images.Enabled && isImageFile(name) {
+		if cfg.Pipeline.Images.Enabled && IsImageFile(name) {
 			if err := processImage(srcPath, relPath, outputRoot, cfg, manifest); err != nil {
 				return fmt.Errorf("process image %q: %w", relPath, err)
 			}
@@ -127,8 +128,9 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 	return nil
 }
 
-func isImageFile(name string) bool {
-	ext := filepath.Ext(name)
+// IsImageFile reports whether the pipeline can resize a file by extension.
+func IsImageFile(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
 	switch ext {
 	case ".png", ".jpg", ".jpeg", ".gif", ".webp":
 		return true

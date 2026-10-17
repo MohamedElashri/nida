@@ -69,13 +69,12 @@ func (r *imageResolver) Image(src string, page *content.Page) (markdown.ImageInf
 	urlPath := parsed.Path
 
 	var file string
-	static := false
 	switch {
 	case strings.HasPrefix(urlPath, "/"):
 		rel := strings.TrimPrefix(strings.TrimPrefix(urlPath, r.basePath), "/")
 		for _, root := range r.staticRoots {
 			if candidate, err := safepath.Join(root, rel); err == nil && isRegularFile(candidate) {
-				file, static = candidate, true
+				file = candidate
 				break
 			}
 		}
@@ -93,7 +92,9 @@ func (r *imageResolver) Image(src string, page *content.Page) (markdown.ImageInf
 		return markdown.ImageInfo{}, false
 	}
 	info := markdown.ImageInfo{Width: width, Height: height}
-	if static && r.cfg.Pipeline.Images.Enabled {
+	if r.cfg.Pipeline.Images.Enabled && isEncodable(file) {
+		// Static images are resized by the asset pipeline and bundle images
+		// when they are copied; both use the name.<width>w.ext convention.
 		info.Srcset, info.Sizes = r.srcset(urlPath, width)
 	}
 	return info, true
@@ -141,6 +142,15 @@ func (r *imageResolver) dimensions(file string) (int, int, bool) {
 	}
 	r.sizes[file] = [2]int{width, height}
 	return width, height, width > 0
+}
+
+// isEncodable reports whether bundle resizing can write variants for file.
+func isEncodable(file string) bool {
+	switch strings.ToLower(path.Ext(file)) {
+	case ".jpg", ".jpeg", ".png", ".gif":
+		return true
+	}
+	return false
 }
 
 func isRegularFile(file string) bool {

@@ -96,8 +96,7 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 			targetHeight = 1
 		}
 
-		resized := image.NewRGBA(image.Rect(0, 0, targetWidth, targetHeight))
-		draw.BiLinear.Scale(resized, resized.Bounds(), srcImg, bounds, draw.Over, nil)
+		resized := scaleImage(srcImg, targetWidth, targetHeight)
 
 		widthSuffix := strconv.Itoa(targetWidth) + "w"
 		resizedRel := base + "." + widthSuffix + ext
@@ -109,34 +108,8 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 			return fmt.Errorf("check resized image path: %w", err)
 		}
 
-		if err := os.MkdirAll(filepath.Dir(resizedPath), 0o755); err != nil {
-			return fmt.Errorf("create dir for resized: %w", err)
-		}
-
-		outFile, err := os.Create(resizedPath)
-		if err != nil {
-			return fmt.Errorf("create resized file: %w", err)
-		}
-
-		quality := cfg.Pipeline.Images.Quality
-		if quality <= 0 || quality > 100 {
-			quality = 85
-		}
-
-		switch format {
-		case "jpeg":
-			err = jpeg.Encode(outFile, resized, &jpeg.Options{Quality: quality})
-		case "png":
-			err = png.Encode(outFile, resized)
-		case "gif":
-			err = gif.Encode(outFile, resized, nil)
-		default:
-			_ = outFile.Close()
-			return fmt.Errorf("unsupported image format %q", format)
-		}
-		_ = outFile.Close()
-		if err != nil {
-			return fmt.Errorf("encode resized image: %w", err)
+		if err := encodeImage(resizedPath, resized, format, cfg.Pipeline.Images.Quality); err != nil {
+			return err
 		}
 
 		if cfg.Pipeline.Fingerprint {
@@ -151,6 +124,100 @@ func processImage(srcPath, relPath, outputRoot string, cfg config.SiteConfig, ma
 	}
 
 	return nil
+}
+
+func scaleImage(src image.Image, width, height int) image.Image {
+	resized := image.NewRGBA(image.Rect(0, 0, width, height))
+	draw.BiLinear.Scale(resized, resized.Bounds(), src, src.Bounds(), draw.Over, nil)
+	return resized
+}
+
+func encodeImage(path string, img image.Image, format string, quality int) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create dir for resized: %w", err)
+	}
+	outFile, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create resized file: %w", err)
+	}
+	if quality <= 0 || quality > 100 {
+		quality = 85
+	}
+	switch format {
+	case "jpeg":
+		err = jpeg.Encode(outFile, img, &jpeg.Options{Quality: quality})
+	case "png":
+		err = png.Encode(outFile, img)
+	case "gif":
+		err = gif.Encode(outFile, img, nil)
+	default:
+		_ = outFile.Close()
+		return fmt.Errorf("unsupported image format %q", format)
+	}
+	if closeErr := outFile.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return fmt.Errorf("encode resized image: %w", err)
+	}
+	return nil
+}
+
+// ResizeVariants writes width variants of the image at srcPath into dstDir
+// as name.480w.ext and so on, for every configured width smaller than the
+// original. Page bundle images use this; their variants sit next to the
+// copied original so relative srcset URLs resolve.
+func ResizeVariants(srcPath, dstDir string, cfg config.SiteConfig) error {
+	if !IsImageFile(srcPath) {
+		return nil
+	}
+	info, err := os.Lstat(srcPath)
+	if err != nil {
+		return fmt.Errorf("stat image: %w", err)
+	}
+	if !info.Mode().IsRegular() || info.Size() > maxPipelineImageBytes {
+		return nil
+	}
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		return fmt.Errorf("read image: %w", err)
+	}
+	header, _, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil || !validPipelineImageDimensions(header.Width, header.Height) {
+		// Not a decodable image (or too large); copy as-is without variants.
+		return nil
+	}
+	src, format, err := image.Decode(bytes.NewReader(data))
+	if err != nil || (format != "jpeg" && format != "png" && format != "gif") {
+		// WebP and other formats can be read but not encoded.
+		return nil
+	}
+
+	name := filepath.Base(srcPath)
+	ext := filepath.Ext(name)
+	base := strings.TrimSuffix(name, ext)
+	for _, width := range imageTargetWidths(cfg.Pipeline.Images) {
+		if width <= 0 || width >= header.Width || width > maxPipelineImageDimension {
+			continue
+		}
+		height := max(1, int(float64(header.Height)*float64(width)/float64(header.Width)))
+		dst, err := safepath.Join(dstDir, base+"."+strconv.Itoa(width)+"w"+ext)
+		if err != nil {
+			return err
+		}
+		if err := safepath.EnsureNoSymlinkPath(dstDir, dst); err != nil {
+			return err
+		}
+		if err := encodeImage(dst, scaleImage(src, width, height), format, cfg.Pipeline.Images.Quality); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Widths returns the variant widths the pipeline generates, sorted.
+func Widths(cfg config.SiteConfig) []int {
+	return imageTargetWidths(cfg.Pipeline.Images)
 }
 
 func validPipelineImageDimensions(width, height int) bool {

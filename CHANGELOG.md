@@ -33,7 +33,7 @@ All notable changes to Nida are documented here.
 * Built-in `nida-seo` partial for title, description, canonical, Open Graph, Twitter cards, and JSON-LD.
 * `updated_from_git` sets `updated` dates from git history.
 * Section feeds (`generate_feeds = true`) and per-term taxonomy feeds (`feed = true`). Both settings were parsed before but had no effect.
-* Markdown images get `width` and `height` from the image file, and a `srcset` when the image pipeline is enabled.
+* Markdown images get `width` and `height` from the image file, and a `srcset` when the image pipeline is enabled. Page bundle images are resized too, with variants written next to the copied original.
 * `nida check` validates config, content links, templates, shortcodes, and routes without writing output; `--external` also checks outbound links.
 * `--base-url` and `--output`/`-o` flags for `build` and `serve`, for preview deployments.
 * Build output reports elapsed time.

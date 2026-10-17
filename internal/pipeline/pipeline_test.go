@@ -1,6 +1,8 @@
 package pipeline
 
 import (
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -69,5 +71,44 @@ func TestImageTargetWidthsIncludesPresetWidths(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("got widths %v, want %v", got, want)
 		}
+	}
+}
+
+func TestResizeVariantsWritesSmallerWidthsOnly(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src", "map.png")
+	if err := os.MkdirAll(filepath.Dir(src), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Create(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, image.NewRGBA(image.Rect(0, 0, 900, 300))); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+
+	cfg := config.DefaultSiteConfig()
+	cfg.Pipeline.Images.Enabled = true
+	out := filepath.Join(dir, "out")
+	if err := ResizeVariants(src, out, cfg); err != nil {
+		t.Fatalf("ResizeVariants returned error: %v", err)
+	}
+	for _, name := range []string{"map.320w.png", "map.480w.png", "map.640w.png", "map.768w.png"} {
+		if _, err := os.Stat(filepath.Join(out, name)); err != nil {
+			t.Fatalf("expected %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(out, "map.1200w.png")); !os.IsNotExist(err) {
+		t.Fatal("must not upscale beyond the original width")
+	}
+
+	notImage := filepath.Join(dir, "src", "fake.png")
+	if err := os.WriteFile(notImage, []byte("text"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ResizeVariants(notImage, out, cfg); err != nil {
+		t.Fatalf("undecodable files should be skipped, got %v", err)
 	}
 }

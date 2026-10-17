@@ -220,7 +220,7 @@ Using a shortcode that has no template fails the build with `unknown shortcode "
 
 Markdown images get `loading="lazy"` and `decoding="async"`. When Nida can find the image file, it also adds `width` and `height` from the image itself, so the browser reserves space and the page does not shift while loading. That works for page bundle images (`![Map](map.png)`) and for static files (`![Hero](/img/hero.jpg)`).
 
-With the image pipeline enabled (`[pipeline.images] enabled = true`), static images also get a `srcset` of the generated variants smaller than the original, plus the original, along with `sizes` from the `content` preset. Bundle images are not resized.
+With the image pipeline enabled (`[pipeline.images] enabled = true`), static images also get a `srcset` of the generated variants smaller than the original, plus the original, along with `sizes` from the `content` preset. Page bundle images are resized too: their variants are written next to the copied original, and the `srcset` uses relative URLs. JPEG, PNG, and GIF images can be resized; other formats only get dimensions.
 
 ## Word count and reading time
 

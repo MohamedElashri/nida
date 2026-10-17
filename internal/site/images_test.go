@@ -60,3 +60,17 @@ func TestImageResolver(t *testing.T) {
 		t.Fatal("missing images must be skipped")
 	}
 }
+
+func TestImageResolverBundleSrcset(t *testing.T) {
+	root := t.TempDir()
+	writePNG(t, filepath.Join(root, "content", "posts", "trip", "map.png"), 900, 300)
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com/"
+	cfg.Pipeline.Images.Enabled = true
+
+	info, ok := newImageResolver(root, cfg).Image("map.png", &content.Page{IsBundle: true, BundleDir: "posts/trip"})
+	want := "map.480w.png 480w, map.768w.png 768w, map.png 900w"
+	if !ok || info.Srcset != want {
+		t.Fatalf("srcset = %q, want %q", info.Srcset, want)
+	}
+}
