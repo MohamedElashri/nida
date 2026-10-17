@@ -21,13 +21,13 @@ templates/
 
 ## Required templates
 
-Nida currently requires these template names:
+Nida requires these template names somewhere in the site or its theme:
 
-- `index`
-- `post`
-- `page`
+- `index`, for the home page
+- `post` and `page`, for content pages
+- `section` (or `list`), once the site has sections such as `content/posts/`
 
-A docs site can make `post.html` reuse the same layout as `page.html` if it does not distinguish posts from pages yet.
+A docs site can make `post.html` reuse the same layout as `page.html` if it does not distinguish posts from pages. Templates can come from a theme instead of `templates/`; see [Themes](@/guide/themes.md) for how the two combine.
 
 ## Template context
 
@@ -121,6 +121,34 @@ Every section has `.Sections` (child sections, ordered by `weight` and then titl
 
 {{ with .Index.GetSection "" }}{{ template "nav-items" (dict "Section" . "Ctx" $) }}{{ end }}
 ```
+
+For documentation, where pages and subsections are interleaved, `.Index.Nav` returns one list per section ordered by `weight` and then title. Each entry has `.Title`, `.URL`, `.Weight`, `.IsSection`, `.Page` or `.Section`, and `.Children` for sections:
+
+```html
+{{ define "nav" }}
+<ul>
+  {{ range .Entries }}
+  <li>
+    <a{{ if eq .URL $.Ctx.CurrentURL }} aria-current="page"{{ end }} href="{{ $.Ctx.BasePath }}{{ .URL }}">{{ .Title }}</a>
+    {{ with .Children }}{{ template "nav" (dict "Entries" . "Ctx" $.Ctx) }}{{ end }}
+  </li>
+  {{ end }}
+</ul>
+{{ end }}
+
+{{ template "nav" (dict "Entries" (.Index.Nav "") "Ctx" .) }}
+```
+
+`.Index.Neighbors` reads the same tree top to bottom, with each section before its children, and returns the previous and next entries for a page:
+
+```html
+{{ with .Index.Neighbors "" .CurrentURL }}
+  {{ with .Prev }}<a rel="prev" href="{{ $.BasePath }}{{ .URL }}">← {{ .Title }}</a>{{ end }}
+  {{ with .Next }}<a rel="next" href="{{ $.BasePath }}{{ .URL }}">{{ .Title }} →</a>{{ end }}
+{{ end }}
+```
+
+Pass a section path instead of `""` to limit either one to part of the site.
 
 `.Index.Ancestors` returns the sections from the root down to a section path, for breadcrumbs:
 

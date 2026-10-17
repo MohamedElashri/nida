@@ -89,6 +89,13 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	var pages []Page
 
 	templateName := sectionTemplateName(set, section)
+	if !set.Has(templateName) {
+		where := section.SectionPath
+		if where == "" {
+			where = "the root section"
+		}
+		return nil, fmt.Errorf("render section %q: no template for section pages; add section.html (or list.html), or set template in %s/_index.md", where, section.SectionPath)
+	}
 
 	sectionURL := "/" + section.SectionPath + "/"
 	if section.SectionPath == "" {

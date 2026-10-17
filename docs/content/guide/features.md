@@ -33,7 +33,7 @@ Nida resolves those paths to generated URLs during rendering.
 
 Templates are Go HTML templates. Sites can provide local templates directly, or use a theme from `themes/name/`.
 
-Themes can extend parent themes, and site templates override theme templates with the same name.
+Themes can extend parent themes, and a site can override any template, partial, shortcode, static file, data file, or translation from its theme. See [Themes](@/guide/themes.md). Moving from another generator? See [Migrating](@/guide/migrating.md).
 
 ## Taxonomies
 

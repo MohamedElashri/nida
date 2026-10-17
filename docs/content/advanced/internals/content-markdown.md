@@ -5,7 +5,7 @@ weight = 30
 template = "page"
 +++
 
-Content loading is split between `internal/content`, `internal/frontmatter`, and `internal/markdown`.
+Content loading is split between `internal/content`, `internal/frontmatter`, and `internal/markdown`. Shortcode templates live in `internal/shortcodes`, which `internal/markdown` reaches through an interface because the templates themselves need the template function map, and `internal/templates` already imports `internal/markdown` for `markdownify`.
 
 ## Discovery Rules
 
@@ -21,7 +21,7 @@ If a directory contains pages but no `_index.md`, Nida synthesizes an implicit s
 
 ## Page Fields
 
-A loaded `content.Page` includes source path, relative path, section path, body Markdown, front matter fields, slug, dates, draft state, template override, aliases, and arbitrary `Extra`.
+A loaded `content.Page` includes source path, relative path, section path, body Markdown, front matter fields, slug, dates, draft state, weight, template override, aliases, and arbitrary `Extra`. Markdown rendering later fills `BodyHTML`, `Summary`, `TOC`, `WordCount`, and `ReadingTime`.
 
 Bundle pages also include:
 
@@ -33,13 +33,13 @@ The route URL is not assigned during discovery. Routing belongs to `internal/sit
 
 ## Section Fields
 
-A loaded `content.Section` includes source path, section path, body Markdown, title, template overrides, pagination settings, sorting settings, transparency, feed flag, and `Extra`.
+A loaded `content.Section` includes source path, section path, body Markdown, title, weight, template overrides, pagination settings, sorting settings, transparency, feed flag, and `Extra`. Section defaults for `paginate_path` and `sort_by` come from the `[sections]` config table.
 
 Implicit sections have no source path. They derive a human-readable title and slug from the directory name.
 
 ## Front Matter
 
-`internal/frontmatter` parses TOML front matter into `frontmatter.Metadata`. Known fields become typed values. Unknown front matter values are preserved in `Extra`.
+`internal/frontmatter` parses TOML (`+++`) or YAML (`---`) front matter into `frontmatter.Metadata`. YAML uses `go.yaml.in/yaml/v3`, so block lists and nested maps work. Known fields become typed values. Unknown top-level values are preserved in `Extra`, and a Zola-style `[taxonomies]` table is flattened into `Extra` so its terms behave like top-level `tags = [...]`.
 
 Taxonomies are intentionally read from `Extra`: if a configured taxonomy is named `tags`, page metadata with `tags = [...]` is available to taxonomy building through `page.Extra["tags"]`.
 
@@ -53,15 +53,37 @@ Route validation later rejects unsafe generated routes, so slug changes should b
 
 `internal/markdown` uses Goldmark with:
 
-- GFM
-- footnotes
-- auto heading IDs
-- hard wraps
-- custom fenced code rendering
-- custom link rendering
-- custom image rendering
+- GFM and footnotes
+- auto heading IDs from `headingIDs`, which follows Goldmark's rules for ASCII but keeps Unicode letters, so Arabic headings get readable IDs
+- heading attributes, for custom IDs such as `## Title {#id}`
+- a callout transformer that turns `> [!NOTE]` blockquotes into callout nodes
+- optional math block and inline parsers when `markdown.math` is on
+- custom renderers for fenced code, links, images, headings, callouts, and math
 
-Raw HTML is disabled by default. It is enabled only when `markdown.unsafe_html = true`.
+Hard wraps and raw HTML are both off by default; `markdown.hard_wraps` and `markdown.unsafe_html` turn them on.
+
+Rendering takes a `markdown.Env`:
+
+| Field | Purpose |
+| --- | --- |
+| `Lookup` | Content paths to URLs, for `@/` links. |
+| `Shortcodes` | Shortcode templates (`internal/shortcodes.Set`). |
+| `Images` | Image dimensions and srcsets (`site.NewImages`). |
+| `Translate` | UI strings, for default callout titles. |
+| `Page` | The page being rendered, passed to shortcodes and the image resolver. |
+
+`RenderDocument` returns HTML plus the nested `TOC`. `RenderItem` also splits the summary at `<!-- more -->`, falling back to the first paragraph. `RenderItems` renders pages concurrently with `internal/parallel`.
+
+## Shortcodes
+
+Before Goldmark sees the source, `processShortcodes` replaces each shortcode with a placeholder such as `@@NIDA_SHORTCODE_HTML_0@@`, and `restoreShortcodeHTML` swaps the rendered HTML back in afterwards. That way shortcode output is never escaped or wrapped by Markdown, even with raw HTML disabled.
+
+- `codeRanges` marks fenced code blocks and inline code first, so shortcode syntax inside code is left alone.
+- `{{< name >}}` tags are parsed with named and positional arguments. A tag with a matching `{{< /name >}}` is paired; nested tags of the same name are counted.
+- A shortcode alone on its lines becomes a block placeholder; otherwise it stays inline.
+- Paired bodies are rendered recursively for `.InnerHTML`.
+- `{% details(...) %}` blocks and `{{< rawhtml >}}` markers keep their Zola-compatible behavior.
+- Heading IDs and TOC titles ignore placeholders, so `## Title {{< since "1.0" >}}` still gets the ID `title`.
 
 ## Internal Links
 
@@ -71,7 +93,7 @@ Nida supports Zola-style internal links such as:
 [Read more](@/posts/hello.md)
 ```
 
-`site.Load` builds a path lookup before Markdown rendering. Link and image renderers call `markdown.ResolveInternalPath`; if a path is known, it becomes the routed URL. If not, the original value is left alone.
+`site.Load` builds a path lookup before Markdown rendering. Link and image renderers call `resolveWithBasePath`: if a path is known, it becomes the routed URL prefixed with the `base_url` path, so links work on sites published under a subpath. Unknown paths are left alone, and `nida check` reports them.
 
 ## URL Safety
 
@@ -87,7 +109,7 @@ External link attributes are controlled by `[markdown]` settings.
 
 ## Code Blocks
 
-Fenced code blocks are rendered by `internal/highlight` using the configured syntax theme.
+Fenced code blocks are rendered by `internal/highlight` using the configured syntax theme. `parseCodeInfo` reads options from the info string, such as `go {title="main.go", hl_lines="2-3", linenos=true}`. `hl_lines` count from the first line of the block and are shifted by `linenostart` before they reach Chroma. A `mermaid` block is written as `<pre class="mermaid">` instead of being highlighted.
 
 A code block can start with:
 
@@ -99,4 +121,4 @@ That marker wraps the highlighted code in collapsible HTML and removes the marke
 
 ## Adding Content Behavior
 
-When changing content discovery, test regular pages, sections, bundle pages, draft filtering, and implicit sections. When changing Markdown rendering, add tests for unsafe inputs as well as normal authoring cases.
+When changing content discovery, test regular pages, sections, bundle pages, draft filtering, and implicit sections. When changing Markdown rendering, add tests for unsafe inputs as well as normal authoring cases, and for the same syntax inside code blocks, where it must stay literal.

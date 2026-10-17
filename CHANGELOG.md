@@ -41,7 +41,11 @@ All notable changes to Nida are documented here.
 * Data files: TOML, JSON, and YAML from `data/` (and themes) as `.Data`.
 * Translations: `i18n/<language>.toml` files and the `t` template function, with language fallback. Default callout titles can be translated.
 * `search.sections` and `search.body_limit`, plus a Pagefind guide for larger sites.
-* The docs site uses a generated sidebar, breadcrumbs, a page TOC, and edit links.
+* `.Index.Nav` returns pages and child sections interleaved by weight for documentation sidebars, and `.Index.Neighbors` returns previous and next pages across that tree.
+* Heading IDs keep Unicode letters, so headings in Arabic and other non-Latin scripts get readable anchors instead of `heading`, `heading-1`, and so on. ASCII IDs are unchanged.
+* New docs: [Themes](https://melashri.net/nida/guide/themes/) (theme authoring with a minimal example theme) and [Migrating](https://melashri.net/nida/guide/migrating/) (Zola, Hugo, and Jekyll). The rest of the guide, reference, and internals pages are updated for 0.7.0.
+* The docs site is rebuilt as the `nida-docs` theme in `docs/themes/nida-docs`, with a new design, dark mode, a keyboard-driven search dialog, generated navigation, an on-page outline, "last updated" dates from git, and tabs, cards, steps, and version-badge shortcodes.
+* CI runs `nida check` on the documentation site.
 
 ### Changed
 * Markdown rendering, page templates, and page writes now run in parallel. A 2,000-post site builds about 1.7× faster.
@@ -56,6 +60,8 @@ All notable changes to Nida are documented here.
 * Nested sections were missing from the search index, and explicit sections had an empty `.URL`.
 * `pipeline.minify_css` and `pipeline.minify_js` were documented but did nothing. CSS and JS assets are now minified (files ending in `.min.css` or `.min.js` are left alone), before fingerprinting so hashes match the served bytes.
 * The asset pipeline only processed the site's `static/` directory. Theme static files are now fingerprinted and minified too, with site files still taking precedence.
+* A shortcode inside a heading, such as `## Callouts {{< since "0.7.0" >}}`, leaked its internal placeholder into the heading ID and the TOC title.
+* A site with sections but no `section` or `list` template failed with `missing template "list"`. The error now explains which template to add.
 * Theme inheritance now applies to templates, partials, static files, and SCSS. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
 * A parent theme's `[extra]` values no longer override its child theme's values.
 * Site partials and `base.html` now override theme versions as documented. Before, the order depended on file paths.

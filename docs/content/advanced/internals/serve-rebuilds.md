@@ -41,7 +41,7 @@ Changed paths are passed back to `internal/cli` as site-relative paths.
 - `partial`
 - `full`
 
-Static-only changes use `assets-only`. Markdown content changes use `partial`. Config changes, template changes, non-Markdown content changes, and unknown paths use `full`.
+Static-only changes use `assets-only`. Markdown content changes use `partial`. Config changes, template changes (including shortcode templates), non-Markdown content changes, and unknown paths use `full`. Theme files, `data/`, `i18n/`, and `archetypes/` fall under unknown paths, so editing them triggers a full rebuild.
 
 ## Assets-Only Rebuilds
 
@@ -53,7 +53,7 @@ This mode does not rerender pages, feeds, sitemap, robots, or search.
 
 Partial rebuilds are optimized for Markdown page edits.
 
-`buildIncremental` reloads changed Markdown pages with `content.LoadPage`, rerenders their Markdown, merges them into the previous page list, removes deleted pages, rebuilds the site index, and renders the site.
+`buildIncremental` reloads changed Markdown pages with `content.LoadPage`, applies git dates when enabled, loads shortcodes, translations, and the image resolver, rerenders the changed pages' Markdown, merges them into the previous page list, removes deleted pages, rebuilds the site index, and renders the site.
 
 Even though only changed Markdown files are reloaded, rendering still produces a complete next page set. That lets `diffRenderedPages` detect secondary changes such as updated section listings, pagination, previous/next links, and taxonomy pages.
 
@@ -69,7 +69,7 @@ After a partial or full rebuild, `writeIncrementalOutputs`:
 
 1. writes changed rendered pages
 2. removes stale rendered routes
-3. removes generated artifacts disabled by new config
+3. removes generated artifacts that are no longer produced, such as a feed for a section that turned off `generate_feeds`
 4. reruns the optional asset pipeline
 5. rewrites feeds, sitemap, robots, and search
 6. syncs changed static assets

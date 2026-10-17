@@ -1,6 +1,6 @@
 +++
 title = "Deployment"
-description = "Build static output with Nida and publish it with GitHub Pages."
+description = "Build static output and publish it to GitHub Pages, Netlify, Cloudflare Pages, or any static host."
 weight = 40
 template = "page"
 +++
@@ -11,7 +11,11 @@ Nida writes a static site to the configured `output_dir`, which defaults to `pub
 nida build --site ./my-site
 ```
 
-The generated files can be hosted by any static file host.
+The generated files can be hosted by any static file host. Before publishing, run a check in CI so broken links and template errors never reach production:
+
+```bash
+nida check --site ./my-site
+```
 
 ## GitHub Pages
 
@@ -101,6 +105,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Full history, so updated_from_git can date every page.
+          fetch-depth: 0
 
       - uses: actions/setup-go@v6
         with:
@@ -111,6 +118,9 @@ jobs:
 
       - name: Generate release notes page
         run: go run ./scripts/generate_release_notes.go
+
+      - name: Check documentation site
+        run: go run ./cmd/nida check --site ./docs
 
       - name: Build documentation site
         run: go run ./cmd/nida build --site ./docs
@@ -131,6 +141,38 @@ jobs:
 ```
 
 Adjust the build command and artifact path for your site layout. If the site root is the repository root, the build command might be `nida build --site .` and the artifact path might be `public`.
+
+> [!NOTE]
+> `actions/checkout` fetches a single commit by default. With `updated_from_git = true`, that makes every page look last updated by the latest commit. Set `fetch-depth: 0` as shown above.
+
+## Other hosts
+
+Any host that serves files from a directory works. Point it at the output directory and use the same build command.
+
+| Host | Build command | Output directory |
+| --- | --- | --- |
+| Netlify | `nida build --site .` | `public` |
+| Cloudflare Pages | `nida build --site .` | `public` |
+| Vercel | `nida build --site .` | `public` |
+| Any server | `nida build --site .`, then `rsync -a public/ server:/var/www/site/` | `public` |
+
+Hosts without Nida preinstalled can download a release in the build step with the [install script](@/guide/getting-started.md#install), for example `curl -fsSL https://melashri.net/nida/install.sh | sh && ~/.local/bin/nida build --site .`.
+
+All of these serve `404.html` for missing pages, either automatically or with a one-line setting.
+
+## Preview deployments
+
+Preview builds for pull requests usually live at a different URL than production. Override `base_url` for those builds so canonical URLs, feeds, and asset links point at the preview:
+
+```bash
+nida build --site . --base-url "$DEPLOY_PRIME_URL/"
+```
+
+Use `--output` to write a preview next to the production build without overwriting it:
+
+```bash
+nida build --site . --base-url https://example.com/preview/ --output public-preview
+```
 
 ## Local preview
 

@@ -1,9 +1,20 @@
 +++
 title = "Nida Docs"
-description = "A small Go static site generator for calm, predictable publishing."
+description = "A small, fast Go static site generator for blogs, personal sites, and documentation."
 sort_by = "weight"
 +++
 
-Nida is a small Go static site generator for blogs, notes, and personal sites. It reads Markdown with front matter, renders Go HTML templates, and writes static files you can host almost anywhere.
+## Where to start
 
-This documentation site is built with Nida itself. The goal is to keep the first version practical: enough to help someone try Nida, and real enough to teach us where the tool should improve next.
+{{< cards >}}
+{{< card title="Getting started" href="@/guide/getting-started.md" >}}Install Nida and publish a first site in a few minutes.{{< /card >}}
+{{< card title="Writing content" href="@/guide/writing.md" >}}Everything you can do in Markdown, with live examples.{{< /card >}}
+{{< card title="Themes" href="@/guide/themes.md" >}}Use, override, and build themes, starting from a minimal one.{{< /card >}}
+{{< card title="Migrating" href="@/guide/migrating.md" >}}Move a Zola, Hugo, or Jekyll site and keep your URLs.{{< /card >}}
+{{< card title="Configuration reference" href="@/reference/config.md" >}}Every `config.toml` key with its default.{{< /card >}}
+{{< card title="CLI reference" href="@/reference/cli.md" >}}`init`, `new`, `serve`, `check`, and `build`.{{< /card >}}
+{{< /cards >}}
+
+## Built with Nida
+
+This site is built with Nida, using a theme that lives in the repository at [`docs/themes/nida-docs`](https://github.com/MohamedElashri/nida/tree/main/docs/themes/nida-docs). Its sidebar, search, breadcrumbs, page outline, "last updated" dates, translations, and shortcodes all come from features described in these docs, so it doubles as a working example.

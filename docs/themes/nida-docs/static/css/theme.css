@@ -777,6 +777,10 @@ kbd {
   margin-bottom: 0;
 }
 
+.callout-title + * {
+  margin-top: 0;
+}
+
 /* Details */
 
 .prose details,

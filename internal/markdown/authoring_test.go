@@ -210,3 +210,15 @@ func TestCalloutTitlesUseTranslations(t *testing.T) {
 		t.Fatalf("expected translated and fallback titles, got %s", result.HTML)
 	}
 }
+
+func TestHeadingIDsKeepUnicodeAndMatchASCIIRules(t *testing.T) {
+	result, err := RenderDocument("## مرحبا بالعالم\n\n## Hello_World, again!\n\n## ???\n\n## مرحبا بالعالم\n", config.DefaultSiteConfig(), Env{})
+	if err != nil {
+		t.Fatalf("RenderDocument returned error: %v", err)
+	}
+	for _, want := range []string{`<h2 id="مرحبا-بالعالم">`, `<h2 id="hello-world-again">`, `<h2 id="heading">`, `<h2 id="مرحبا-بالعالم-1">`} {
+		if !strings.Contains(result.HTML, want) {
+			t.Fatalf("expected %s in\n%s", want, result.HTML)
+		}
+	}
+}

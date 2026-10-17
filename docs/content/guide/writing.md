@@ -3,6 +3,10 @@ title = "Writing Content"
 description = "Summaries, tables of contents, callouts, code blocks, math, and diagrams in Nida Markdown."
 weight = 27
 template = "page"
+
+[extra]
+math = true
+mermaid = true
 +++
 
 Nida renders GitHub-flavored Markdown with footnotes. This page covers the extra syntax for long posts, technical writing, and documentation.
@@ -66,7 +70,7 @@ heading_anchors = true
 
 Each heading then ends with `<a class="heading-anchor" href="#id" aria-hidden="true">#</a>`, which themes can style or reveal on hover.
 
-## Callouts
+## Callouts {{< since "0.7.0" >}}
 
 Callouts use GitHub's alert syntax:
 
@@ -87,7 +91,24 @@ The common types are `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, and `CAUTION`; any o
 </div>
 ```
 
-Blockquotes without a marker render as normal blockquotes.
+Blockquotes without a marker render as normal blockquotes. Here is how the five common types look in this theme:
+
+> [!NOTE]
+> Useful information that readers should know, even when skimming.
+
+> [!TIP]
+> Helpful advice for doing things better or more easily.
+
+> [!IMPORTANT]
+> Key information readers need to achieve their goal.
+
+> [!WARNING]
+> Urgent information that needs immediate attention to avoid problems.
+
+> [!CAUTION]
+> Advises about risks or negative outcomes of certain actions.
+
+Default titles can be translated with `callout.<type>` keys in an [i18n file](@/reference/config.md#translations).
 
 ## Code blocks
 
@@ -112,11 +133,21 @@ func main() {
 | `linenos` | Show line numbers. `linenos` alone means `true`. |
 | `linenostart` | Number shown for the first line. |
 
-Highlighted lines get the `z-hl` class and line numbers get `z-ln`.
+Highlighted lines get the `z-hl` class and line numbers get `z-ln`. The example above renders as:
+
+```go {title="main.go", hl_lines="3 5-6", linenos=true}
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello")
+}
+```
 
 To make a long block collapsible, start it with `[!COLLAPSE] Show label | Hide label`.
 
-## Math
+## Math {{< since "0.7.0" >}}
 
 Enable math to pass TeX through to KaTeX or MathJax without Markdown changing underscores or asterisks inside formulas:
 
@@ -146,7 +177,13 @@ Inline math becomes `<span class="math math-inline">\(...\)</span>` and display 
 
 Prices stay as plain text: in `$5 and $10`, a `$` followed by a digit does not close a formula.
 
-## Diagrams
+This page loads KaTeX, so the examples above render like this: Euler's identity is $e^{i\pi} + 1 = 0$, and
+
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
+
+## Diagrams {{< since "0.7.0" >}}
 
 A `mermaid` code block becomes `<pre class="mermaid">` with the diagram source, which [Mermaid](https://mermaid.js.org) renders in the browser:
 
@@ -157,6 +194,18 @@ graph LR
 ```
 ````
 
+Rendered on this page:
+
+```mermaid
+graph LR
+  A[Markdown] --> B(Nida)
+  T[Templates] --> B
+  B --> C[Static HTML]
+  B --> D[Feeds and sitemap]
+```
+
+To load Mermaid yourself:
+
 ```html
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
@@ -164,7 +213,7 @@ graph LR
 </script>
 ```
 
-## Shortcodes
+## Shortcodes {{< since "0.7.0" >}}
 
 Shortcodes insert template-rendered HTML into Markdown. They work even when `markdown.unsafe_html` is off, because the HTML comes from your templates, not from the content.
 

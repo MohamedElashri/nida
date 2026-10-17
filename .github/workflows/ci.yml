@@ -47,3 +47,8 @@ jobs:
 
       - name: Build Arabic example site
         run: go run ./cmd/nida build --site ./example-site-ar
+
+      - name: Check documentation site
+        run: |
+          go run ./scripts/generate_release_notes.go
+          go run ./cmd/nida check --site ./docs

@@ -1,7 +1,11 @@
 package markdown
 
 import (
+	"regexp"
 	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/yuin/goldmark/ast"
@@ -71,7 +75,7 @@ func collectTOC(doc ast.Node, source []byte) []content.Heading {
 		flat = append(flat, content.Heading{
 			Level: heading.Level,
 			ID:    headingID(heading),
-			Title: string(extractTextFromInline(heading, source)),
+			Title: stripPlaceholders(string(extractTextFromInline(heading, source))),
 		})
 		return ast.WalkSkipChildren, nil
 	})
@@ -96,4 +100,63 @@ func nestHeadings(flat []content.Heading) []content.Heading {
 		path = append(path, &parent.Children[len(parent.Children)-1])
 	}
 	return roots
+}
+
+// placeholderPattern matches the markers shortcodes leave in the Markdown
+// source until their HTML is restored after rendering.
+var placeholderPattern = regexp.MustCompile(`\s*@@NIDA_SHORTCODE_HTML_\d+@@`)
+
+func stripPlaceholders(value string) string {
+	return strings.TrimSpace(placeholderPattern.ReplaceAllString(value, ""))
+}
+
+// headingIDs generates heading IDs. It matches goldmark's rules for ASCII
+// text, so existing anchors keep working, but it also keeps Unicode letters
+// and digits (goldmark drops them, which gives every Arabic heading the ID
+// "heading"), and it ignores shortcode placeholders.
+type headingIDs struct {
+	values map[string]bool
+}
+
+func newHeadingIDs() *headingIDs {
+	return &headingIDs{values: map[string]bool{}}
+}
+
+func (s *headingIDs) Generate(value []byte, kind ast.NodeKind) []byte {
+	clean := stripPlaceholders(string(value))
+	var b strings.Builder
+	for _, r := range clean {
+		switch {
+		case r < utf8.RuneSelf && (r >= 'a' && r <= 'z' || r >= '0' && r <= '9'):
+			b.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r + 'a' - 'A')
+		case r == ' ' || r == '\t' || r == '-' || r == '_':
+			b.WriteByte('-')
+		case r >= utf8.RuneSelf && (unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.Is(unicode.Mn, r)):
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	result := b.String()
+	if result == "" {
+		result = "id"
+		if kind == ast.KindHeading {
+			result = "heading"
+		}
+	}
+	if !s.values[result] {
+		s.values[result] = true
+		return []byte(result)
+	}
+	for i := 1; ; i++ {
+		candidate := result + "-" + strconv.Itoa(i)
+		if !s.values[candidate] {
+			s.values[candidate] = true
+			return []byte(candidate)
+		}
+	}
+}
+
+func (s *headingIDs) Put(value []byte) {
+	s.values[string(value)] = true
 }

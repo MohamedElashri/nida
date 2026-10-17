@@ -105,3 +105,17 @@ func TestUnknownShortcodeFails(t *testing.T) {
 		t.Fatalf("expected unknown shortcode error, got %v", err)
 	}
 }
+
+func TestShortcodesInHeadingsKeepCleanIDsAndTOC(t *testing.T) {
+	cfg, env := setup(t, map[string]string{"templates/shortcodes/badge.html": `<span class="badge">{{ .Get 0 }}</span>`})
+	result, err := markdown.RenderDocument("## Callouts {{< badge \"new\" >}}\n\n## Callouts\n", cfg, env)
+	if err != nil {
+		t.Fatalf("RenderDocument returned error: %v", err)
+	}
+	if !strings.Contains(result.HTML, `<h2 id="callouts">Callouts <span class="badge">new</span></h2>`) {
+		t.Fatalf("unexpected heading HTML:\n%s", result.HTML)
+	}
+	if len(result.TOC) != 2 || result.TOC[0].Title != "Callouts" || result.TOC[1].ID == "callouts" {
+		t.Fatalf("unexpected TOC %+v", result.TOC)
+	}
+}

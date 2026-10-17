@@ -91,7 +91,8 @@ func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
 func renderMarkdownCore(source string, cfg config.SiteConfig, env Env) (Result, error) {
 	engine := newEngine(cfg, env)
 	src := []byte(source)
-	doc := engine.Parser().Parse(text.NewReader(src))
+	ctx := parser.NewContext(parser.WithIDs(newHeadingIDs()))
+	doc := engine.Parser().Parse(text.NewReader(src), parser.WithContext(ctx))
 
 	var buf bytes.Buffer
 	if err := engine.Renderer().Render(&buf, src, doc); err != nil {

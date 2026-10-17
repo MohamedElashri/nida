@@ -18,20 +18,22 @@ This roadmap is directional, not a release contract. Items move when real usage,
 | Shortcodes and theme inheritance | Shipped in 0.7.0 | Template shortcodes and a consistent override order. |
 | Blog features | Shipped in 0.7.0 | Related posts, series, SEO partial, scoped feeds, `nida new`. |
 | Docs features | Shipped in 0.7.0 | Generated navigation, breadcrumbs, edit links, data files, translations, `nida check`. |
-| Theme authoring guide | Next | A walkthrough for building and sharing a small theme. |
-| Migration guides | Next | Step-by-step notes for Zola, Hugo, and Jekyll sites. |
+| Theme authoring guide | Shipped in 0.7.0 | [Themes](@/guide/themes.md), with a minimal theme and the `nida-docs` theme as examples. |
+| Migration guides | Shipped in 0.7.0 | [Migrating](@/guide/migrating.md) from Zola, Hugo, and Jekyll. |
+| Starter themes | Next | A small blog theme that `nida init` can use. |
+| Migration diagnostics | Next | Warnings for unsupported front matter and shortcode patterns from other generators. |
 | Versioned documentation | Later | Docs for multiple release lines. |
 | Deploy presets | Later | Less setup for common static hosts. |
 
 ## Current focus
 
-### Theme authoring
+### Starter themes
 
-Theme inheritance now applies to templates, partials, shortcodes, static files, SCSS, data, and translations. The next step is a guide and a small starter theme that show the pieces together.
+`nida init` writes plain templates into the site. A small, maintained blog theme would give new sites a better default while still showing the override rules from the [Themes](@/guide/themes.md) guide.
 
-### Migration support
+### Migration diagnostics
 
-Nida now reads full YAML front matter, Zola `[taxonomies]` tables, and Zola's `details` and `rawhtml` shortcodes, and it warns about config keys it does not understand. Guides for moving a Zola, Hugo, or Jekyll site should build on those warnings.
+`nida check` already warns about unknown config keys. The next step is warning about content patterns from other generators that Nida does not support, such as Zola function-call shortcodes or Hugo `{{%` shortcodes, so a migration shows a clear to-do list.
 
 ## Not planned
 
