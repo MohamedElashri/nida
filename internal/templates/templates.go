@@ -208,7 +208,7 @@ func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) t
 		"imagePresetSrcset": imagePresetSrcsetFunc(cfg),
 		"imagePresetSizes":  imagePresetSizesFunc(cfg),
 		"readFile":          readFileFunc(siteRoot, cfg),
-		"resizeImage":       resizeImageFunc(siteRoot),
+		"resizeImage":       resizeImageFunc(siteRoot, cfg),
 		"sortDesc":          sortDesc,
 		"dig":               digValue,
 		"dict":              dict,
@@ -224,6 +224,7 @@ func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) t
 		"absURL":            absURLFunc(cfg),
 		"relURL":            relURLFunc(cfg),
 		"jsonify":           jsonify,
+		"syntaxCSS":         syntaxCSSFunc(cfg),
 		"upper":             strings.ToUpper,
 		"title":             titleWords,
 		"split":             strings.Split,
@@ -407,11 +408,13 @@ func readFileAllowedRoots(absSiteRoot string, cfg config.SiteConfig) []string {
 		cfg.TemplateDir,
 		cfg.StaticDir,
 	}
-	if strings.TrimSpace(cfg.Theme) != "" {
-		candidates = append(candidates,
-			filepath.Join(cfg.ThemesDir, cfg.Theme, "templates"),
-			filepath.Join(cfg.ThemesDir, cfg.Theme, "static"),
-		)
+	for _, sub := range []string{"templates", "static"} {
+		dirs, _ := themes.Dirs(absSiteRoot, cfg, sub)
+		for _, dir := range dirs {
+			if rel, err := filepath.Rel(absSiteRoot, dir); err == nil {
+				candidates = append(candidates, rel)
+			}
+		}
 	}
 
 	roots := make([]string, 0, len(candidates))

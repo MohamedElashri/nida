@@ -47,34 +47,31 @@ func buildTheme(siteRoot string, cfg config.SiteConfig) (Theme, error) {
 	}, nil
 }
 
+// loadInlineCSS reads style.css.html from the site templates, then each
+// theme (child first), falling back to static/site.css.
 func loadInlineCSS(siteRoot string, cfg config.SiteConfig) (string, error) {
-	if cfg.Theme != "" {
-		themeCSS, err := safepath.Join(siteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "style.css.html"))
-		if err != nil {
+	if abs, err := filepath.Abs(siteRoot); err == nil {
+		siteRoot = abs
+	}
+	candidates := []string{filepath.Join(siteRoot, cfg.TemplateDir, "style.css.html")}
+	chain, err := themes.Chain(siteRoot, cfg)
+	if err != nil {
+		return "", err
+	}
+	for i := len(chain) - 1; i >= 0; i-- {
+		candidates = append(candidates, filepath.Join(chain[i].Dir, "style.css.html"))
+	}
+	for _, path := range candidates {
+		if err := safepath.EnsureNoSymlinkPath(siteRoot, path); err != nil && !os.IsNotExist(err) {
 			return "", err
 		}
-		if err := safepath.EnsureNoSymlinkPath(siteRoot, themeCSS); err != nil && !os.IsNotExist(err) {
-			return "", err
-		}
-		expanded, err := expandTemplateIncludes(themeCSS)
+		expanded, err := expandTemplateIncludes(path)
 		if err == nil {
 			return expanded, nil
 		}
 		if !os.IsNotExist(err) {
 			return "", err
 		}
-	}
-
-	stylePath, err := safepath.Join(siteRoot, filepath.Join(cfg.TemplateDir, "style.css.html"))
-	if err != nil {
-		return "", err
-	}
-	if err := safepath.EnsureNoSymlinkPath(siteRoot, stylePath); err != nil && !os.IsNotExist(err) {
-		return "", err
-	}
-	expanded, err := expandTemplateIncludes(stylePath)
-	if err == nil {
-		return expanded, nil
 	}
 	fallbackPath, joinErr := safepath.Join(siteRoot, filepath.Join(cfg.StaticDir, "site.css"))
 	if joinErr != nil {

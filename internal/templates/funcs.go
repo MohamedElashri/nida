@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/highlight"
 	"github.com/MohamedElashri/nida/internal/markdown"
 )
 
@@ -288,4 +289,17 @@ func titleWords(value string) string {
 		words[i] = string(unicode.ToTitle(r)) + word[size:]
 	}
 	return strings.Join(words, " ")
+}
+
+// syntaxCSSFunc returns highlighting CSS for syntax_theme, or for the style
+// named in the optional argument, such as syntaxCSS "github-dark".
+func syntaxCSSFunc(cfg config.SiteConfig) func(...string) (template.CSS, error) {
+	return func(names ...string) (template.CSS, error) {
+		theme := cfg.SyntaxTheme
+		if len(names) > 0 && strings.TrimSpace(names[0]) != "" {
+			theme = names[0]
+		}
+		css, err := highlight.CSS(theme)
+		return template.CSS(css), err
+	}
 }

@@ -94,3 +94,18 @@ func renderPlain(code, language string) string {
 
 	return "<pre><code" + classAttr + ">" + stdhtml.EscapeString(code) + "</code></pre>\n"
 }
+
+// CSS returns the stylesheet for a Chroma style using the same z- class
+// prefix as rendered code blocks. Unknown names fall back to DefaultTheme.
+func CSS(theme string) (string, error) {
+	style := styles.Get(strings.TrimSpace(theme))
+	if style == styles.Fallback {
+		style = styles.Get(DefaultTheme)
+	}
+	var buf bytes.Buffer
+	formatter := chromahtml.New(chromahtml.WithClasses(true), chromahtml.ClassPrefix("z-"))
+	if err := formatter.WriteCSS(&buf, style); err != nil {
+		return "", fmt.Errorf("write %q syntax CSS: %w", style.Name, err)
+	}
+	return buf.String(), nil
+}

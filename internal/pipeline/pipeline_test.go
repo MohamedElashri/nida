@@ -170,3 +170,21 @@ func TestProcessMinifiesAndFingerprintsThemeAndSiteAssets(t *testing.T) {
 		t.Fatalf("fingerprinted file should hold minified bytes, got %q", got)
 	}
 }
+
+func TestProcessCopiesWebPWithoutResizing(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "static"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "static", "photo.webp"), []byte("RIFF....WEBP"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.DefaultSiteConfig()
+	cfg.Pipeline.Images.Enabled = true
+	if _, err := Process(root, cfg); err != nil {
+		t.Fatalf("Process returned error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "public", "photo.webp")); err != nil {
+		t.Fatalf("expected the WebP file to be copied: %v", err)
+	}
+}

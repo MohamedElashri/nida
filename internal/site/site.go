@@ -44,7 +44,7 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 		}
 	}
 
-	pathLookup := buildPathLookup(pages, sections, cfg)
+	pathLookup := BuildPathLookup(pages, sections, cfg)
 	if cfg.Diagnostics.Enabled {
 		if err := diagnostics.Check(siteRoot, cfg, pages, sections, pathLookup); err != nil {
 			return State{}, err
@@ -161,21 +161,27 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 
 	index.AllPages = sortedPages
 
-	// Populate prev/next page links within each section
-	for i := range index.Sections {
-		pagesInSection := index.Sections[i].Pages
-		for j := range pagesInSection {
+	// Prev/next follow each section's page order. Section page slices share
+	// backing arrays with their copies, so setting them once updates all.
+	type links struct{ prevURL, prevTitle, nextURL, nextTitle string }
+	neighbors := map[string]links{}
+	for _, section := range index.SectionLookup {
+		pages := section.Pages
+		for j := range pages {
+			var l links
 			if j > 0 {
-				pagesInSection[j].NextURL = pagesInSection[j-1].URL
-				pagesInSection[j].NextTitle = pagesInSection[j-1].Title
+				l.nextURL, l.nextTitle = pages[j-1].URL, pages[j-1].Title
 			}
-			if j < len(pagesInSection)-1 {
-				pagesInSection[j].PrevURL = pagesInSection[j+1].URL
-				pagesInSection[j].PrevTitle = pagesInSection[j+1].Title
+			if j < len(pages)-1 {
+				l.prevURL, l.prevTitle = pages[j+1].URL, pages[j+1].Title
 			}
+			pages[j].PrevURL, pages[j].PrevTitle, pages[j].NextURL, pages[j].NextTitle = l.prevURL, l.prevTitle, l.nextURL, l.nextTitle
+			neighbors[pages[j].RelativePath] = l
 		}
-		index.Sections[i].Pages = pagesInSection
-		sectionMap[index.Sections[i].SectionPath] = index.Sections[i]
+	}
+	for i := range sortedPages {
+		l := neighbors[sortedPages[i].RelativePath]
+		sortedPages[i].PrevURL, sortedPages[i].PrevTitle, sortedPages[i].NextURL, sortedPages[i].NextTitle = l.prevURL, l.prevTitle, l.nextURL, l.nextTitle
 	}
 
 	var err error
@@ -196,7 +202,8 @@ func ResolveSectionURL(section content.Section, cfg config.SiteConfig) (string, 
 	return NormalizeRoute("section route", route)
 }
 
-func buildPathLookup(pages []content.Page, sections []content.Section, cfg config.SiteConfig) markdown.PathLookup {
+// BuildPathLookup maps content paths to routes for @/ links.
+func BuildPathLookup(pages []content.Page, sections []content.Section, cfg config.SiteConfig) markdown.PathLookup {
 	lookup := make(markdown.PathLookup)
 
 	for _, page := range pages {
@@ -374,6 +381,7 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 			Extra:            map[string]any{},
 		}
 		roots = append(roots, rootSection)
+		sectionMap[""] = rootSection
 	}
 
 	for _, path := range sortedPaths {

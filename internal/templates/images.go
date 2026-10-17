@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"golang.org/x/image/draw"
 )
@@ -25,7 +26,7 @@ const (
 
 var resizeMu sync.Mutex
 
-func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
+func resizeImageFunc(siteRoot string, cfg config.SiteConfig) func(string, int, int, string) string {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {
 		absSiteRoot = siteRoot
@@ -41,8 +42,8 @@ func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 
 		candidateRoots := []string{
 			absSiteRoot,
-			filepath.Join(absSiteRoot, "static"),
-			filepath.Join(absSiteRoot, "content"),
+			filepath.Join(absSiteRoot, cfg.StaticDir),
+			filepath.Join(absSiteRoot, cfg.ContentDir),
 		}
 
 		var sourceFile string
@@ -80,7 +81,7 @@ func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 
 		baseName := strings.TrimSuffix(filepath.Base(sourceFile), filepath.Ext(sourceFile))
 		outName := fmt.Sprintf("%s.%s%s", baseName, hashStr, ext)
-		outDir := filepath.Join(absSiteRoot, "static", "processed_images")
+		outDir := filepath.Join(absSiteRoot, cfg.StaticDir, "processed_images")
 		outPath := filepath.Join(outDir, outName)
 		outURL := "/processed_images/" + filepath.ToSlash(outName)
 		if err := safepath.EnsureNoSymlinkPath(absSiteRoot, outPath); err != nil {
@@ -102,8 +103,8 @@ func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 		if info, err := f.Stat(); err != nil || info.Size() > maxImageBytes {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
-		cfg, _, err := image.DecodeConfig(f)
-		if err != nil || !validResizeDimensions(cfg.Width, cfg.Height) {
+		header, _, err := image.DecodeConfig(f)
+		if err != nil || !validResizeDimensions(header.Width, header.Height) {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
 		if _, err := f.Seek(0, 0); err != nil {
@@ -138,7 +139,11 @@ func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 		case ".gif":
 			err = gif.Encode(outFile, dstImg, nil)
 		default:
-			err = jpeg.Encode(outFile, dstImg, &jpeg.Options{Quality: 85})
+			quality := cfg.Pipeline.Images.Quality
+			if quality <= 0 || quality > 100 {
+				quality = 85
+			}
+			err = jpeg.Encode(outFile, dstImg, &jpeg.Options{Quality: quality})
 		}
 		if err != nil {
 			return "/" + strings.TrimPrefix(srcPath, "/")

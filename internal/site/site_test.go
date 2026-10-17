@@ -352,3 +352,40 @@ func TestNavInterleavesPagesAndSectionsByWeight(t *testing.T) {
 		t.Fatalf("expected no next entry at the end, got %+v", n.Next)
 	}
 }
+
+func TestBuildIndexSetsPrevNextOnRenderedPages(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	pages := []content.Page{
+		{RelativePath: "posts/a.md", Slug: "a", Title: "A", SectionPath: "posts", Date: mustDate(t, "2026-01-01T00:00:00Z")},
+		{RelativePath: "posts/b.md", Slug: "b", Title: "B", SectionPath: "posts", Date: mustDate(t, "2026-01-02T00:00:00Z")},
+	}
+	sections := []content.Section{{SectionPath: "posts", Title: "Posts", SortBy: "date"}}
+	index, sorted, err := BuildIndex(pages, sections, cfg)
+	if err != nil {
+		t.Fatalf("BuildIndex returned error: %v", err)
+	}
+	byPath := map[string]content.Page{}
+	for _, p := range sorted {
+		byPath[p.RelativePath] = p
+	}
+	if byPath["posts/a.md"].NextTitle != "B" || byPath["posts/b.md"].PrevTitle != "A" {
+		t.Fatalf("prev/next missing on rendered pages: %+v", byPath)
+	}
+	if index.SectionLookup["posts"].Pages[0].PrevTitle != "A" {
+		t.Fatalf("prev/next missing on section pages: %+v", index.SectionLookup["posts"].Pages)
+	}
+}
+
+func TestBuildIndexRegistersSynthesizedRootSection(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	pages := []content.Page{{RelativePath: "about.md", Slug: "about", Title: "About"}}
+	index, _, err := BuildIndex(pages, nil, cfg)
+	if err != nil {
+		t.Fatalf("BuildIndex returned error: %v", err)
+	}
+	if _, ok := index.SectionLookup[""]; !ok {
+		t.Fatal("expected a root section so the home page renders")
+	}
+}

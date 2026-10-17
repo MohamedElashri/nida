@@ -161,11 +161,11 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 	return nil
 }
 
-// IsImageFile reports whether the pipeline can resize a file by extension.
+// IsImageFile reports whether the pipeline can resize a file. WebP is read
+// but not encoded, so it is copied like any other asset.
 func IsImageFile(name string) bool {
-	ext := strings.ToLower(filepath.Ext(name))
-	switch ext {
-	case ".png", ".jpg", ".jpeg", ".gif", ".webp":
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".png", ".jpg", ".jpeg", ".gif":
 		return true
 	}
 	return false

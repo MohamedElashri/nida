@@ -167,3 +167,12 @@ func TestTranslateFunc(t *testing.T) {
 		t.Fatalf("unexpected output %q", got)
 	}
 }
+
+func TestSyntaxCSS(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.SyntaxTheme = "monokai"
+	got := execute(t, cfg, `<style>{{ syntaxCSS }}</style>{{ syntaxCSS "github" }}`, nil)
+	if !strings.Contains(got, ".z-chroma") || !strings.Contains(got, "#272822") {
+		t.Fatalf("expected monokai CSS with z- classes, got %.200s", got)
+	}
+}

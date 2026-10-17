@@ -19,6 +19,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/markdown"
+	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/themes"
 )
@@ -92,7 +93,7 @@ func (r *imageResolver) Image(src string, page *content.Page) (markdown.ImageInf
 		return markdown.ImageInfo{}, false
 	}
 	info := markdown.ImageInfo{Width: width, Height: height}
-	if r.cfg.Pipeline.Images.Enabled && isEncodable(file) {
+	if r.cfg.Pipeline.Images.Enabled && pipeline.IsImageFile(file) {
 		// Static images are resized by the asset pipeline and bundle images
 		// when they are copied; both use the name.<width>w.ext convention.
 		info.Srcset, info.Sizes = r.srcset(urlPath, width)
@@ -142,15 +143,6 @@ func (r *imageResolver) dimensions(file string) (int, int, bool) {
 	}
 	r.sizes[file] = [2]int{width, height}
 	return width, height, width > 0
-}
-
-// isEncodable reports whether bundle resizing can write variants for file.
-func isEncodable(file string) bool {
-	switch strings.ToLower(path.Ext(file)) {
-	case ".jpg", ".jpeg", ".png", ".gif":
-		return true
-	}
-	return false
 }
 
 func isRegularFile(file string) bool {

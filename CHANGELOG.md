@@ -30,6 +30,7 @@ All notable changes to Nida are documented here.
 * `nida new` creates content from archetypes (`archetypes/<section>.md` or `default.md`, in the site or a theme).
 * `.Index.Related` ranks pages by shared taxonomy terms. `.Index.Series` returns a post's series with position, previous, and next.
 * `groupByMonth` and `merge` template functions.
+* `syntaxCSS` template function returns highlighting CSS for `syntax_theme` (or a named Chroma style), so the setting has a visible effect.
 * Built-in `nida-seo` partial for title, description, canonical, Open Graph, Twitter cards, and JSON-LD.
 * `updated_from_git` sets `updated` dates from git history.
 * Section feeds (`generate_feeds = true`) and per-term taxonomy feeds (`feed = true`). Both settings were parsed before but had no effect.
@@ -60,6 +61,12 @@ All notable changes to Nida are documented here.
 * Nested sections were missing from the search index, and explicit sections had an empty `.URL`.
 * `pipeline.minify_css` and `pipeline.minify_js` were documented but did nothing. CSS and JS assets are now minified (files ending in `.min.css` or `.min.js` are left alone), before fingerprinting so hashes match the served bytes.
 * The asset pipeline only processed the site's `static/` directory. Theme static files are now fingerprinted and minified too, with site files still taking precedence.
+* `.Page.PrevURL`, `.PrevTitle`, `.NextURL`, and `.NextTitle` were always empty on rendered pages.
+* A site with pages in `content/` but no `content/_index.md` produced no home page.
+* `nida serve` partial rebuilds broke `@/section/_index.md` links.
+* With the image pipeline enabled, a static `.webp` file failed the build. WebP files are now copied without resizing.
+* `resizeImage` ignored `static_dir`, `content_dir`, and `pipeline.images.quality`.
+* `readFile` and `style.css.html` lookup ignored parent themes, and a theme's `style.css.html` overrode the site's.
 * A shortcode inside a heading, such as `## Callouts {{< since "0.7.0" >}}`, leaked its internal placeholder into the heading ID and the TOC title.
 * A site with sections but no `section` or `list` template failed with `missing template "list"`. The error now explains which template to add.
 * Theme inheritance now applies to templates, partials, static files, and SCSS. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
