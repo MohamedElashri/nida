@@ -1,25 +1,28 @@
 package config
 
 type SiteConfig struct {
-	BaseURL     string           `toml:"base_url"`
-	Title       string           `toml:"title"`
-	Description string           `toml:"description"`
-	Language    string           `toml:"language"`
-	Author      string           `toml:"author"`
-	ContentDir  string           `toml:"content_dir"`
-	TemplateDir string           `toml:"template_dir"`
-	StaticDir   string           `toml:"static_dir"`
-	OutputDir   string           `toml:"output_dir"`
-	ThemesDir   string           `toml:"themes_dir"`
-	Theme       string           `toml:"theme"`
-	Paginate    int              `toml:"paginate"`
-	Drafts      bool             `toml:"drafts"`
-	Future      bool             `toml:"future"`
-	RobotsMeta  string           `toml:"robots_meta"`
-	MinifyHTML  bool             `toml:"minify_html"`
-	SyntaxTheme string           `toml:"syntax_theme"`
-	Markdown    MarkdownConfig   `toml:"markdown"`
-	Taxonomies  []TaxonomyConfig `toml:"taxonomies"`
+	BaseURL     string `toml:"base_url"`
+	Title       string `toml:"title"`
+	Description string `toml:"description"`
+	Language    string `toml:"language"`
+	Author      string `toml:"author"`
+	ContentDir  string `toml:"content_dir"`
+	TemplateDir string `toml:"template_dir"`
+	StaticDir   string `toml:"static_dir"`
+	OutputDir   string `toml:"output_dir"`
+	ThemesDir   string `toml:"themes_dir"`
+	Theme       string `toml:"theme"`
+	Paginate    int    `toml:"paginate"`
+	Drafts      bool   `toml:"drafts"`
+	Future      bool   `toml:"future"`
+	RobotsMeta  string `toml:"robots_meta"`
+	// UpdatedFromGit sets a page's updated date from its last git commit
+	// when front matter does not set one.
+	UpdatedFromGit bool             `toml:"updated_from_git"`
+	MinifyHTML     bool             `toml:"minify_html"`
+	SyntaxTheme    string           `toml:"syntax_theme"`
+	Markdown       MarkdownConfig   `toml:"markdown"`
+	Taxonomies     []TaxonomyConfig `toml:"taxonomies"`
 	// Feed is the Atom feed. RSS is an optional second feed for readers
 	// that still expect RSS 2.0.
 	Feed        FeedConfig        `toml:"feed"`

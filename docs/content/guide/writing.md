@@ -216,6 +216,12 @@ All site template functions are available. For example, `templates/shortcodes/kb
 
 Using a shortcode that has no template fails the build with `unknown shortcode "name"`.
 
+## Images
+
+Markdown images get `loading="lazy"` and `decoding="async"`. When Nida can find the image file, it also adds `width` and `height` from the image itself, so the browser reserves space and the page does not shift while loading. That works for page bundle images (`![Map](map.png)`) and for static files (`![Hero](/img/hero.jpg)`).
+
+With the image pipeline enabled (`[pipeline.images] enabled = true`), static images also get a `srcset` of the generated variants smaller than the original, plus the original, along with `sizes` from the `content` preset. Bundle images are not resized.
+
 ## Word count and reading time
 
 `.Page.WordCount` and `.Page.ReadingTime` (minutes, at 200 words per minute) are available in templates.

@@ -19,6 +19,32 @@ templates. If no path is provided, Nida initializes the current directory.
 
 `nida init` refuses to write into a non-empty directory.
 
+## New
+
+```bash
+nida new posts/my-first-post.md
+nida new posts/trip-report
+```
+
+Creates a content file from an archetype. A path ending in `.md` creates that file. A path without `.md` creates a page bundle, `posts/trip-report/index.md`. The path is relative to the content directory, and Nida refuses to overwrite existing files.
+
+Nida looks for `archetypes/<section>.md`, then `archetypes/default.md`, first in the site and then in each theme. Without either, it uses:
+
+```toml
++++
+title = "My First Post"
+date = 2026-10-17T09:30:00Z
+draft = true
++++
+```
+
+Archetypes are Go `text/template` files and receive `.Title` (from the file name), `.Date` (RFC 3339), `.Slug`, `.Section`, and `.Path`.
+
+Flags:
+
+- `--site`, `-s`: site root directory
+- `--config`, `-c`: config file path
+
 ## Build
 
 ```bash

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -92,7 +93,110 @@ func GenerateAll(cfg config.SiteConfig, index site.SiteIndex) ([]Output, error) 
 			outputs = append(outputs, *out)
 		}
 	}
+
+	for _, feed := range scopedSpecs(cfg, index) {
+		if cfg.Feed.Enabled {
+			out, err := renderAtom(cfg, withFilename(feed, cfg.Feed))
+			if err != nil {
+				return nil, err
+			}
+			outputs = append(outputs, *out)
+		}
+		if cfg.RSS.Enabled {
+			out, err := renderRSS(cfg, withFilename(feed, cfg.RSS))
+			if err != nil {
+				return nil, err
+			}
+			outputs = append(outputs, *out)
+		}
+	}
 	return outputs, nil
+}
+
+// Filenames lists every feed file GenerateAll writes, so the build can
+// check them for route conflicts and clean them up when they go away.
+func Filenames(cfg config.SiteConfig, index site.SiteIndex) []string {
+	var names []string
+	if cfg.Feed.Enabled {
+		names = append(names, cfg.Feed.Filename)
+	}
+	if cfg.RSS.Enabled {
+		names = append(names, cfg.RSS.Filename)
+	}
+	for _, feed := range scopedSpecs(cfg, index) {
+		if cfg.Feed.Enabled {
+			names = append(names, withFilename(feed, cfg.Feed).Filename)
+		}
+		if cfg.RSS.Enabled {
+			names = append(names, withFilename(feed, cfg.RSS).Filename)
+		}
+	}
+	return names
+}
+
+// scopedSpecs returns feeds for sections with generate_feeds = true and for
+// every term of taxonomies with feed = true. Filename holds the directory
+// prefix; withFilename adds the configured file name.
+func scopedSpecs(cfg config.SiteConfig, index site.SiteIndex) []spec {
+	var specs []spec
+
+	paths := make([]string, 0, len(index.SectionLookup))
+	for path, section := range index.SectionLookup {
+		if section.GenerateFeeds && path != "" {
+			paths = append(paths, path)
+		}
+	}
+	slices.Sort(paths)
+	for _, path := range paths {
+		section := index.SectionLookup[path]
+		var items []content.Page
+		for _, page := range index.AllPages {
+			if page.SectionPath == path || strings.HasPrefix(page.SectionPath, path+"/") {
+				items = append(items, page)
+			}
+		}
+		specs = append(specs, spec{
+			Title:    scopedTitle(cfg.Title, section.Title),
+			Filename: path + "/",
+			AltURL:   canonicalURL(cfg.BaseURL, "/"+path+"/"),
+			Items:    items,
+		})
+	}
+
+	for _, collection := range index.Taxonomies {
+		if !collection.Feed {
+			continue
+		}
+		for _, term := range collection.Terms {
+			items := append([]content.Page(nil), term.Items...)
+			slices.SortStableFunc(items, func(a, b content.Page) int { return b.Date.Compare(a.Date) })
+			specs = append(specs, spec{
+				Title:    scopedTitle(cfg.Title, term.Name),
+				Filename: strings.Trim(term.URL, "/") + "/",
+				AltURL:   term.CanonicalURL,
+				Items:    items,
+			})
+		}
+	}
+	return specs
+}
+
+func withFilename(feed spec, feedCfg config.FeedConfig) spec {
+	feed.Filename += feedCfg.Filename
+	if feedCfg.Limit > 0 && len(feed.Items) > feedCfg.Limit {
+		feed.Items = feed.Items[:feedCfg.Limit]
+	}
+	return feed
+}
+
+func scopedTitle(siteTitle, scope string) string {
+	if strings.TrimSpace(scope) == "" {
+		return siteTitle
+	}
+	if strings.TrimSpace(siteTitle) == "" {
+		return scope
+	}
+	return siteTitle + " - " + scope
 }
 
 // GenerateRSS renders the optional site-wide RSS 2.0 feed configured by [rss].

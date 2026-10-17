@@ -40,6 +40,7 @@ Nida warns about keys it does not recognize, for example `warning: unknown confi
 | `paginate` | integer | `10` | Default pagination size. Must be greater than zero. |
 | `drafts` | boolean | `false` | Include draft content when building. |
 | `future` | boolean | `false` | Include pages whose `date` is in the future. Future-dated pages are skipped by default so scheduled posts stay hidden until the next build after their date. |
+| `updated_from_git` | boolean | `false` | Set each page's `updated` date from the last git commit that changed its file, unless front matter sets `updated`. Uses one `git log` call per build; skipped outside a git repository. |
 | `robots_meta` | string | empty | Value exposed to templates as `.Robots` for a `<meta name="robots">` tag, such as `"noai, noimageai"`. The 404 page always adds `noindex`. |
 | `minify_html` | boolean | `false` | Minify rendered HTML output. |
 | `syntax_theme` | string | `github` | Syntax highlighting theme name. |
@@ -118,7 +119,7 @@ render = true
 | `taxonomies[].name` | string | required | Taxonomy name. Values are read from page `extra` metadata with the same key. |
 | `taxonomies[].paginate_by` | integer | `0` | Number of items per taxonomy term page. `0` disables taxonomy pagination. |
 | `taxonomies[].paginate_path` | string | empty | Path segment for paginated taxonomy pages. Falls back to `page`. |
-| `taxonomies[].feed` | boolean | `false` | Reserved for taxonomy feed behavior. |
+| `taxonomies[].feed` | boolean | `false` | Write a feed for every term, such as `tags/go/feed.xml` (and `tags/go/rss.xml` when `[rss]` is enabled). |
 | `taxonomies[].render` | boolean | `false` | Whether to render taxonomy list and term pages. |
 
 ## Permalinks
@@ -160,6 +161,8 @@ sections = ["posts"]
 | `feed.filename` | string | `feed.xml` | Output filename for the Atom feed. |
 | `feed.limit` | integer | `20` | Maximum number of feed entries. |
 | `feed.sections` | array of strings | empty | Root content sections to include, such as `["posts"]`. Omit or leave empty to include all pages. Nested section paths match by root section, so `posts/notes` matches `posts`. |
+
+Sections with `generate_feeds = true` in their `_index.md` get their own feed at `<section>/feed.xml`, which includes pages in nested sections. Taxonomies with `feed = true` get one feed per term. Scoped feeds use the same filename and limit as the site feed.
 
 Entries use the page `description` as the summary and include the full rendered HTML with links made absolute. An entry's `updated` time comes from the page's `updated` front matter when that is newer than `date`.
 

@@ -110,6 +110,54 @@ Besides front matter values, `.Page` has fields Nida computes:
 
 `GetPage` takes a content path, with or without `.md` or a leading `@/`. `GetSection` takes a section path such as `posts`, or an empty string for the root.
 
+## Related posts and series
+
+`.Index.Related` returns pages that share taxonomy terms with a page, ranked by how many terms they share, then newest first:
+
+```html
+{{ with .Index.Related .Page 3 }}
+<aside>
+  <h2>Related</h2>
+  <ul>{{ range . }}<li><a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a></li>{{ end }}</ul>
+</aside>
+{{ end }}
+```
+
+Give posts the same `series = "Building Nida"` value to group them. `.Index.Series` returns the series with `.Name`, `.Pages` (ordered by `weight`, then oldest first), the 1-based `.Position` of the current page, and `.Prev` and `.Next`:
+
+```html
+{{ with .Index.Series .Page }}
+<nav class="series">
+  Part {{ .Position }} of {{ len .Pages }} in <em>{{ .Name }}</em>.
+  {{ with .Next }}Next: <a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a>{{ end }}
+</nav>
+{{ end }}
+```
+
+## Archives
+
+`groupByYear` and `groupByMonth` group dated pages for archive pages. Month groups have `.Month` (the first day of the month) and `.Pages`:
+
+```html
+{{ range groupByMonth .Pages }}
+  <h2>{{ formatDateWith .Month "%B %Y" }}</h2>
+  <ul>{{ range .Pages }}<li><a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a></li>{{ end }}</ul>
+{{ end }}
+```
+
+## SEO metadata
+
+The built-in `nida-seo` partial writes the `<title>`, description, canonical link, robots meta, Open Graph and Twitter card tags, and a JSON-LD `BlogPosting` for pages. Include it in `<head>`:
+
+```html
+<head>
+  <meta charset="utf-8">
+  {{ template "nida-seo" . }}
+</head>
+```
+
+It reads the page title and description, falling back to the site's; `date` and `updated`; `image` from the page's `extra`, falling back to `[extra] image` in the site config; and `[extra] twitter` for `twitter:site`. To change the output, define your own `{{ define "nida-seo" }}` in a template file; site and theme definitions replace the built-in one.
+
 ## Template functions
 
 On top of Go's built-in template functions, Nida provides:
@@ -117,6 +165,7 @@ On top of Go's built-in template functions, Nida provides:
 | Function | Example | Description |
 | --- | --- | --- |
 | `dict` | `dict "Page" . "Wide" true` | Build a map, usually to pass several values to a partial. |
+| `merge` | `merge $a (dict "k" "v")` | A new map with the second map's keys laid over the first. |
 | `slice` | `slice "a" "b"` | Build a list. |
 | `seq` | `seq 3` | `1 2 3`. |
 | `first`, `last` | `first 5 .Pages` | The first or last N items of a list. |
@@ -127,7 +176,7 @@ On top of Go's built-in template functions, Nida provides:
 | `absURL`, `relURL` | `absURL .Page.URL` | Join onto `base_url`, or onto just its path. |
 | `jsonify` | `jsonify (dict "@type" "BlogPosting")` | Encode as JSON, safe inside `<script type="application/ld+json">`. |
 | `formatDate`, `formatDateWith` | `formatDateWith .Page.Date "%B %d, %Y"` | Format dates. `formatDateWith` accepts `strftime`-style codes. |
-| `groupByYear` | `range groupByYear .Pages` | Group dated pages into `{Year, Pages}`. |
+| `groupByYear`, `groupByMonth` | `range groupByYear .Pages` | Group dated pages into `{Year, Pages}` or `{Month, Pages}`. |
 | `dig` | `dig .Config.Extra "author.name"` | Read a nested map value by dotted path. |
 | `default` | `default .Title "Untitled"` | The first argument, or the second when the first is empty. Note the order: value first, fallback second. |
 | `lower`, `upper`, `title`, `trimSpace`, `replace`, `split`, `contains`, `hasPrefix`, `hasSuffix`, `join` | | String helpers. |

@@ -171,3 +171,26 @@ func TestRenderInternalLinksIncludeBasePath(t *testing.T) {
 		}
 	}
 }
+
+type fakeImages struct{}
+
+func (fakeImages) Image(src string, _ *content.Page) (ImageInfo, bool) {
+	if src != "/img/a.png" {
+		return ImageInfo{}, false
+	}
+	return ImageInfo{Width: 800, Height: 400, Srcset: "/img/a.480w.png 480w, /img/a.png 800w", Sizes: "100vw"}, true
+}
+
+func TestRenderImageAttributesFromResolver(t *testing.T) {
+	result, err := RenderDocument("![A](/img/a.png) ![B](/img/b.png)\n", config.DefaultSiteConfig(), Env{Images: fakeImages{}})
+	if err != nil {
+		t.Fatalf("RenderDocument returned error: %v", err)
+	}
+	want := `<img src="/img/a.png" alt="A" srcset="/img/a.480w.png 480w, /img/a.png 800w" sizes="100vw" width="800" height="400" loading="lazy" decoding="async">`
+	if !strings.Contains(result.HTML, want) {
+		t.Fatalf("expected %s in %s", want, result.HTML)
+	}
+	if !strings.Contains(result.HTML, `<img src="/img/b.png" alt="B" loading="lazy" decoding="async">`) {
+		t.Fatalf("unknown images should keep plain attributes, got %s", result.HTML)
+	}
+}

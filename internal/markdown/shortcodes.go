@@ -31,8 +31,20 @@ type Shortcodes interface {
 type Env struct {
 	Lookup     PathLookup
 	Shortcodes Shortcodes
+	Images     Images
 	// Page is the page being rendered, or nil for sections and snippets.
 	Page *content.Page
+}
+
+// Images reports the size of a Markdown image and, optionally, responsive
+// variants. src is the resolved image URL as it will appear in the HTML.
+type Images interface {
+	Image(src string, page *content.Page) (ImageInfo, bool)
+}
+
+type ImageInfo struct {
+	Width, Height int
+	Srcset, Sizes string
 }
 
 // ShortcodeCall is the data a shortcode template receives.
@@ -463,7 +475,7 @@ func renderShortcodeBody(source string, cfg config.SiteConfig, env Env) (string,
 	if err != nil {
 		return "", err
 	}
-	result, err := renderMarkdownCore(processed.Source, cfg, env.Lookup)
+	result, err := renderMarkdownCore(processed.Source, cfg, env)
 	if err != nil {
 		return "", fmt.Errorf("render shortcode body: %w", err)
 	}

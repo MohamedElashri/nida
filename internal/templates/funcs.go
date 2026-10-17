@@ -33,6 +33,18 @@ func dict(pairs ...any) (map[string]any, error) {
 	return out, nil
 }
 
+// merge returns a new map with the keys of b laid over a.
+func merge(a, b map[string]any) map[string]any {
+	out := make(map[string]any, len(a)+len(b))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		out[k] = v
+	}
+	return out
+}
+
 func sliceOf(items ...any) []any {
 	return items
 }

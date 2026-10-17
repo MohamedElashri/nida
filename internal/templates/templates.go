@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -16,6 +17,9 @@ import (
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/themes"
 )
+
+//go:embed builtin/*.html
+var builtinFS embed.FS
 
 const (
 	baseTemplateFile = "base.html"
@@ -119,6 +123,11 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 	for name, entry := range entries {
 		files := append(append([]string(nil), shared...), entry)
 		tmpl := template.New("root").Funcs(funcMap(siteRoot, cfg))
+		// Built-in partials are parsed first so site and theme templates can
+		// replace them by defining the same name.
+		if _, err := tmpl.ParseFS(builtinFS, "builtin/*.html"); err != nil {
+			return Set{}, fmt.Errorf("parse built-in templates: %w", err)
+		}
 		for _, file := range files {
 			data, err := os.ReadFile(file)
 			if err != nil {
@@ -177,6 +186,7 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 		"slugify":           content.DeriveSlug,
 		"documentDirection": config.DocumentDirection,
 		"groupByYear":       groupByYear,
+		"groupByMonth":      groupByMonth,
 		"now":               time.Now,
 		"asset":             assetURLFunc(cfg),
 		"assetURL":          assetURLFunc(cfg),
@@ -189,6 +199,7 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 		"sortDesc":          sortDesc,
 		"dig":               digValue,
 		"dict":              dict,
+		"merge":             merge,
 		"slice":             sliceOf,
 		"seq":               seq,
 		"first":             first,
@@ -314,6 +325,36 @@ func groupByYear(pages []content.Page) []YearGroup {
 		result = append(result, YearGroup{Year: y, Pages: groups[y]})
 	}
 	return result
+}
+
+// MonthGroup holds pages from one calendar month. Month is the first day of
+// that month, so templates can format it with formatDateWith.
+type MonthGroup struct {
+	Key   string
+	Month time.Time
+	Pages []content.Page
+}
+
+// groupByMonth groups dated pages by month, newest month first, keeping the
+// input order within each month.
+func groupByMonth(pages []content.Page) []MonthGroup {
+	var groups []MonthGroup
+	index := map[string]int{}
+	for _, p := range pages {
+		if p.Date.IsZero() {
+			continue
+		}
+		key := p.Date.Format("2006-01")
+		i, ok := index[key]
+		if !ok {
+			i = len(groups)
+			index[key] = i
+			groups = append(groups, MonthGroup{Key: key, Month: time.Date(p.Date.Year(), p.Date.Month(), 1, 0, 0, 0, 0, p.Date.Location())})
+		}
+		groups[i].Pages = append(groups[i].Pages, p)
+	}
+	sort.SliceStable(groups, func(a, b int) bool { return groups[a].Key > groups[b].Key })
+	return groups
 }
 
 func readFileFunc(siteRoot string, cfg config.SiteConfig) func(string) (string, error) {

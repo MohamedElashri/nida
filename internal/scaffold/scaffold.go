@@ -257,8 +257,8 @@ Nida copies page bundle resources next to the rendered page.
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ if .Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}</title>
-  <meta name="description" content="{{ default .Description .Config.Description }}">
+  {{ template "nida-seo" . }}
+  {{ if .Config.Feed.Enabled }}<link rel="alternate" type="application/atom+xml" title="{{ .Config.Title }}" href="{{ .BasePath }}/{{ .Config.Feed.Filename }}">{{ end }}
   <link rel="stylesheet" href="{{ asset "site.css" }}">
 </head>
 <body>
@@ -325,6 +325,14 @@ Nida copies page bundle resources next to the rendered page.
     {{ end }}
     {{ unsafeHTML .Page.BodyHTML }}
   </article>
+  {{ with .Index.Related .Page 3 }}
+  <aside class="related">
+    <h2>Related posts</h2>
+    <ul>
+      {{ range . }}<li><a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a></li>{{ end }}
+    </ul>
+  </aside>
+  {{ end }}
 {{- end }}
 `,
 	},

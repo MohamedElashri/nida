@@ -2,8 +2,11 @@ package templates
 
 import (
 	"html/template"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
@@ -77,5 +80,62 @@ func TestJsonifyInScript(t *testing.T) {
 func TestDictRejectsOddArguments(t *testing.T) {
 	if _, err := dict("only-key"); err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestSEOPartial(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "templates"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{
+		"base.html": `{{ define "head" }}{{ template "nida-seo" . }}{{ end }}`,
+		"page.html": `{{ define "page" }}{{ template "head" . }}{{ end }}`,
+	} {
+		if err := os.WriteFile(filepath.Join(root, "templates", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com/blog/"
+	cfg.Title = "Site"
+	cfg.Author = "Ada"
+	set, err := Load(root, cfg)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	type ctx struct {
+		Title, Description, CurrentURL, CanonicalURL, Robots string
+		Config                                               config.SiteConfig
+		Page                                                 content.Page
+	}
+	page := content.Page{
+		RelativePath: "posts/a/index.md",
+		Title:        "Hello & welcome",
+		URL:          "/posts/a/",
+		Date:         time.Date(2026, 4, 1, 9, 0, 0, 0, time.UTC),
+		Extra:        map[string]any{"image": "cover.png"},
+	}
+	got, err := set.Execute("page", ctx{
+		Title: page.Title, Description: "About things", CurrentURL: page.URL,
+		CanonicalURL: "https://example.com/blog/posts/a/", Config: cfg, Page: page,
+	})
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	for _, want := range []string{
+		`<title>Hello &amp; welcome | Site</title>`,
+		`<meta property="og:type" content="article">`,
+		`<meta property="og:image" content="https://example.com/blog/posts/a/cover.png">`,
+		`<meta name="twitter:card" content="summary_large_image">`,
+		`<meta property="article:published_time" content="2026-04-01T09:00:00Z">`,
+		`"@type":"BlogPosting"`,
+		`"author":{"@type":"Person","name":"Ada"}`,
+		`"headline":"Hello \u0026 welcome"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in\n%s", want, got)
+		}
 	}
 }

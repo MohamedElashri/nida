@@ -37,6 +37,11 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 	if err != nil {
 		return State{}, err
 	}
+	if cfg.UpdatedFromGit {
+		if contentRoot, err := filepath.Abs(filepath.Join(siteRoot, cfg.ContentDir)); err == nil {
+			content.ApplyGitDates(contentRoot, pages)
+		}
+	}
 
 	pathLookup := buildPathLookup(pages, sections, cfg)
 	if cfg.Diagnostics.Enabled {
@@ -49,7 +54,7 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 	if err != nil {
 		return State{}, err
 	}
-	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes}
+	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes, Images: NewImages(siteRoot, cfg)}
 
 	renderedPages, err := markdown.RenderPages(pages, cfg, env)
 	if err != nil {
@@ -476,4 +481,13 @@ func normalizeContentPath(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.TrimPrefix(value, "@/")
 	return strings.TrimPrefix(value, "/")
+}
+
+// NewImages returns the image resolver Markdown rendering uses for image
+// dimensions and responsive variants.
+func NewImages(siteRoot string, cfg config.SiteConfig) markdown.Images {
+	if r := newImageResolver(siteRoot, cfg); r != nil {
+		return r
+	}
+	return nil
 }

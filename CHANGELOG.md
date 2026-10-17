@@ -27,6 +27,13 @@ All notable changes to Nida are documented here.
 * A "Writing Content" docs page and a template function reference.
 * Template shortcodes: `{{< name args >}}` and paired `{{< name >}}...{{< /name >}}`, loaded from `templates/shortcodes/` in the site and themes. Built-in `figure`, `youtube`, and `callout` shortcodes.
 * Themes can omit `config.toml`, and a site using a theme no longer needs its own `base.html`.
+* `nida new` creates content from archetypes (`archetypes/<section>.md` or `default.md`, in the site or a theme).
+* `.Index.Related` ranks pages by shared taxonomy terms. `.Index.Series` returns a post's series with position, previous, and next.
+* `groupByMonth` and `merge` template functions.
+* Built-in `nida-seo` partial for title, description, canonical, Open Graph, Twitter cards, and JSON-LD.
+* `updated_from_git` sets `updated` dates from git history.
+* Section feeds (`generate_feeds = true`) and per-term taxonomy feeds (`feed = true`). Both settings were parsed before but had no effect.
+* Markdown images get `width` and `height` from the image file, and a `srcset` when the image pipeline is enabled.
 
 ### Changed
 * **Breaking:** single newlines in Markdown paragraphs are now soft breaks (a space), matching CommonMark. Set `markdown.hard_wraps = true` to keep the old `<br>` behavior.

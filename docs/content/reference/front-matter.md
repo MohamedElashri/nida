@@ -46,7 +46,11 @@ tags = ["docs"]
 
 `aliases` creates redirect pages for old URLs.
 
-`extra` stores custom metadata, including taxonomy values.
+`extra` stores custom metadata, including taxonomy values. A few `extra` keys have built-in meaning:
+
+- `image`: the social preview image used by the `nida-seo` partial. Relative paths resolve against the page URL, so a bundle can use `image = "cover.png"`.
+- `series`: groups posts into a series for `.Index.Series`.
+- `authors`: names, or tables with `name`, `email`, and `uri`, for feed entries.
 
 Keys Nida does not recognize at the top level are added to `extra`, so `tags = ["go"]` and `[extra] tags = ["go"]` mean the same thing. Zola's `[taxonomies]` table is supported as well: its entries are moved into `extra`, so this works unchanged:
 
@@ -72,6 +76,8 @@ paginate_by = 20
 Useful section fields include:
 
 `title`, `description`, `template`, `page_template`, `sort_by`, `paginate_by`, `paginate_path`, `transparent`, `generate_feeds`, and `extra`.
+
+`generate_feeds = true` writes a feed for the section and its nested sections at `<section>/feed.xml`.
 
 ## Page bundles
 

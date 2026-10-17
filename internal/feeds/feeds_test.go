@@ -10,6 +10,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/site"
+	"github.com/MohamedElashri/nida/internal/taxonomies"
 )
 
 func TestGenerateGolden(t *testing.T) {
@@ -304,5 +305,60 @@ func TestResolveURLUnderSubpath(t *testing.T) {
 		if got := resolveURL(base, "/posts/a/", raw); got != want {
 			t.Errorf("resolveURL(%q) = %q, want %q", raw, got, want)
 		}
+	}
+}
+
+func TestGenerateAllWritesSectionAndTermFeeds(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com/"
+	cfg.Title = "Site"
+	cfg.RSS.Enabled = true
+	cfg.Feed.Limit = 1
+
+	index := site.SiteIndex{
+		AllPages: []content.Page{
+			{Title: "Nested", URL: "/posts/2026/b/", SectionPath: "posts/2026", Date: mustDate(t, "2026-04-13T10:00:00Z")},
+			{Title: "Post", URL: "/posts/a/", SectionPath: "posts", Date: mustDate(t, "2026-04-12T10:00:00Z")},
+			{Title: "Note", URL: "/notes/c/", SectionPath: "notes", Date: mustDate(t, "2026-04-14T10:00:00Z")},
+		},
+		SectionLookup: map[string]content.Section{
+			"posts": {Title: "Posts", SectionPath: "posts", GenerateFeeds: true},
+			"notes": {Title: "Notes", SectionPath: "notes"},
+		},
+		Taxonomies: []taxonomies.Collection{{
+			Name: "tags",
+			Feed: true,
+			Terms: []taxonomies.Term{{
+				Name: "go", URL: "/tags/go/", CanonicalURL: "https://example.com/tags/go/",
+				Items: []content.Page{{Title: "Post", URL: "/posts/a/"}},
+			}},
+		}},
+	}
+
+	outputs, err := GenerateAll(cfg, index)
+	if err != nil {
+		t.Fatalf("GenerateAll returned error: %v", err)
+	}
+	byName := map[string]string{}
+	for _, out := range outputs {
+		byName[out.Filename] = string(out.Content)
+	}
+	for _, name := range []string{"feed.xml", "rss.xml", "posts/feed.xml", "posts/rss.xml", "tags/go/feed.xml", "tags/go/rss.xml"} {
+		if _, ok := byName[name]; !ok {
+			t.Fatalf("missing %s in %v", name, Filenames(cfg, index))
+		}
+	}
+	posts := byName["posts/feed.xml"]
+	if !strings.Contains(posts, "<title>Site - Posts</title>") || !strings.Contains(posts, "Nested") || strings.Contains(posts, "Note") {
+		t.Fatalf("unexpected section feed:\n%s", posts)
+	}
+	if strings.Contains(posts, "<title>Post</title>") {
+		t.Fatalf("section feed should respect feed.limit:\n%s", posts)
+	}
+	if !strings.Contains(byName["posts/feed.xml"], `href="https://example.com/posts/feed.xml" rel="self"`) {
+		t.Fatalf("expected self link for section feed:\n%s", posts)
+	}
+	if len(Filenames(cfg, index)) != len(outputs) {
+		t.Fatalf("Filenames and GenerateAll disagree: %v vs %d outputs", Filenames(cfg, index), len(outputs))
 	}
 }

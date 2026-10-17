@@ -6,6 +6,7 @@ import (
 	stdhtml "html"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -40,7 +41,7 @@ func RenderDocument(source string, cfg config.SiteConfig, env Env) (Result, erro
 	if err != nil {
 		return Result{}, err
 	}
-	result, err := renderMarkdownCore(processed.Source, cfg, env.Lookup)
+	result, err := renderMarkdownCore(processed.Source, cfg, env)
 	if err != nil {
 		return Result{}, err
 	}
@@ -48,12 +49,13 @@ func RenderDocument(source string, cfg config.SiteConfig, env Env) (Result, erro
 	return result, nil
 }
 
-func newEngine(cfg config.SiteConfig, pathLookup PathLookup) goldmark.Markdown {
+func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
+	pathLookup := env.Lookup
 	options := []renderer.Option{
 		renderer.WithNodeRenderers(
 			util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
 			util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup, basePath: config.BasePath(cfg.BaseURL)}, 600),
-			util.Prioritized(&imageRenderer{pathLookup: pathLookup, basePath: config.BasePath(cfg.BaseURL)}, 700),
+			util.Prioritized(&imageRenderer{pathLookup: pathLookup, basePath: config.BasePath(cfg.BaseURL), images: env.Images, page: env.Page}, 700),
 			util.Prioritized(&headingRenderer{anchors: cfg.Markdown.HeadingAnchors}, 500),
 			util.Prioritized(calloutRenderer{}, 500),
 		),
@@ -85,8 +87,8 @@ func newEngine(cfg config.SiteConfig, pathLookup PathLookup) goldmark.Markdown {
 	)
 }
 
-func renderMarkdownCore(source string, cfg config.SiteConfig, pathLookup PathLookup) (Result, error) {
-	engine := newEngine(cfg, pathLookup)
+func renderMarkdownCore(source string, cfg config.SiteConfig, env Env) (Result, error) {
+	engine := newEngine(cfg, env)
 	src := []byte(source)
 	doc := engine.Parser().Parse(text.NewReader(src))
 
@@ -388,6 +390,8 @@ func blockText(source []byte, node ast.Node) string {
 type imageRenderer struct {
 	pathLookup PathLookup
 	basePath   string
+	images     Images
+	page       *content.Page
 }
 
 func (r *imageRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -404,7 +408,19 @@ func (r *imageRenderer) renderImage(w util.BufWriter, source []byte, node ast.No
 	resolved := resolveWithBasePath(dest, r.pathLookup, r.basePath)
 	resolved = safeMarkdownURL(resolved, imageURL)
 	altText := extractTextFromInline(n, source)
-	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(altText)) + `" loading="lazy" decoding="async"`)
+	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(altText)) + `"`)
+	if r.images != nil && resolved != "" {
+		if info, ok := r.images.Image(resolved, r.page); ok {
+			if info.Srcset != "" {
+				_, _ = w.WriteString(` srcset="` + string(util.EscapeHTML([]byte(info.Srcset))) + `"`)
+				if info.Sizes != "" {
+					_, _ = w.WriteString(` sizes="` + string(util.EscapeHTML([]byte(info.Sizes))) + `"`)
+				}
+			}
+			_, _ = w.WriteString(` width="` + strconv.Itoa(info.Width) + `" height="` + strconv.Itoa(info.Height) + `"`)
+		}
+	}
+	_, _ = w.WriteString(` loading="lazy" decoding="async"`)
 	if n.Title != nil {
 		_, _ = w.WriteString(` title="` + string(util.EscapeHTML(n.Title)) + `"`)
 	}

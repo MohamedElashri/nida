@@ -12,7 +12,9 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/MohamedElashri/nida/internal/archetype"
 	"github.com/MohamedElashri/nida/internal/assets"
 	"github.com/MohamedElashri/nida/internal/buildinfo"
 	"github.com/MohamedElashri/nida/internal/config"
@@ -67,6 +69,12 @@ func run(stdout, stderr io.Writer, args []string) int {
 			return writeCommandError(stderr, err)
 		}
 		return runInit(stdout, stderr, opts)
+	case "new":
+		opts, target, err := parseNewFlags(args[1:])
+		if err != nil {
+			return writeCommandError(stderr, err)
+		}
+		return runNew(stdout, stderr, opts, target)
 	case "build":
 		opts, err := parseBuildFlags(args[1:])
 		if err != nil {
@@ -108,6 +116,39 @@ func parseInitFlags(args []string) (initOptions, error) {
 		opts.targetDir = fs.Arg(0)
 	}
 	return opts, nil
+}
+
+func parseNewFlags(args []string) (commandOptions, string, error) {
+	fs := flag.NewFlagSet("new", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	opts := commandOptions{}
+	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
+	fs.StringVar(&opts.siteRoot, "s", ".", "site root")
+	fs.StringVar(&opts.configPath, "config", "", "config file path")
+	fs.StringVar(&opts.configPath, "c", "", "config file path")
+
+	if err := fs.Parse(args); err != nil {
+		return commandOptions{}, "", err
+	}
+	if fs.NArg() != 1 {
+		return commandOptions{}, "", fmt.Errorf("new expects one content path, such as posts/my-post.md")
+	}
+	return opts, fs.Arg(0), nil
+}
+
+func runNew(stdout, stderr io.Writer, opts commandOptions, target string) int {
+	cfg, _, err := loadCommandConfig(opts)
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+	result, err := archetype.Create(opts.siteRoot, cfg, target, time.Now())
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+	colors := colorsFor(stdout)
+	_, _ = fmt.Fprintf(stdout, "%s %s path=%s archetype=%s\n", colors.command("nida new:"), colors.success("created"), result.Path, result.Archetype)
+	return 0
 }
 
 func parseBuildFlags(args []string) (commandOptions, error) {
@@ -259,7 +300,7 @@ func buildSite(opts commandOptions) (buildResult, error) {
 		return buildResult{}, err
 	}
 
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg, state.Index)); err != nil {
 		return buildResult{}, err
 	}
 
@@ -362,12 +403,14 @@ func writeWarnings(stderr io.Writer, warnings []string) {
 func writeUsage(w io.Writer) {
 	_, _ = io.WriteString(w, `Usage:
   nida init [PATH]
+  nida new [-s PATH] [--site PATH] [-c PATH] [--config PATH] CONTENT_PATH
   nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [-p PORT] [--port PORT]
   nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future]
   nida version
 
 Commands:
   init    Create a minimal new site
+  new     Create a content file from an archetype, e.g. posts/my-post.md
   serve   Build, watch, and serve the local site
   build   Build the site into the configured output directory
   version Show nida build and version information

@@ -66,20 +66,17 @@ func buildSiteState(opts commandOptions) (buildResult, error) {
 		return buildResult{}, err
 	}
 
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg, state.Index)); err != nil {
 		return buildResult{}, err
 	}
 
 	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
 }
 
-func buildArtifactList(cfg config.SiteConfig) []output.Artifact {
+func buildArtifactList(cfg config.SiteConfig, index site.SiteIndex) []output.Artifact {
 	artifacts := make([]output.Artifact, 0, 5)
-	if cfg.Feed.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Feed.Filename})
-	}
-	if cfg.RSS.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
+	for _, name := range feeds.Filenames(cfg, index) {
+		artifacts = append(artifacts, output.Artifact{Path: name})
 	}
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
@@ -114,7 +111,7 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	if err != nil {
 		return buildResult{}, err
 	}
-	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes}
+	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes, Images: site.NewImages(opts.siteRoot, cfg)}
 
 	changedByRelPath := make(map[string]content.Page)
 	removedByRelPath := make(map[string]bool)
@@ -149,6 +146,11 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 		page, loadErr := content.LoadPage(contentRoot, fullPath, cfg)
 		if loadErr != nil {
 			return buildResult{}, loadErr
+		}
+		if cfg.UpdatedFromGit {
+			single := []content.Page{page}
+			content.ApplyGitDates(contentRoot, single)
+			page = single[0]
 		}
 
 		pages, err := markdown.RenderPages([]content.Page{page}, cfg, env)
@@ -195,7 +197,7 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 		return buildResult{}, err
 	}
 
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg, index)); err != nil {
 		return buildResult{}, err
 	}
 
@@ -223,8 +225,8 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 		}
 	}
 
-	prevArtifacts := artifactPaths(previous.cfg)
-	nextArtifacts := artifactPaths(next.cfg)
+	prevArtifacts := artifactPaths(previous)
+	nextArtifacts := artifactPaths(next)
 	for _, oldPath := range prevArtifacts {
 		if !slices.Contains(nextArtifacts, oldPath) {
 			if err := output.RemoveFile(opts.siteRoot, previous.cfg, oldPath); err != nil {
@@ -363,8 +365,8 @@ func diffRenderedPages(previous, next []render.Page) ([]render.Page, []string) {
 	return changed, removed
 }
 
-func artifactPaths(cfg config.SiteConfig) []string {
-	artifacts := buildArtifactList(cfg)
+func artifactPaths(result buildResult) []string {
+	artifacts := buildArtifactList(result.cfg, result.state.Index)
 	paths := make([]string, 0, len(artifacts))
 	for _, artifact := range artifacts {
 		paths = append(paths, artifact.Path)
