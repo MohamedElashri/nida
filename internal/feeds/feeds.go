@@ -3,9 +3,7 @@ package feeds
 import (
 	"encoding/xml"
 	"fmt"
-	"html"
 	"net/url"
-	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -14,6 +12,8 @@ import (
 	"github.com/MohamedElashri/nida/internal/buildinfo"
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/frontmatter"
+	"github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/site"
 )
 
@@ -157,7 +157,7 @@ func scopedSpecs(cfg config.SiteConfig, index site.SiteIndex) []spec {
 		specs = append(specs, spec{
 			Title:    scopedTitle(cfg.Title, section.Title),
 			Filename: path + "/",
-			AltURL:   canonicalURL(cfg.BaseURL, "/"+path+"/"),
+			AltURL:   route.CanonicalURL(cfg.BaseURL, "/"+path+"/"),
 			Items:    items,
 		})
 	}
@@ -168,7 +168,6 @@ func scopedSpecs(cfg config.SiteConfig, index site.SiteIndex) []spec {
 		}
 		for _, term := range collection.Terms {
 			items := append([]content.Page(nil), term.Items...)
-			slices.SortStableFunc(items, func(a, b content.Page) int { return b.Date.Compare(a.Date) })
 			specs = append(specs, spec{
 				Title:    scopedTitle(cfg.Title, term.Name),
 				Filename: strings.Trim(term.URL, "/") + "/",
@@ -234,7 +233,7 @@ func renderAtom(cfg config.SiteConfig, feed spec) (*Output, error) {
 	updated := latestUpdated(items)
 	doc := atomDocument{
 		Lang:  cfg.Language,
-		Title: stripHTML(feed.Title),
+		Title: content.PlainText(feed.Title),
 		Generator: &atomGenerator{
 			URI:     "https://github.com/MohamedElashri/nida",
 			Version: buildinfo.Version,
@@ -253,14 +252,14 @@ func renderAtom(cfg config.SiteConfig, feed spec) (*Output, error) {
 	}
 
 	for _, item := range items {
-		link := canonicalURL(cfg.BaseURL, item.URL)
+		link := route.CanonicalURL(cfg.BaseURL, item.URL)
 
 		doc.Entries = append(doc.Entries, atomEntry{
-			Title:      stripHTML(item.Title),
+			Title:      content.PlainText(item.Title),
 			Link:       atomLink{Href: link, Rel: "alternate", Type: "text/html"},
 			ID:         link,
 			Authors:    atomEntryAuthors(item, cfg),
-			Categories: atomEntryCategories(item),
+			Categories: atomEntryCategories(item, cfg),
 			Published:  formatAtomDate(item.Date),
 			Updated:    formatAtomDate(itemUpdated(item)),
 			Summary:    itemSummary(item),
@@ -338,9 +337,9 @@ func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
 	}
 
 	channel := rssChannel{
-		Title:       stripHTML(feed.Title),
+		Title:       content.PlainText(feed.Title),
 		Link:        feed.AltURL,
-		Description: stripHTML(cfg.Description),
+		Description: content.PlainText(cfg.Description),
 		Language:    cfg.Language,
 		Generator:   "Nida " + buildinfo.Version,
 		AtomLink:    rssAtomLink{Href: selfURL, Rel: "self", Type: "application/rss+xml"},
@@ -354,9 +353,9 @@ func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
 	}
 
 	for _, item := range feed.Items {
-		link := canonicalURL(cfg.BaseURL, item.URL)
+		link := route.CanonicalURL(cfg.BaseURL, item.URL)
 		entry := rssItem{
-			Title:       stripHTML(item.Title),
+			Title:       content.PlainText(item.Title),
 			Link:        link,
 			GUID:        rssGUID{IsPermaLink: "true", Value: link},
 			Description: itemSummary(item),
@@ -368,7 +367,7 @@ func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
 		for _, author := range atomEntryAuthors(item, cfg) {
 			entry.Creators = append(entry.Creators, author.Name)
 		}
-		for _, category := range atomEntryCategories(item) {
+		for _, category := range atomEntryCategories(item, cfg) {
 			entry.Categories = append(entry.Categories, category.Term)
 		}
 		channel.Items = append(channel.Items, entry)
@@ -394,10 +393,10 @@ func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
 // itemSummary prefers the author-written description and falls back to the
 // rendered summary so feed readers always get a short teaser.
 func itemSummary(item content.Page) string {
-	if summary := stripHTML(strings.TrimSpace(item.Description)); summary != "" {
+	if summary := content.PlainText(strings.TrimSpace(item.Description)); summary != "" {
 		return summary
 	}
-	return stripHTML(item.Summary)
+	return content.PlainText(item.Summary)
 }
 
 func itemUpdated(item content.Page) time.Time {
@@ -425,74 +424,29 @@ func latestUpdated(items []content.Page) time.Time {
 }
 
 func feedItems(items []content.Page, sections []string, limit int) []content.Page {
-	allowed := map[string]struct{}{}
-	for _, section := range sections {
-		section = rootSectionName(section)
-		if section != "" {
-			allowed[section] = struct{}{}
-		}
-	}
-
-	filtered := items
-	if len(allowed) > 0 {
-		filtered = make([]content.Page, 0, len(items))
-		for _, item := range items {
-			if _, ok := allowed[rootSectionName(item.SectionPath)]; ok {
-				filtered = append(filtered, item)
-			}
-		}
-	}
-
+	filtered := content.FilterByRootSections(items, sections)
 	if limit > 0 && len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
 	return filtered
 }
 
-func rootSectionName(sectionPath string) string {
-	sectionPath = strings.Trim(sectionPath, "/")
-	if sectionPath == "" {
-		return ""
+// atomEntryCategories lists the page's terms for every configured taxonomy,
+// or for tags and categories when none are configured.
+func atomEntryCategories(item content.Page, cfg config.SiteConfig) []atomCategory {
+	names := []string{"tags", "categories"}
+	if len(cfg.Taxonomies) > 0 {
+		names = names[:0]
+		for _, tc := range cfg.Taxonomies {
+			names = append(names, tc.Name)
+		}
 	}
-	if index := strings.Index(sectionPath, "/"); index >= 0 {
-		return sectionPath[:index]
-	}
-	return sectionPath
-}
-
-func atomEntryCategories(item content.Page) []atomCategory {
 	var cats []atomCategory
-
-	// Add tags
-	if raw, ok := item.Extra["tags"]; ok {
-		if tags, ok := raw.([]string); ok {
-			for _, t := range tags {
-				cats = append(cats, atomCategory{Term: strings.TrimSpace(t)})
-			}
-		} else if tagList, ok := raw.([]any); ok {
-			for _, t := range tagList {
-				if s, ok := t.(string); ok {
-					cats = append(cats, atomCategory{Term: strings.TrimSpace(s)})
-				}
-			}
+	for _, name := range names {
+		for _, term := range frontmatter.StringList(item.Extra[name]) {
+			cats = append(cats, atomCategory{Term: term})
 		}
 	}
-
-	// Add categories
-	if raw, ok := item.Extra["categories"]; ok {
-		if categories, ok := raw.([]string); ok {
-			for _, c := range categories {
-				cats = append(cats, atomCategory{Term: strings.TrimSpace(c)})
-			}
-		} else if catList, ok := raw.([]any); ok {
-			for _, c := range catList {
-				if s, ok := c.(string); ok {
-					cats = append(cats, atomCategory{Term: strings.TrimSpace(s)})
-				}
-			}
-		}
-	}
-
 	return cats
 }
 
@@ -510,32 +464,22 @@ func atomEntryAuthors(item content.Page, cfg config.SiteConfig) []atomAuthor {
 
 func parseAuthorsExtra(raw any) []atomAuthor {
 	var out []atomAuthor
-	switch v := raw.(type) {
-	case []string:
-		for _, s := range v {
-			if strings.TrimSpace(s) != "" {
-				out = append(out, atomAuthor{Name: strings.TrimSpace(s)})
-			}
+	for _, name := range frontmatter.StringList(raw) {
+		out = append(out, atomAuthor{Name: name})
+	}
+	list, _ := raw.([]any)
+	for _, item := range list {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
 		}
-	case []any:
-		for _, item := range v {
-			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
-				out = append(out, atomAuthor{Name: strings.TrimSpace(s)})
-			} else if m, ok := item.(map[string]any); ok {
-				author := atomAuthor{}
-				if name, ok := m["name"].(string); ok {
-					author.Name = strings.TrimSpace(name)
-				}
-				if email, ok := m["email"].(string); ok {
-					author.Email = strings.TrimSpace(email)
-				}
-				if uri, ok := m["uri"].(string); ok {
-					author.URI = strings.TrimSpace(uri)
-				}
-				if author.Name != "" {
-					out = append(out, author)
-				}
-			}
+		author := atomAuthor{}
+		author.Name, _ = m["name"].(string)
+		author.Email, _ = m["email"].(string)
+		author.URI, _ = m["uri"].(string)
+		author.Name, author.Email, author.URI = strings.TrimSpace(author.Name), strings.TrimSpace(author.Email), strings.TrimSpace(author.URI)
+		if author.Name != "" {
+			out = append(out, author)
 		}
 	}
 	return out
@@ -553,36 +497,6 @@ func feedURL(baseURL, filename string) (string, error) {
 	return baseURL + filename, nil
 }
 
-func canonicalURL(baseURL, route string) string {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return route
-	}
-	base.Path = path.Join(base.Path, route)
-	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
-	}
-	return base.String()
-}
-
-func stripHTML(markup string) string {
-	var result strings.Builder
-	inTag := false
-	for _, r := range markup {
-		switch r {
-		case '<':
-			inTag = true
-		case '>':
-			inTag = false
-		default:
-			if !inTag {
-				result.WriteRune(r)
-			}
-		}
-	}
-	return strings.Join(strings.Fields(html.UnescapeString(result.String())), " ")
-}
-
 var htmlURLRegex = regexp.MustCompile(`(?i)(href|src)=["']([^"']+)["']`)
 
 // resolveURL makes a page link absolute the way a browser resolves it.
@@ -594,7 +508,7 @@ func resolveURL(baseURL, itemURL, rawURL string) string {
 	if err != nil || rel.Scheme != "" || rel.Host != "" {
 		return rawURL
 	}
-	page, err := url.Parse(canonicalURL(baseURL, itemURL))
+	page, err := url.Parse(route.CanonicalURL(baseURL, itemURL))
 	if err != nil {
 		return rawURL
 	}

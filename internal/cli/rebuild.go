@@ -240,51 +240,8 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 		}
 	}
 
-	if next.cfg.Pipeline.Active() {
-		manifest, pipeErr := pipeline.Process(opts.siteRoot, next.cfg)
-		if pipeErr != nil {
-			return pipeErr
-		}
-		if manifest != nil {
-			if err := pipeline.RewriteOutputFiles(opts.siteRoot, next.cfg, manifest); err != nil {
-				return err
-			}
-		}
-	}
-
-	feedOutputs, err := feeds.GenerateAll(next.cfg, next.state.Index)
-	if err != nil {
+	if err := writeGenerated(opts.siteRoot, next); err != nil {
 		return err
-	}
-	for _, feedOutput := range feedOutputs {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, feedOutput.Filename, feedOutput.Content); err != nil {
-			return err
-		}
-	}
-
-	sitemapOutput, err := sitemap.Generate(next.cfg, next.state, next.pages)
-	if err != nil {
-		return err
-	}
-	if sitemapOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, sitemapOutput.Filename, sitemapOutput.Content); err != nil {
-			return err
-		}
-	}
-	if robotsOutput := robots.Generate(next.cfg); robotsOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, robotsOutput.Filename, robotsOutput.Content); err != nil {
-			return err
-		}
-	}
-
-	searchOutput, err := searchindex.Generate(next.cfg, next.state)
-	if err != nil {
-		return err
-	}
-	if searchOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, searchOutput.Filename, searchOutput.Content); err != nil {
-			return err
-		}
 	}
 
 	if err := assets.SyncChanged(opts.siteRoot, next.cfg, changedStaticPaths(next.cfg, changedPaths)); err != nil {
@@ -294,6 +251,51 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 		return err
 	}
 
+	return nil
+}
+
+// writeGenerated runs the asset pipeline and writes feeds, sitemap, robots,
+// and the search index for a build result.
+func writeGenerated(siteRoot string, result buildResult) error {
+	cfg := result.cfg
+	if cfg.Pipeline.Active() {
+		manifest, err := pipeline.Process(siteRoot, cfg)
+		if err != nil {
+			return err
+		}
+		if manifest != nil {
+			if err := pipeline.RewriteOutputFiles(siteRoot, cfg, manifest); err != nil {
+				return err
+			}
+		}
+	}
+
+	files, err := feeds.GenerateAll(cfg, result.state.Index)
+	if err != nil {
+		return err
+	}
+	sitemapOutput, err := sitemap.Generate(cfg, result.state, result.pages)
+	if err != nil {
+		return err
+	}
+	searchOutput, err := searchindex.Generate(cfg, result.state)
+	if err != nil {
+		return err
+	}
+	if sitemapOutput != nil {
+		files = append(files, feeds.Output{Filename: sitemapOutput.Filename, Content: sitemapOutput.Content})
+	}
+	if robotsOutput := robots.Generate(cfg); robotsOutput != nil {
+		files = append(files, feeds.Output{Filename: robotsOutput.Filename, Content: robotsOutput.Content})
+	}
+	if searchOutput != nil {
+		files = append(files, feeds.Output{Filename: searchOutput.Filename, Content: searchOutput.Content})
+	}
+	for _, file := range files {
+		if err := output.WriteFile(siteRoot, cfg, file.Filename, file.Content); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

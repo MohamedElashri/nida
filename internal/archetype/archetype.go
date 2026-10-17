@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-	"unicode"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
@@ -167,11 +166,5 @@ func findArchetype(absSiteRoot string, cfg config.SiteConfig, section string) (s
 }
 
 func titleFromName(name string) string {
-	words := strings.FieldsFunc(name, func(r rune) bool { return r == '-' || r == '_' || unicode.IsSpace(r) })
-	for i, word := range words {
-		runes := []rune(word)
-		runes[0] = unicode.ToUpper(runes[0])
-		words[i] = string(runes)
-	}
-	return strings.Join(words, " ")
+	return content.TitleCase(strings.NewReplacer("-", " ", "_", " ").Replace(name))
 }

@@ -36,29 +36,28 @@ type Page struct {
 }
 
 type Section struct {
-	SourcePath       string
-	RelativePath     string
-	SectionPath      string
-	BodyMarkdown     string
-	BodyHTML         string
-	TOC              []Heading
-	Title            string
-	Description      string
-	Slug             string
-	URL              string
-	Draft            bool
-	Weight           int
-	Template         string
-	PageTemplate     string
-	PaginateBy       int
-	PaginatePath     string
-	PaginateReversed bool
-	SortBy           string
-	Transparent      bool
-	GenerateFeeds    bool
-	Sections         []Section
-	Pages            []Page
-	Extra            map[string]any
+	SourcePath    string
+	RelativePath  string
+	SectionPath   string
+	BodyMarkdown  string
+	BodyHTML      string
+	TOC           []Heading
+	Title         string
+	Description   string
+	Slug          string
+	URL           string
+	Draft         bool
+	Weight        int
+	Template      string
+	PageTemplate  string
+	PaginateBy    int
+	PaginatePath  string
+	SortBy        string
+	Transparent   bool
+	GenerateFeeds bool
+	Sections      []Section
+	Pages         []Page
+	Extra         map[string]any
 }
 
 // Heading is one entry in a page's table of contents. Children holds the

@@ -61,6 +61,9 @@ All notable changes to Nida are documented here.
 * Nested sections were missing from the search index, and explicit sections had an empty `.URL`.
 * `pipeline.minify_css` and `pipeline.minify_js` were documented but did nothing. CSS and JS assets are now minified (files ending in `.min.css` or `.min.js` are left alone), before fingerprinting so hashes match the served bytes.
 * The asset pipeline only processed the site's `static/` directory. Theme static files are now fingerprinted and minified too, with site files still taking precedence.
+* `minify_html` removed whitespace between inline elements, so `<a>one</a> <b>two</b>` rendered as "onetwo". HTML is now minified with the same library as CSS and JS.
+* Taxonomy terms given as a single string, such as `tags = "go"`, were ignored.
+* Atom and RSS entry categories now come from the configured taxonomies instead of always `tags` and `categories`.
 * `.Page.PrevURL`, `.PrevTitle`, `.NextURL`, and `.NextTitle` were always empty on rendered pages.
 * A site with pages in `content/` but no `content/_index.md` produced no home page.
 * `nida serve` partial rebuilds broke `@/section/_index.md` links.

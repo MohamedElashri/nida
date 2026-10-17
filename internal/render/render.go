@@ -11,6 +11,8 @@ import (
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/datafiles"
 	"github.com/MohamedElashri/nida/internal/parallel"
+	"github.com/MohamedElashri/nida/internal/pipeline"
+	"github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/templates"
 )
@@ -78,7 +80,7 @@ func renderAll(set templates.Set, cfg config.SiteConfig, theme Theme, state site
 
 	if cfg.MinifyHTML {
 		for i := range pages {
-			pages[i].Content = minifyHTML(pages[i].Content)
+			pages[i].Content = pipeline.MinifyHTML(pages[i].Content)
 		}
 	}
 
@@ -123,8 +125,8 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	// Without pagination, render the section once. With it, page 1 of the
 	// paginated output already occupies sectionURL.
 	paginateSection := perPage > 0
-	if !paginateSection && set.Has(templateName) {
-		canonical := canonicalURL(cfg.BaseURL, sectionURL)
+	if !paginateSection {
+		canonical := route.CanonicalURL(cfg.BaseURL, sectionURL)
 
 		ctx := templateContext{
 			Title:        section.Title,
@@ -149,7 +151,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	if out != "" {
 		pages = append(pages, Page{
 			URL:          sectionURL,
-			CanonicalURL: canonicalURL(cfg.BaseURL, sectionURL),
+			CanonicalURL: route.CanonicalURL(cfg.BaseURL, sectionURL),
 			TemplateName: templateName,
 			Title:        section.Title,
 			Content:      out,
@@ -185,7 +187,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 				Description:  section.Description,
 				HomeURL:      "/",
 				CurrentURL:   pageURL,
-				CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+				CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 				Config:       cfg,
 				Theme:        theme,
 				Index:        index,
@@ -202,7 +204,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 			pages = append(pages, Page{
 				URL:          pageURL,
-				CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+				CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 				TemplateName: templateName,
 				Title:        section.Title,
 				Content:      out,
@@ -211,7 +213,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 		// Generate page/1/ redirect to canonical section URL
 		pageOneURL := sectionURL + paginatePath + "/1/"
-		canonicalSectionURL := canonicalURL(cfg.BaseURL, sectionURL)
+		canonicalSectionURL := route.CanonicalURL(cfg.BaseURL, sectionURL)
 		pages = append(pages, Page{
 			URL:          pageOneURL,
 			CanonicalURL: canonicalSectionURL,
@@ -256,7 +258,7 @@ func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index si
 
 func renderPage(set templates.Set, cfg config.SiteConfig, theme Theme, index site.SiteIndex, page content.Page) ([]Page, error) {
 	templateName := pageTemplateName(set, cfg, index, page)
-	canonical := canonicalURL(cfg.BaseURL, page.URL)
+	canonical := route.CanonicalURL(cfg.BaseURL, page.URL)
 
 	ctx := templateContext{
 		Title:        page.Title,
@@ -294,11 +296,11 @@ func renderPage(set templates.Set, cfg config.SiteConfig, theme Theme, index sit
 		if !strings.HasSuffix(aliasURL, "/") {
 			aliasURL += "/"
 		}
-		aliasURL, err = site.NormalizeRoute("alias", aliasURL)
+		aliasURL, err = route.Normalize("alias", aliasURL)
 		if err != nil {
 			return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
 		}
-		targetURL := canonicalURL(cfg.BaseURL, page.URL)
+		targetURL := route.CanonicalURL(cfg.BaseURL, page.URL)
 		out = append(out, Page{
 			URL:          aliasURL,
 			CanonicalURL: targetURL,
@@ -428,7 +430,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 					Description:  term.Name,
 					HomeURL:      "/",
 					CurrentURL:   pageURL,
-					CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+					CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 					Config:       cfg,
 					Theme:        theme,
 					Index:        index,
@@ -446,7 +448,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 
 				pages = append(pages, Page{
 					URL:          pageURL,
-					CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+					CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 					TemplateName: singleTemplate,
 					Title:        term.Name,
 					Content:      rendered,
@@ -491,7 +493,7 @@ func renderTemplate(set templates.Set, name string, data templateContext) (strin
 
 func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme) (Page, error) {
 	title := "Page not found"
-	canonical := canonicalURL(cfg.BaseURL, "/404.html")
+	canonical := route.CanonicalURL(cfg.BaseURL, "/404.html")
 	if set.Has("404") {
 		out, err := renderTemplate(set, "404", templateContext{
 			Title:        title,

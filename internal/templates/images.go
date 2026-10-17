@@ -5,23 +5,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"image"
-	"image/gif"
-	"image/jpeg"
-	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/safepath"
-	"golang.org/x/image/draw"
-)
-
-const (
-	maxResizeDimension = 8192
-	maxResizePixels    = 60_000_000
-	maxImageBytes      = 50 << 20
 )
 
 var resizeMu sync.Mutex
@@ -36,7 +27,7 @@ func resizeImageFunc(siteRoot string, cfg config.SiteConfig) func(string, int, i
 		// keeps two writers from producing the same output file at once.
 		resizeMu.Lock()
 		defer resizeMu.Unlock()
-		if !validResizeDimensions(width, height) {
+		if !pipeline.ValidDimensions(width, height) {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
 
@@ -100,11 +91,11 @@ func resizeImageFunc(siteRoot string, cfg config.SiteConfig) func(string, int, i
 		}
 		defer func() { _ = f.Close() }()
 
-		if info, err := f.Stat(); err != nil || info.Size() > maxImageBytes {
+		if info, err := f.Stat(); err != nil || info.Size() > pipeline.MaxImageBytes {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
 		header, _, err := image.DecodeConfig(f)
-		if err != nil || !validResizeDimensions(header.Width, header.Height) {
+		if err != nil || !pipeline.ValidDimensions(header.Width, header.Height) {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
 		if _, err := f.Seek(0, 0); err != nil {
@@ -116,49 +107,17 @@ func resizeImageFunc(siteRoot string, cfg config.SiteConfig) func(string, int, i
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
 
-		// Resize
-		dstRect := image.Rect(0, 0, width, height)
-		dstImg := image.NewRGBA(dstRect)
-		draw.CatmullRom.Scale(dstImg, dstRect, srcImg, srcImg.Bounds(), draw.Over, nil)
-
-		// Ensure output directory exists
-		if err := os.MkdirAll(outDir, 0o755); err != nil {
-			return "/" + strings.TrimPrefix(srcPath, "/")
-		}
-
-		outFile, err := os.Create(outPath)
-		if err != nil {
-			return "/" + strings.TrimPrefix(srcPath, "/")
-		}
-		defer func() { _ = outFile.Close() }()
-
-		// Encode based on format
+		encoding := "jpeg"
 		switch ext {
 		case ".png":
-			err = png.Encode(outFile, dstImg)
+			encoding = "png"
 		case ".gif":
-			err = gif.Encode(outFile, dstImg, nil)
-		default:
-			quality := cfg.Pipeline.Images.Quality
-			if quality <= 0 || quality > 100 {
-				quality = 85
-			}
-			err = jpeg.Encode(outFile, dstImg, &jpeg.Options{Quality: quality})
+			encoding = "gif"
 		}
-		if err != nil {
+		if err := pipeline.EncodeImage(outPath, pipeline.ScaleImage(srcImg, width, height), encoding, cfg.Pipeline.Images.Quality); err != nil {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}
 
 		return outURL
 	}
-}
-
-func validResizeDimensions(width, height int) bool {
-	if width <= 0 || height <= 0 {
-		return false
-	}
-	if width > maxResizeDimension || height > maxResizeDimension {
-		return false
-	}
-	return width <= maxResizePixels/height
 }

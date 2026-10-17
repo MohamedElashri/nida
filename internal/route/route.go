@@ -1,12 +1,15 @@
-package site
+// Package route validates and builds site URLs.
+package route
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"strings"
 )
 
-func ValidatePathComponent(field, value string) error {
+// ValidateComponent checks a single URL path segment such as a slug.
+func ValidateComponent(field, value string) error {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return fmt.Errorf("%s must not be empty", field)
@@ -23,7 +26,8 @@ func ValidatePathComponent(field, value string) error {
 	return nil
 }
 
-func NormalizeRoute(field, route string) (string, error) {
+// Normalize cleans a route and rejects unsafe characters and segments.
+func Normalize(field, route string) (string, error) {
 	route = strings.TrimSpace(route)
 	if route == "" {
 		return "", fmt.Errorf("%s must not be empty", field)
@@ -68,4 +72,17 @@ func containsUnsafeRouteRune(value string) bool {
 		}
 	}
 	return false
+}
+
+// CanonicalURL joins a route onto baseURL, keeping a trailing slash.
+func CanonicalURL(baseURL, route string) string {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return route
+	}
+	base.Path = path.Join(base.Path, route)
+	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
+		base.Path += "/"
+	}
+	return base.String()
 }

@@ -10,8 +10,10 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/diagnostics"
+	"github.com/MohamedElashri/nida/internal/frontmatter"
 	"github.com/MohamedElashri/nida/internal/i18n"
 	"github.com/MohamedElashri/nida/internal/markdown"
+	routes "github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/shortcodes"
 	"github.com/MohamedElashri/nida/internal/taxonomies"
 )
@@ -23,14 +25,13 @@ type State struct {
 }
 
 type SiteIndex struct {
-	Sections        []content.Section
-	SectionLookup   map[string]content.Section
-	RootSection     *content.Section
-	AllPages        []content.Page
-	Taxonomies      []taxonomies.Collection
-	TaxonomyMap     taxonomies.TaxonomyMap
-	RouteRegistry   map[string]string
-	CanonicalLookup map[string]string
+	Sections      []content.Section
+	SectionLookup map[string]content.Section
+	RootSection   *content.Section
+	AllPages      []content.Page
+	Taxonomies    []taxonomies.Collection
+	TaxonomyMap   taxonomies.TaxonomyMap
+	RouteRegistry map[string]string
 }
 
 func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
@@ -85,22 +86,13 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 
 func BuildIndex(pages []content.Page, sections []content.Section, cfg config.SiteConfig) (SiteIndex, []content.Page, error) {
 	index := SiteIndex{
-		SectionLookup:   map[string]content.Section{},
-		RouteRegistry:   map[string]string{},
-		CanonicalLookup: map[string]string{},
+		SectionLookup: map[string]content.Section{},
+		RouteRegistry: map[string]string{},
 	}
 
 	sortedPages := make([]content.Page, len(pages))
 	copy(sortedPages, pages)
-	slices.SortFunc(sortedPages, func(a, b content.Page) int {
-		if !a.Date.Equal(b.Date) {
-			if a.Date.After(b.Date) {
-				return -1
-			}
-			return 1
-		}
-		return strings.Compare(a.Slug, b.Slug)
-	})
+	slices.SortFunc(sortedPages, content.CompareByDateDesc)
 
 	now := time.Now()
 	filtered := make([]content.Page, 0, len(sortedPages))
@@ -130,7 +122,7 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 
 	sections = slices.Clone(sections)
 	for i := range sections {
-		if url, err := ResolveSectionURL(sections[i], cfg); err == nil {
+		if url, err := ResolveSectionURL(sections[i]); err == nil {
 			sections[i].URL = url
 		}
 	}
@@ -194,12 +186,12 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 }
 
 // ResolveSectionURL returns /<section>/; permalinks apply only to pages.
-func ResolveSectionURL(section content.Section, cfg config.SiteConfig) (string, error) {
+func ResolveSectionURL(section content.Section) (string, error) {
 	route := "/" + section.SectionPath + "/"
 	if section.SectionPath == "" {
 		route = "/"
 	}
-	return NormalizeRoute("section route", route)
+	return routes.Normalize("section route", route)
 }
 
 // BuildPathLookup maps content paths to routes for @/ links.
@@ -219,7 +211,7 @@ func BuildPathLookup(pages []content.Page, sections []content.Section, cfg confi
 	}
 
 	for _, section := range sections {
-		url, err := ResolveSectionURL(section, cfg)
+		url, err := ResolveSectionURL(section)
 		if err != nil {
 			continue
 		}
@@ -237,7 +229,7 @@ func BuildPathLookup(pages []content.Page, sections []content.Section, cfg confi
 
 func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 	sectionPath := page.SectionPath
-	if err := ValidatePathComponent("slug", page.Slug); err != nil {
+	if err := routes.ValidateComponent("slug", page.Slug); err != nil {
 		return "", fmt.Errorf("invalid slug for %q: %w", page.RelativePath, err)
 	}
 
@@ -277,28 +269,12 @@ func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 		route += "/"
 	}
 
-	return NormalizeRoute("page route", route)
+	return routes.Normalize("page route", route)
 }
 
 func extractTaxonomyValue(extra map[string]any, name string) string {
-	if extra == nil {
-		return ""
-	}
-	if value, ok := extra[name]; ok {
-		switch v := value.(type) {
-		case []string:
-			if len(v) > 0 {
-				return content.DeriveSlug(v[0])
-			}
-		case []any:
-			if len(v) > 0 {
-				if s, ok := v[0].(string); ok {
-					return content.DeriveSlug(s)
-				}
-			}
-		case string:
-			return content.DeriveSlug(v)
-		}
+	if values := frontmatter.StringList(extra[name]); len(values) > 0 {
+		return content.DeriveSlug(values[0])
 	}
 	return ""
 }
@@ -309,7 +285,7 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 	for i := range sections {
 		s := &sections[i]
 		pagesInSection := filterPagesForSection(allPages, s.SectionPath)
-		s.Pages = sortPagesBySection(pagesInSection, *s, cfg)
+		s.Pages = sortPagesBySection(pagesInSection, *s)
 		ptrMap[s.SectionPath] = s
 	}
 
@@ -366,19 +342,18 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 		}
 		sortSubsections(topLevelSections)
 		rootSection = content.Section{
-			SectionPath:      "",
-			Title:            "Home",
-			Slug:             "",
-			URL:              "/",
-			PaginateBy:       0,
-			PaginatePath:     "page",
-			PaginateReversed: false,
-			SortBy:           "date",
-			Transparent:      false,
-			GenerateFeeds:    false,
-			Sections:         topLevelSections,
-			Pages:            sortPagesBySection(rootPages, rootSection, cfg),
-			Extra:            map[string]any{},
+			SectionPath:   "",
+			Title:         "Home",
+			Slug:          "",
+			URL:           "/",
+			PaginateBy:    0,
+			PaginatePath:  "page",
+			SortBy:        "date",
+			Transparent:   false,
+			GenerateFeeds: false,
+			Sections:      topLevelSections,
+			Pages:         sortPagesBySection(rootPages, rootSection),
+			Extra:         map[string]any{},
 		}
 		roots = append(roots, rootSection)
 		sectionMap[""] = rootSection
@@ -418,7 +393,7 @@ func filterPagesForSection(pages []content.Page, sectionPath string) []content.P
 	return filtered
 }
 
-func sortPagesBySection(pages []content.Page, section content.Section, cfg config.SiteConfig) []content.Page {
+func sortPagesBySection(pages []content.Page, section content.Section) []content.Page {
 	if len(pages) == 0 {
 		return pages
 	}
@@ -429,50 +404,23 @@ func sortPagesBySection(pages []content.Page, section content.Section, cfg confi
 	}
 
 	switch sortBy {
-	case "date":
-		slices.SortFunc(pages, func(a, b content.Page) int {
-			if !a.Date.Equal(b.Date) {
-				if a.Date.After(b.Date) {
-					return -1
-				}
-				return 1
-			}
-			return strings.Compare(a.Slug, b.Slug)
-		})
 	case "title":
 		slices.SortFunc(pages, func(a, b content.Page) int {
-			if cmp := strings.Compare(a.Title, b.Title); cmp != 0 {
-				return cmp
+			if c := strings.Compare(a.Title, b.Title); c != 0 {
+				return c
 			}
 			return strings.Compare(a.Slug, b.Slug)
 		})
 	case "weight":
 		slices.SortFunc(pages, func(a, b content.Page) int {
 			if a.Weight != b.Weight {
-				if a.Weight < b.Weight {
-					return -1
-				}
-				return 1
+				return a.Weight - b.Weight
 			}
 			return strings.Compare(a.Slug, b.Slug)
 		})
 	case "none":
 	default:
-		slices.SortFunc(pages, func(a, b content.Page) int {
-			if !a.Date.Equal(b.Date) {
-				if a.Date.After(b.Date) {
-					return -1
-				}
-				return 1
-			}
-			return strings.Compare(a.Slug, b.Slug)
-		})
-	}
-
-	if section.PaginateReversed {
-		for i, j := 0, len(pages)-1; i < j; i, j = i+1, j-1 {
-			pages[i], pages[j] = pages[j], pages[i]
-		}
+		slices.SortFunc(pages, content.CompareByDateDesc)
 	}
 
 	return pages

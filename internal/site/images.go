@@ -101,8 +101,8 @@ func (r *imageResolver) Image(src string, page *content.Page) (markdown.ImageInf
 	return info, true
 }
 
-// srcset lists the pipeline variants narrower than the original, which are
-// the ones the pipeline actually writes, followed by the original.
+// srcset lists variants narrower than the original, then the original, using
+// the content preset widths (or pipeline.images.widths without one).
 func (r *imageResolver) srcset(urlPath string, width int) (string, string) {
 	widths := r.cfg.Pipeline.Images.Widths
 	sizes := ""

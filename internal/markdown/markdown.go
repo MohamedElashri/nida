@@ -30,7 +30,8 @@ type Result struct {
 	TOC  []content.Heading
 }
 
-// Render renders a Markdown snippet without template shortcodes.
+// Render renders a Markdown snippet. Template shortcodes are not available;
+// details blocks and rawhtml markers still work.
 func Render(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
 	result, err := RenderDocument(source, cfg, Env{Lookup: pathLookup})
 	return result.HTML, err

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/frontmatter"
 )
 
 // Related returns up to limit pages ranked by shared taxonomy terms, then
@@ -12,7 +13,7 @@ import (
 func (index SiteIndex) Related(page content.Page, limit int) []content.Page {
 	own := map[string]bool{}
 	for _, collection := range index.Taxonomies {
-		for _, term := range termValues(page.Extra[collection.Name]) {
+		for _, term := range frontmatter.StringList(page.Extra[collection.Name]) {
 			own[collection.Name+"\x00"+strings.ToLower(term)] = true
 		}
 	}
@@ -31,7 +32,7 @@ func (index SiteIndex) Related(page content.Page, limit int) []content.Page {
 		}
 		score := 0
 		for _, collection := range index.Taxonomies {
-			for _, term := range termValues(other.Extra[collection.Name]) {
+			for _, term := range frontmatter.StringList(other.Extra[collection.Name]) {
 				if own[collection.Name+"\x00"+strings.ToLower(term)] {
 					score++
 				}
@@ -110,30 +111,9 @@ func (index SiteIndex) Series(page content.Page) *Series {
 // seriesName reads `series`, which may be a string or a single-item list so
 // it also works when series is configured as a taxonomy.
 func seriesName(page content.Page) string {
-	values := termValues(page.Extra["series"])
+	values := frontmatter.StringList(page.Extra["series"])
 	if len(values) == 0 {
 		return ""
 	}
 	return strings.TrimSpace(values[0])
-}
-
-func termValues(value any) []string {
-	switch v := value.(type) {
-	case string:
-		if strings.TrimSpace(v) == "" {
-			return nil
-		}
-		return []string{v}
-	case []string:
-		return v
-	case []any:
-		out := make([]string, 0, len(v))
-		for _, item := range v {
-			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
-	return nil
 }

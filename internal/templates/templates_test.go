@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -23,7 +24,7 @@ func TestLoadFixtureTemplates(t *testing.T) {
 	}
 
 	if !set.Has("index") || !set.Has("post") || !set.Has("page") {
-		t.Fatalf("expected core templates to load, got %v", AvailableNames(set))
+		t.Fatalf("expected core templates to load, got %v", availableNames(set))
 	}
 }
 
@@ -66,10 +67,10 @@ func TestLoadUsesHTMLTemplateFiles(t *testing.T) {
 		t.Fatalf("Load returned error: %v", err)
 	}
 	if !set.Has("index") {
-		t.Fatalf("expected index.html to load, got %v", AvailableNames(set))
+		t.Fatalf("expected index.html to load, got %v", availableNames(set))
 	}
 	if set.Has("ignored") {
-		t.Fatalf("expected non-HTML files to be ignored, got %v", AvailableNames(set))
+		t.Fatalf("expected non-HTML files to be ignored, got %v", availableNames(set))
 	}
 }
 
@@ -219,4 +220,13 @@ func TestLoadAppliesThemeChainThenSiteOverrides(t *testing.T) {
 	if post != "ink-post site-footer" {
 		t.Fatalf("unexpected post output %q", post)
 	}
+}
+
+func availableNames(set Set) []string {
+	names := make([]string, 0, len(set.templates))
+	for name := range set.templates {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }

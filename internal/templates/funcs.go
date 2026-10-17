@@ -3,7 +3,6 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
-	stdhtml "html"
 	"html/template"
 	"net/url"
 	"path"
@@ -199,23 +198,6 @@ func truncate(n int, value string) string {
 	return strings.TrimRightFunc(string(runes[:cut]), unicode.IsSpace) + "…"
 }
 
-// plainify strips HTML tags and collapses whitespace.
-func plainify(value string) string {
-	var b strings.Builder
-	inTag := false
-	for _, r := range value {
-		switch {
-		case r == '<':
-			inTag = true
-		case r == '>':
-			inTag = false
-		case !inTag:
-			b.WriteRune(r)
-		}
-	}
-	return strings.Join(strings.Fields(stdhtml.UnescapeString(b.String())), " ")
-}
-
 // markdownifyFunc renders a short Markdown string, unwrapping a single
 // paragraph so the result can sit inline.
 func markdownifyFunc(cfg config.SiteConfig) func(string) (template.HTML, error) {
@@ -280,15 +262,6 @@ func jsonify(value any) (template.JS, error) {
 		return "", err
 	}
 	return template.JS(data), nil
-}
-
-func titleWords(value string) string {
-	words := strings.Fields(value)
-	for i, word := range words {
-		r, size := utf8.DecodeRuneInString(word)
-		words[i] = string(unicode.ToTitle(r)) + word[size:]
-	}
-	return strings.Join(words, " ")
 }
 
 // syntaxCSSFunc returns highlighting CSS for syntax_theme, or for the style

@@ -14,6 +14,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/frontmatter"
 	"github.com/MohamedElashri/nida/internal/i18n"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/themes"
@@ -219,14 +220,14 @@ func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) t
 		"last":              last,
 		"where":             where,
 		"truncate":          truncate,
-		"plainify":          plainify,
+		"plainify":          content.PlainText,
 		"markdownify":       markdownifyFunc(cfg),
 		"absURL":            absURLFunc(cfg),
 		"relURL":            relURLFunc(cfg),
 		"jsonify":           jsonify,
 		"syntaxCSS":         syntaxCSSFunc(cfg),
 		"upper":             strings.ToUpper,
-		"title":             titleWords,
+		"title":             content.TitleCase,
 		"split":             strings.Split,
 		"urlize":            content.DeriveSlug,
 	}
@@ -241,20 +242,7 @@ func sub(a, b int) int {
 }
 
 func joinValues(value any, sep string) string {
-	switch values := value.(type) {
-	case []string:
-		return strings.Join(values, sep)
-	case []any:
-		parts := make([]string, 0, len(values))
-		for _, item := range values {
-			if s, ok := item.(string); ok {
-				parts = append(parts, s)
-			}
-		}
-		return strings.Join(parts, sep)
-	default:
-		return ""
-	}
+	return strings.Join(frontmatter.StringList(value), sep)
 }
 
 func formatDate(value time.Time) string {
@@ -284,15 +272,6 @@ func defaultString(value, fallback string) string {
 		return fallback
 	}
 	return value
-}
-
-func AvailableNames(set Set) []string {
-	names := make([]string, 0, len(set.templates))
-	for name := range set.templates {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-	return names
 }
 
 func strftimeToGoLayout(format string) string {

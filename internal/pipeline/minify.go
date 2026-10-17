@@ -8,6 +8,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
+	"github.com/tdewolff/minify/v2/html"
 	"github.com/tdewolff/minify/v2/js"
 )
 
@@ -15,6 +16,7 @@ var minifier = func() *minify.M {
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)
 	m.AddFunc("application/javascript", js.Minify)
+	m.Add("text/html", &html.Minifier{KeepDocumentTags: true, KeepEndTags: true, KeepQuotes: true, KeepDefaultAttrVals: true})
 	return m
 }()
 
@@ -40,4 +42,14 @@ func minifyAsset(name string, data []byte, cfg config.PipelineConfig) []byte {
 		return data
 	}
 	return out.Bytes()
+}
+
+// MinifyHTML minifies a rendered page, keeping whitespace that affects
+// layout. On a parse error the page is returned unchanged.
+func MinifyHTML(page string) string {
+	var out bytes.Buffer
+	if err := minifier.Minify("text/html", &out, strings.NewReader(page)); err != nil {
+		return page
+	}
+	return strings.TrimSpace(out.String()) + "\n"
 }

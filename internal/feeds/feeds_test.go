@@ -30,9 +30,6 @@ func TestGenerateGolden(t *testing.T) {
 				BodyHTML:    "<p>Hello feed.</p>\n",
 			},
 		},
-		CanonicalLookup: map[string]string{
-			"/posts/hello-world/": "https://example.com/posts/hello-world/",
-		},
 	}
 
 	out, err := Generate(cfg, index)
@@ -58,10 +55,6 @@ func TestGenerateRespectsLimit(t *testing.T) {
 		AllPages: []content.Page{
 			{Title: "Newest", URL: "/posts/newest/", Date: mustDate(t, "2026-04-13T10:00:00Z")},
 			{Title: "Older", URL: "/posts/older/", Date: mustDate(t, "2026-04-12T10:00:00Z")},
-		},
-		CanonicalLookup: map[string]string{
-			"/posts/newest/": "https://example.com/posts/newest/",
-			"/posts/older/":  "https://example.com/posts/older/",
 		},
 	}
 
@@ -176,9 +169,6 @@ func TestGenerateAllReturnsEnabledFeeds(t *testing.T) {
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{{Title: "Post", URL: "/posts/post/"}},
-		CanonicalLookup: map[string]string{
-			"/posts/post/": "https://example.com/posts/post/",
-		},
 	}
 
 	outputs, err := GenerateAll(cfg, index)

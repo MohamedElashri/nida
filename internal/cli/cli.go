@@ -18,21 +18,16 @@ import (
 	"github.com/MohamedElashri/nida/internal/assets"
 	"github.com/MohamedElashri/nida/internal/buildinfo"
 	"github.com/MohamedElashri/nida/internal/config"
-	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/output"
-	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
-	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/scaffold"
-	"github.com/MohamedElashri/nida/internal/searchindex"
 	"github.com/MohamedElashri/nida/internal/server"
 	"github.com/MohamedElashri/nida/internal/site"
-	"github.com/MohamedElashri/nida/internal/sitemap"
 	"github.com/MohamedElashri/nida/internal/watcher"
 )
 
-// Run executes the narrow public command surface defined in the project plan.
+// Run executes a nida command and returns the process exit code.
 func Run(args []string) int {
 	return run(os.Stdout, os.Stderr, args)
 }
@@ -317,81 +312,23 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 }
 
 func buildSite(opts commandOptions) (buildResult, error) {
-	cfg, path, err := loadCommandConfig(opts)
+	result, err := buildSiteState(opts)
 	if err != nil {
 		return buildResult{}, err
 	}
-
-	state, err := site.Load(opts.siteRoot, cfg)
-	if err != nil {
+	if err := output.WriteSite(opts.siteRoot, result.cfg, result.pages); err != nil {
 		return buildResult{}, err
 	}
-
-	pages, err := render.RenderSite(opts.siteRoot, cfg, state)
-	if err != nil {
+	if err := writeGenerated(opts.siteRoot, result); err != nil {
 		return buildResult{}, err
 	}
-
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg, state.Index)); err != nil {
+	if err := assets.Copy(opts.siteRoot, result.cfg); err != nil {
 		return buildResult{}, err
 	}
-
-	if err := output.WriteSite(opts.siteRoot, cfg, pages); err != nil {
+	if err := assets.CopyPageBundles(opts.siteRoot, result.cfg, bundlePagesFromIndex(result.state.Index)); err != nil {
 		return buildResult{}, err
 	}
-
-	if cfg.Pipeline.Active() {
-		manifest, pipeErr := pipeline.Process(opts.siteRoot, cfg)
-		if pipeErr != nil {
-			return buildResult{}, pipeErr
-		}
-		if manifest != nil {
-			if err := pipeline.RewriteOutputFiles(opts.siteRoot, cfg, manifest); err != nil {
-				return buildResult{}, err
-			}
-		}
-	}
-
-	feedOutputs, err := feeds.GenerateAll(cfg, state.Index)
-	if err != nil {
-		return buildResult{}, err
-	}
-	for _, feedOutput := range feedOutputs {
-		if err := output.WriteFile(opts.siteRoot, cfg, feedOutput.Filename, feedOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	sitemapOutput, err := sitemap.Generate(cfg, state, pages)
-	if err != nil {
-		return buildResult{}, err
-	}
-	if sitemapOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, cfg, sitemapOutput.Filename, sitemapOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	if robotsOutput := robots.Generate(cfg); robotsOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, cfg, robotsOutput.Filename, robotsOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	searchOutput, err := searchindex.Generate(cfg, state)
-	if err != nil {
-		return buildResult{}, err
-	}
-	if searchOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, cfg, searchOutput.Filename, searchOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	if err := assets.Copy(opts.siteRoot, cfg); err != nil {
-		return buildResult{}, err
-	}
-	if err := assets.CopyPageBundles(opts.siteRoot, cfg, bundlePagesFromIndex(state.Index)); err != nil {
-		return buildResult{}, err
-	}
-
-	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
+	return result, nil
 }
 
 func loadCommandConfig(opts commandOptions) (config.SiteConfig, string, error) {

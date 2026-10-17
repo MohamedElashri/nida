@@ -2,8 +2,6 @@ package render
 
 import (
 	"html"
-	"net/url"
-	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -68,30 +66,9 @@ func pageURL(baseURL, paginatePath string, pageNum int) string {
 	return strings.TrimSuffix(baseURL, "/") + "/" + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 }
 
-func latestItems(items []content.Page, mainSections []string, limit int) []content.Page {
-	filtered := make([]content.Page, 0, len(items))
-	allowed := map[string]struct{}{}
-	for _, section := range mainSections {
-		allowed[strings.TrimSpace(section)] = struct{}{}
-	}
-	for _, item := range items {
-		if len(allowed) > 0 {
-			root := rootSectionName(item.SectionPath)
-			if _, ok := allowed[root]; !ok {
-				continue
-			}
-		}
-		filtered = append(filtered, item)
-	}
-	slices.SortFunc(filtered, func(a, b content.Page) int {
-		if !a.Date.Equal(b.Date) {
-			if a.Date.After(b.Date) {
-				return -1
-			}
-			return 1
-		}
-		return strings.Compare(a.Title, b.Title)
-	})
+func latestItems(items []content.Page, sections []string, limit int) []content.Page {
+	filtered := slices.Clone(content.FilterByRootSections(items, sections))
+	slices.SortStableFunc(filtered, content.CompareByDateDesc)
 	if limit > 0 && len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
@@ -124,34 +101,11 @@ func normalizeTemplateName(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func rootSectionName(sectionPath string) string {
-	sectionPath = strings.Trim(sectionPath, "/")
-	if sectionPath == "" {
-		return ""
-	}
-	if index := strings.Index(sectionPath, "/"); index >= 0 {
-		return sectionPath[:index]
-	}
-	return sectionPath
-}
-
 func defaultLanguage(value string) string {
 	if strings.TrimSpace(value) == "" {
 		return "en"
 	}
 	return value
-}
-
-func canonicalURL(baseURL, route string) string {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return route
-	}
-	base.Path = path.Join(base.Path, route)
-	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
-	}
-	return base.String()
 }
 
 func joinEditURL(prefix, relativePath string) string {
