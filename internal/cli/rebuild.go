@@ -240,7 +240,7 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 		}
 	}
 
-	if next.cfg.Pipeline.Fingerprint || next.cfg.Pipeline.Images.Enabled || next.cfg.Pipeline.SCSS.Enabled {
+	if next.cfg.Pipeline.Active() {
 		manifest, pipeErr := pipeline.Process(opts.siteRoot, next.cfg)
 		if pipeErr != nil {
 			return pipeErr

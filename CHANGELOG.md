@@ -54,6 +54,8 @@ All notable changes to Nida are documented here.
 ### Fixed
 * `@/section/_index.md` links resolved through page permalink patterns and could produce URLs like `/posts/{slug}/`. Section links and `.Section.URL` now use the route the section renders at.
 * Nested sections were missing from the search index, and explicit sections had an empty `.URL`.
+* `pipeline.minify_css` and `pipeline.minify_js` were documented but did nothing. CSS and JS assets are now minified (files ending in `.min.css` or `.min.js` are left alone), before fingerprinting so hashes match the served bytes.
+* The asset pipeline only processed the site's `static/` directory. Theme static files are now fingerprinted and minified too, with site files still taking precedence.
 * Theme inheritance now applies to templates, partials, static files, and SCSS. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
 * A parent theme's `[extra]` values no longer override its child theme's values.
 * Site partials and `base.html` now override theme versions as documented. Before, the order depended on file paths.

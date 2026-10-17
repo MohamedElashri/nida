@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/MohamedElashri/nida/internal/config"
@@ -110,5 +111,62 @@ func TestResizeVariantsWritesSmallerWidthsOnly(t *testing.T) {
 	}
 	if err := ResizeVariants(notImage, out, cfg); err != nil {
 		t.Fatalf("undecodable files should be skipped, got %v", err)
+	}
+}
+
+func TestProcessMinifiesAndFingerprintsThemeAndSiteAssets(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"static/site.css":               "body {\n  color : red ;\n}\n/* comment */\n",
+		"themes/t/static/theme.js":      "// comment\nfunction greet ( name ) {\n  return 'hi ' + name ;\n}\n",
+		"themes/t/static/site.css":      "body { color: blue; }",
+		"themes/t/static/vendor.min.js": "keep  this",
+	}
+	for rel, body := range files {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := config.DefaultSiteConfig()
+	cfg.Theme = "t"
+	cfg.Pipeline.MinifyCSS = true
+	cfg.Pipeline.MinifyJS = true
+
+	if _, err := Process(root, cfg); err != nil {
+		t.Fatalf("Process returned error: %v", err)
+	}
+	read := func(rel string) string {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(root, "public", filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	if got := read("site.css"); got != "body{color:red}" {
+		t.Fatalf("site CSS should win and be minified, got %q", got)
+	}
+	if got := read("theme.js"); strings.Contains(got, "comment") || strings.Contains(got, "\n  ") {
+		t.Fatalf("theme JS should be minified, got %q", got)
+	}
+	if got := read("vendor.min.js"); got != "keep  this" {
+		t.Fatalf(".min.js files must be left alone, got %q", got)
+	}
+
+	cfg.Pipeline.Fingerprint = true
+	manifest, err := Process(root, cfg)
+	if err != nil {
+		t.Fatalf("Process returned error: %v", err)
+	}
+	fp, ok := manifest["theme.js"]
+	if !ok || fp == "theme.js" {
+		t.Fatalf("expected fingerprinted theme asset, manifest=%v", manifest)
+	}
+	if got := read(fp); strings.Contains(got, "comment") {
+		t.Fatalf("fingerprinted file should hold minified bytes, got %q", got)
 	}
 }

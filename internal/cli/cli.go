@@ -340,7 +340,7 @@ func buildSite(opts commandOptions) (buildResult, error) {
 		return buildResult{}, err
 	}
 
-	if cfg.Pipeline.Fingerprint || cfg.Pipeline.Images.Enabled || cfg.Pipeline.SCSS.Enabled {
+	if cfg.Pipeline.Active() {
 		manifest, pipeErr := pipeline.Process(opts.siteRoot, cfg)
 		if pipeErr != nil {
 			return buildResult{}, pipeErr

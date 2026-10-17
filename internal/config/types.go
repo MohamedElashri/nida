@@ -131,6 +131,11 @@ type PipelineConfig struct {
 	SCSS        SCSSConfig  `toml:"scss"`
 }
 
+// Active reports whether any asset pipeline step is enabled.
+func (p PipelineConfig) Active() bool {
+	return p.Fingerprint || p.MinifyCSS || p.MinifyJS || p.Images.Enabled || p.SCSS.Enabled
+}
+
 type ImageConfig struct {
 	Enabled bool                         `toml:"enabled"`
 	Widths  []int                        `toml:"widths"`

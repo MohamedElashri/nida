@@ -21,7 +21,12 @@ func fingerprintFile(srcPath, relPath, outputRoot string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read file: %w", err)
 	}
+	return fingerprintData(data, relPath, outputRoot)
+}
 
+// fingerprintData writes data under a content-hashed name and returns that
+// name relative to the output root.
+func fingerprintData(data []byte, relPath, outputRoot string) (string, error) {
 	hash := sha256.Sum256(data)
 	hashStr := hex.EncodeToString(hash[:])[:8]
 
