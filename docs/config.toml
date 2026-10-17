@@ -1,20 +1,25 @@
 
 base_url = "https://melashri.net/nida/"
 title = "Nida Docs"
-description = "A small Go static site generator for calm, predictable publishing."
+description = "A small, fast Go static site generator for blogs, personal sites, and documentation."
 language = "en"
 author = "Mohamed Elashri"
 
 content_dir = "content"
-template_dir = "templates"
 static_dir = "static"
 output_dir = "public"
+theme = "nida-docs"
 
 paginate = 50
 drafts = false
 syntax_theme = "github"
-minify_html = false
+minify_html = true
 edit_url = "https://github.com/MohamedElashri/nida/edit/main/docs/content/"
+updated_from_git = true
+
+[markdown]
+heading_anchors = true
+math = true
 
 [feed]
 enabled = false
@@ -47,9 +52,7 @@ enabled = true
 filename = "search_index.en.js"
 
 [pipeline]
-fingerprint = false
-minify_css = false
-minify_js = false
+fingerprint = true
+minify_css = true
+minify_js = true
 
-[extra]
-repo_url = "https://github.com/MohamedElashri/nida"

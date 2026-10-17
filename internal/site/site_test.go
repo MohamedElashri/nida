@@ -309,3 +309,46 @@ func TestIndexGetPageAndSection(t *testing.T) {
 		t.Fatalf("unexpected root section %+v", section)
 	}
 }
+
+func TestNavInterleavesPagesAndSectionsByWeight(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Permalinks = config.PermalinkConfig{}
+	pages := []content.Page{
+		{RelativePath: "guide/intro.md", Slug: "intro", Title: "Intro", SectionPath: "guide", Weight: 1},
+		{RelativePath: "guide/later.md", Slug: "later", Title: "Later", SectionPath: "guide", Weight: 30},
+		{RelativePath: "guide/deep/a.md", Slug: "a", Title: "Deep A", SectionPath: "guide/deep", Weight: 1},
+	}
+	sections := []content.Section{
+		{SectionPath: "", Title: "Home", SortBy: "weight"},
+		{SectionPath: "guide", Title: "Guide", SortBy: "weight", Weight: 1},
+		{SectionPath: "guide/deep", Title: "Deep", SortBy: "weight", Weight: 20},
+	}
+	index, _, err := BuildIndex(pages, sections, cfg)
+	if err != nil {
+		t.Fatalf("BuildIndex returned error: %v", err)
+	}
+
+	guide := index.Nav("guide")
+	var titles []string
+	for _, entry := range guide {
+		titles = append(titles, entry.Title)
+	}
+	if strings.Join(titles, ",") != "Intro,Deep,Later" {
+		t.Fatalf("unexpected order %v", titles)
+	}
+	if !guide[1].IsSection() || guide[1].URL != "/guide/deep/" || len(guide[1].Children) != 1 {
+		t.Fatalf("unexpected section entry %+v", guide[1])
+	}
+
+	n := index.Neighbors("", "/guide/deep/")
+	if n.Prev == nil || n.Prev.Title != "Intro" || n.Next == nil || n.Next.Title != "Deep A" {
+		t.Fatalf("unexpected neighbors %+v %+v", n.Prev, n.Next)
+	}
+	if n := index.Neighbors("", "/guide/"); n.Prev != nil || n.Next == nil || n.Next.Title != "Intro" {
+		t.Fatalf("unexpected neighbors at the start: %+v", n)
+	}
+	if n := index.Neighbors("", "/guide/later/"); n.Next != nil {
+		t.Fatalf("expected no next entry at the end, got %+v", n.Next)
+	}
+}

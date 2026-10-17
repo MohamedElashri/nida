@@ -1,0 +1,33 @@
+{{- define "doc-footer" -}}
+<footer class="doc-footer">
+  {{- if or .EditURL (not .Page.Updated.IsZero) }}
+  <div class="doc-meta">
+    {{- with .EditURL }}
+    <a class="edit-link" href="{{ . }}">{{ template "icon" "edit" }}{{ t "edit_page" }}</a>
+    {{- end }}
+    {{- if not .Page.Updated.IsZero }}
+    <span class="last-updated">{{ t "last_updated" }} <time datetime="{{ .Page.Updated.Format "2006-01-02" }}">{{ formatDateWith .Page.Updated "%B %d, %Y" }}</time></span>
+    {{- end }}
+  </div>
+  {{- end }}
+  {{- $root := default (dig .Theme.Extra "docs_root") "" -}}
+  {{- with .Index.Neighbors $root .CurrentURL }}
+  {{- if or .Prev .Next }}
+  <nav class="pager" aria-label="{{ t "pagination" }}">
+    {{- with .Prev }}
+    <a class="pager-link pager-prev" href="{{ $.BasePath }}{{ .URL }}" rel="prev">
+      <span class="pager-label">{{ template "icon" "arrow-left" }}{{ t "previous" }}</span>
+      <span class="pager-title">{{ .Title }}</span>
+    </a>
+    {{- end }}
+    {{- with .Next }}
+    <a class="pager-link pager-next" href="{{ $.BasePath }}{{ .URL }}" rel="next">
+      <span class="pager-label">{{ t "next" }}{{ template "icon" "arrow-right" }}</span>
+      <span class="pager-title">{{ .Title }}</span>
+    </a>
+    {{- end }}
+  </nav>
+  {{- end }}
+  {{- end }}
+</footer>
+{{- end -}}

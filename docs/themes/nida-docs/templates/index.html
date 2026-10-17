@@ -1,0 +1,49 @@
+{{- define "index" -}}{{ template "base" . }}{{- end }}
+{{- define "content" -}}
+{{- $home := dig .Data "home" -}}
+<main id="main" class="home">
+  <section class="hero">
+    <div class="hero-text">
+      {{- with dig .Data "home.eyebrow" }}<p class="eyebrow">{{ . }}</p>{{ end }}
+      <h1 class="hero-title">{{ with dig .Data "home.title" }}{{ markdownify . }}{{ else }}{{ .Config.Title }}{{ end }}</h1>
+      <p class="hero-lede">{{ with dig .Data "home.tagline" }}{{ . }}{{ else }}{{ .Config.Description }}{{ end }}</p>
+      <div class="hero-actions">
+        {{- range dig .Data "home.actions" }}
+        <a class="button {{ if .primary }}button-primary{{ else }}button-secondary{{ end }}" href="{{ if hasPrefix .url "/" }}{{ $.BasePath }}{{ end }}{{ .url }}">{{ .name }}</a>
+        {{- end }}
+      </div>
+      {{- with dig .Data "project.install" }}
+      <div class="install" data-copy-root>
+        <span class="install-prompt" aria-hidden="true">$</span>
+        <code class="install-command" data-copy-source>{{ . }}</code>
+        <button class="icon-button copy-button" type="button" data-copy aria-label="{{ t "copy" }}">{{ template "icon" "copy" }}</button>
+      </div>
+      {{- end }}
+    </div>
+    {{- with dig .Data "home.sample" }}
+    <div class="hero-sample">
+      <div class="window">
+        <div class="window-bar"><span></span><span></span><span></span><p>{{ dig $.Data "home.sample_title" }}</p></div>
+        <div class="window-body">{{ markdownify . }}</div>
+      </div>
+    </div>
+    {{- end }}
+  </section>
+
+  {{- with dig .Data "home.features" }}
+  <section class="features" aria-label="{{ t "features" }}">
+    {{- range . }}
+    <a class="feature" href="{{ $.BasePath }}{{ .url }}">
+      <span class="feature-icon">{{ template "icon" .icon }}</span>
+      <span class="feature-title">{{ .title }}</span>
+      <span class="feature-text">{{ .text }}</span>
+    </a>
+    {{- end }}
+  </section>
+  {{- end }}
+
+  {{- with .Section.BodyHTML }}
+  <section class="home-body prose">{{ unsafeHTML . }}</section>
+  {{- end }}
+</main>
+{{- end }}

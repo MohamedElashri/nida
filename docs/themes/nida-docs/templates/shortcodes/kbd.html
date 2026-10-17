@@ -1,0 +1,1 @@
+{{- range $i, $key := split (.Get 0) "+" }}{{ if $i }}<span class="kbd-plus">+</span>{{ end }}<kbd>{{ trimSpace $key }}</kbd>{{ end -}}

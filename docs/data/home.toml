@@ -1,0 +1,68 @@
+# Content for the docs home page.
+eyebrow = "Static site generator"
+title = "Publish Markdown, *without the ceremony*."
+tagline = "Nida is a small, fast Go static site generator for blogs, personal sites, and documentation. One binary, plain templates, and output you can host anywhere."
+sample_title = "content/posts/hello.md"
+sample = '''
+```markdown
++++
+title = "Hello, Nida"
+date = 2026-10-17
+tags = ["intro"]
++++
+
+A short post with a summary.
+
+<!-- more -->
+
+> [!TIP]
+> Run `nida serve` and edit; the browser reloads.
+
+{{< figure src="cover.png" caption="Bundles keep images next to posts." >}}
+```
+'''
+
+[[actions]]
+name = "Get started"
+url = "/guide/getting-started/"
+primary = true
+
+[[actions]]
+name = "Browse the reference"
+url = "/reference/"
+
+[[features]]
+icon = "pen"
+title = "Writing that scales"
+text = "Summaries, tables of contents, callouts, code titles and line highlights, math, Mermaid, and shortcodes."
+url = "/guide/writing/"
+
+[[features]]
+icon = "layers"
+title = "Themes you can extend"
+text = "Go templates with inheritance. Override any template, partial, shortcode, asset, or translation from your site."
+url = "/guide/themes/"
+
+[[features]]
+icon = "rss"
+title = "Blog essentials"
+text = "Tags, series, related posts, archives, Atom and RSS feeds, and SEO metadata built in."
+url = "/guide/features/"
+
+[[features]]
+icon = "bolt"
+title = "Fast and dependency-free"
+text = "A single Go binary that renders in parallel, with live reload and incremental rebuilds while you write."
+url = "/reference/cli/"
+
+[[features]]
+icon = "check"
+title = "Catches mistakes early"
+text = "nida check finds broken links, missing images, template errors, and config typos before you deploy."
+url = "/reference/cli/#check"
+
+[[features]]
+icon = "globe"
+title = "Made for every language"
+text = "Right-to-left layouts, Unicode slugs, and translatable theme strings, used by sites written in Arabic."
+url = "/reference/config/#translations"

@@ -1,0 +1,14 @@
+{{- define "404" -}}{{ template "base" . }}{{- end }}
+{{- define "content" -}}
+<main class="not-found" id="main">
+  <p class="eyebrow">404</p>
+  <h1>{{ t "not_found_title" }}</h1>
+  <p>{{ t "not_found_text" }}</p>
+  <div class="hero-actions">
+    <a class="button button-primary" href="{{ .BasePath }}/">{{ t "back_home" }}</a>
+    {{- if .Config.Search.Enabled }}
+    <button class="button button-secondary" type="button" data-search-open>{{ template "icon" "search" }}{{ t "search_placeholder" }}</button>
+    {{- end }}
+  </div>
+</main>
+{{- end }}

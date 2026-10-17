@@ -1,0 +1,19 @@
+{{- define "toc" -}}
+{{- $toc := .Page.TOC -}}
+{{- if not $toc }}{{ $toc = .Section.TOC }}{{ end -}}
+{{- if $toc }}
+<nav class="toc" data-toc>
+  <p class="toc-title">{{ t "on_this_page" }}</p>
+  <ul>
+    {{- range $toc }}
+    <li><a href="#{{ .ID }}">{{ .Title }}</a>
+      {{- with .Children }}
+      <ul>{{ range . }}<li><a href="#{{ .ID }}">{{ .Title }}</a></li>{{ end }}</ul>
+      {{- end }}
+    </li>
+    {{- end }}
+  </ul>
+  <a class="toc-top" href="#main">{{ t "back_to_top" }}</a>
+</nav>
+{{- end }}
+{{- end -}}
