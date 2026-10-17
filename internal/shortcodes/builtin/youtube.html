@@ -1,0 +1,4 @@
+{{- $id := default (.Get "id") (.Get 0) -}}
+<div class="embed embed-youtube">
+<iframe src="https://www.youtube-nocookie.com/embed/{{ $id }}{{ with .Get "start" }}?start={{ . }}{{ end }}" title="{{ default (.Get "title") "YouTube video" }}" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>

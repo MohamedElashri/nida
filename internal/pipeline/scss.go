@@ -9,6 +9,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
 
 func compileSCSS(siteRoot, staticRoot, outputRoot string, cfg config.SiteConfig) error {
@@ -19,18 +20,11 @@ func compileSCSS(siteRoot, staticRoot, outputRoot string, cfg config.SiteConfig)
 
 	scssRoots := []string{}
 
-	if cfg.Theme != "" {
-		themeSCSSRoot, err := safepath.Join(siteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "scss"))
-		if err != nil {
-			return fmt.Errorf("resolve theme scss dir: %w", err)
-		}
-		if err := safepath.EnsureNoSymlinkPath(siteRoot, themeSCSSRoot); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("check theme scss dir: %w", err)
-		}
-		if _, err := os.Stat(themeSCSSRoot); err == nil {
-			scssRoots = append(scssRoots, themeSCSSRoot)
-		}
+	themeSCSS, err := themes.Dirs(siteRoot, cfg, "scss")
+	if err != nil {
+		return err
 	}
+	scssRoots = append(scssRoots, themeSCSS...)
 
 	siteSCSSRoot, err := safepath.Join(staticRoot, entryDir)
 	if err != nil {

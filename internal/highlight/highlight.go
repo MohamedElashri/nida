@@ -13,7 +13,21 @@ import (
 
 const DefaultTheme = "github"
 
+// Options are per-block rendering settings taken from a fenced code block's
+// info string.
+type Options struct {
+	// HighlightLines lists inclusive [start, end] line ranges to emphasize.
+	HighlightLines [][2]int
+	LineNumbers    bool
+	// LineStart is the number shown for the first line. Zero means 1.
+	LineStart int
+}
+
 func Render(code, language, theme string) (string, error) {
+	return RenderWithOptions(code, language, theme, Options{})
+}
+
+func RenderWithOptions(code, language, theme string, opts Options) (string, error) {
 	language = normalizeLanguage(language)
 	if language == "" {
 		return renderPlain(code, ""), nil
@@ -37,11 +51,18 @@ func Render(code, language, theme string) (string, error) {
 		style = styles.Fallback
 	}
 
-	formatter := chromahtml.New(
+	formatterOpts := []chromahtml.Option{
 		chromahtml.WithClasses(true),
 		chromahtml.ClassPrefix("z-"),
-		chromahtml.WithLineNumbers(false),
-	)
+		chromahtml.WithLineNumbers(opts.LineNumbers),
+	}
+	if len(opts.HighlightLines) > 0 {
+		formatterOpts = append(formatterOpts, chromahtml.HighlightLines(opts.HighlightLines))
+	}
+	if opts.LineStart > 0 {
+		formatterOpts = append(formatterOpts, chromahtml.BaseLineNumber(opts.LineStart))
+	}
+	formatter := chromahtml.New(formatterOpts...)
 
 	var buf bytes.Buffer
 	if err := formatter.Format(&buf, style, iterator); err != nil {

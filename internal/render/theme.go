@@ -10,15 +10,16 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
 
 func buildTheme(siteRoot string, cfg config.SiteConfig) (Theme, error) {
-	chain, err := loadThemeChain(siteRoot, cfg)
+	chain, err := themes.Chain(siteRoot, cfg)
 	if err != nil {
 		return Theme{}, fmt.Errorf("load theme chain: %w", err)
 	}
 
-	mergedExtra := mergeThemeExtra(chain, cfg.Extra)
+	mergedExtra := themes.MergeExtra(chain, cfg.Extra)
 
 	inlineCSS, err := loadInlineCSS(siteRoot, cfg)
 	if err != nil && !os.IsNotExist(err) {

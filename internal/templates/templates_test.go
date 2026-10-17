@@ -176,3 +176,47 @@ func executeTemplateTextWithSiteRoot(text string, data any, siteRoot string, cfg
 	}
 	return b.String(), nil
 }
+
+func TestLoadAppliesThemeChainThenSiteOverrides(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("themes/base/config.toml", "")
+	write("themes/base/templates/base.html", `{{ define "footer" }}base-footer{{ end }}{{ define "brand" }}base-brand{{ end }}`)
+	write("themes/base/templates/page.html", `{{ define "page" }}base-page {{ template "brand" }} {{ template "footer" }}{{ end }}`)
+	write("themes/base/templates/post.html", `{{ define "post" }}base-post{{ end }}`)
+	write("themes/ink/config.toml", `extends = "base"`)
+	write("themes/ink/templates/partials/brand.html", `{{ define "brand" }}ink-brand{{ end }}`)
+	write("themes/ink/templates/post.html", `{{ define "post" }}ink-post {{ template "footer" }}{{ end }}`)
+	write("templates/partials/footer.html", `{{ define "footer" }}site-footer{{ end }}`)
+
+	cfg := config.DefaultSiteConfig()
+	cfg.Theme = "ink"
+	set, err := Load(root, cfg)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	page, err := set.Execute("page", nil)
+	if err != nil {
+		t.Fatalf("execute page: %v", err)
+	}
+	if page != "base-page ink-brand site-footer" {
+		t.Fatalf("unexpected page output %q", page)
+	}
+	post, err := set.Execute("post", nil)
+	if err != nil {
+		t.Fatalf("execute post: %v", err)
+	}
+	if post != "ink-post site-footer" {
+		t.Fatalf("unexpected post output %q", post)
+	}
+}

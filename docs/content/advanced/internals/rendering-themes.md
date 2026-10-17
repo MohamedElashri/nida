@@ -11,10 +11,11 @@ Rendering is split between `internal/templates` and `internal/render`.
 
 ## Template Loading
 
-Templates are loaded from:
+Templates are loaded from, in order:
 
-1. selected theme templates, when `theme` is set
-2. site templates
+1. templates of each parent theme the selected theme `extends`, root ancestor first
+2. selected theme templates, when `theme` is set
+3. site templates
 
 `base.html` and templates in nested directories are treated as shared templates. Top-level `.html` files become renderable templates by filename stem.
 
@@ -24,13 +25,13 @@ For example, `post.html` registers the template name `post` and should contain:
 {{ define "post" }}...{{ end }}
 ```
 
-The site template directory must contain `base.html`. Rendering also requires `index`, `post`, and `page`.
+At least one template root must contain `base.html`, so a site can rely entirely on its theme. Rendering also requires `index`, `post`, and `page`. Files under `templates/shortcodes/` are not page templates; `internal/shortcodes` loads them.
 
 ## Override Behavior
 
-Template roots are walked in order, and later roots replace earlier entries with the same top-level name. This gives site templates precedence over theme templates.
+Template roots are walked in order, and later roots replace earlier entries with the same top-level name. This gives site templates precedence over theme templates, and a child theme precedence over its parent.
 
-Shared templates are parsed into every renderable template, so common definitions can live in `base.html` or nested partial files.
+Shared templates are parsed into every renderable template, so common definitions can live in `base.html` or nested partial files. They are parsed root by root in the same order, so a site `templates/partials/footer.html` that defines `footer` replaces the theme's `footer` definition.
 
 ## Template Helpers
 
@@ -105,7 +106,7 @@ extends = "base"
 
 The resolver walks parent themes first and rejects circular inheritance.
 
-Theme `[extra]` values are merged with site `[extra]`. The implementation currently applies child and parent values as a shallow map merge, then site values override theme values. If you need nested merge behavior, add tests because theme-facing fields depend on this map.
+Theme `[extra]` values are merged with site `[extra]` as a shallow map merge: parent theme values first, then child theme values, then site values, so the most specific value wins. If you need nested merge behavior, add tests because theme-facing fields depend on this map.
 
 ## Theme Data
 

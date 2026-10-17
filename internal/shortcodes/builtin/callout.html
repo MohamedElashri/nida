@@ -1,0 +1,4 @@
+{{- $type := lower (default (.Get "type") (default (.Get 0) "note")) -}}
+<div class="callout callout-{{ $type }}" data-callout="{{ $type }}">
+<p class="callout-title">{{ default (.Get "title") (title $type) }}</p>
+{{ .InnerHTML }}</div>

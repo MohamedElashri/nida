@@ -10,6 +10,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
 
 type BundlePage struct {
@@ -41,15 +42,14 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 	}
 	staticRoots := []string{staticRoot}
 
-	if cfg.Theme != "" {
-		themeRoot, err := safepath.Join(absSiteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme))
-		if err != nil {
-			return fmt.Errorf("resolve theme dir: %w", err)
-		}
-		themeStaticRoot := filepath.Join(themeRoot, "static")
-		if _, err := os.Stat(themeStaticRoot); err == nil {
-			staticRoots = append(staticRoots, themeStaticRoot)
-		}
+	// Copying skips files that already exist, so the site comes first, then
+	// the selected theme, then the themes it extends.
+	themeStatic, err := themes.Dirs(absSiteRoot, cfg, "static")
+	if err != nil {
+		return err
+	}
+	for i := len(themeStatic) - 1; i >= 0; i-- {
+		staticRoots = append(staticRoots, themeStatic[i])
 	}
 
 	for _, staticRoot := range staticRoots {
@@ -131,15 +131,14 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 		return fmt.Errorf("check static dir: %w", err)
 	}
 	staticRoots := []string{staticRoot}
-	if cfg.Theme != "" {
-		themeRoot, err := safepath.Join(absSiteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme))
-		if err != nil {
-			return fmt.Errorf("resolve theme dir: %w", err)
-		}
-		themeStaticRoot := filepath.Join(themeRoot, "static")
-		if _, err := os.Stat(themeStaticRoot); err == nil {
-			staticRoots = append(staticRoots, themeStaticRoot)
-		}
+	// Copying skips files that already exist, so the site comes first, then
+	// the selected theme, then the themes it extends.
+	themeStatic, err := themes.Dirs(absSiteRoot, cfg, "static")
+	if err != nil {
+		return err
+	}
+	for i := len(themeStatic) - 1; i >= 0; i-- {
+		staticRoots = append(staticRoots, themeStatic[i])
 	}
 
 	for _, staticRoot := range staticRoots {

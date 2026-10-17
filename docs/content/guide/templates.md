@@ -85,4 +85,56 @@ For processed responsive images, `imageSrcset` uses `pipeline.images.widths`, wh
   alt="A writing desk">
 ```
 
+## Page fields
+
+Besides front matter values, `.Page` has fields Nida computes:
+
+| Field | Description |
+| --- | --- |
+| `.BodyHTML` | Rendered Markdown. |
+| `.Summary` | HTML before `<!-- more -->`, or the first paragraph. See [Writing Content](@/guide/writing.md#summaries). |
+| `.TOC` | Nested headings. See [Writing Content](@/guide/writing.md#table-of-contents). |
+| `.WordCount`, `.ReadingTime` | Word count and estimated minutes to read. |
+| `.URL` | Site-relative URL. Prefix with `.BasePath` in links. |
+| `.PrevURL`, `.PrevTitle`, `.NextURL`, `.NextTitle` | Neighbors within the section. |
+| `.Extra` | Custom front matter values. |
+
+## Looking up content
+
+`.Index` has two lookup methods. Both return nothing when the path doesn't exist, so wrap them in `with`:
+
+```html
+{{ with .Index.GetPage "pages/about.md" }}<a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a>{{ end }}
+{{ with .Index.GetSection "posts" }}{{ len .Pages }} posts{{ end }}
+```
+
+`GetPage` takes a content path, with or without `.md` or a leading `@/`. `GetSection` takes a section path such as `posts`, or an empty string for the root.
+
+## Template functions
+
+On top of Go's built-in template functions, Nida provides:
+
+| Function | Example | Description |
+| --- | --- | --- |
+| `dict` | `dict "Page" . "Wide" true` | Build a map, usually to pass several values to a partial. |
+| `slice` | `slice "a" "b"` | Build a list. |
+| `seq` | `seq 3` | `1 2 3`. |
+| `first`, `last` | `first 5 .Pages` | The first or last N items of a list. |
+| `where` | `where .Pages "SectionPath" "posts"` | Keep items whose field equals a value. Paths can reach into maps (`"Extra.tags"`). A list field matches if it contains the value. Use `where .Pages "Extra.series" "!=" "x"` to negate. |
+| `truncate` | `truncate 140 .Description` | Shorten text at a word boundary and add `…`. |
+| `plainify` | `plainify .Summary` | Strip HTML tags. |
+| `markdownify` | `markdownify .Description` | Render inline Markdown. A single paragraph is unwrapped. |
+| `absURL`, `relURL` | `absURL .Page.URL` | Join onto `base_url`, or onto just its path. |
+| `jsonify` | `jsonify (dict "@type" "BlogPosting")` | Encode as JSON, safe inside `<script type="application/ld+json">`. |
+| `formatDate`, `formatDateWith` | `formatDateWith .Page.Date "%B %d, %Y"` | Format dates. `formatDateWith` accepts `strftime`-style codes. |
+| `groupByYear` | `range groupByYear .Pages` | Group dated pages into `{Year, Pages}`. |
+| `dig` | `dig .Config.Extra "author.name"` | Read a nested map value by dotted path. |
+| `default` | `default .Title "Untitled"` | The first argument, or the second when the first is empty. Note the order: value first, fallback second. |
+| `lower`, `upper`, `title`, `trimSpace`, `replace`, `split`, `contains`, `hasPrefix`, `hasSuffix`, `join` | | String helpers. |
+| `slugify`, `urlize` | `slugify "Hello World"` | `hello-world`. |
+| `add`, `sub` | `add .Paginator.CurrentIndex 1` | Integer math. |
+| `asset`, `imageSrcset`, `imagePresetSrcset`, `imagePresetSizes`, `imageVariant`, `resizeImage` | | Asset and image helpers, described above. |
+| `readFile` | `readFile "static/logo.svg"` | Read a file from the content, template, or static directories. |
+| `unsafeHTML`, `unsafeCSS` | `unsafeHTML .Page.BodyHTML` | Mark trusted strings as HTML or CSS. `safeHTML` and `safeCSS` are older names. |
+
 Next: publish a site in [Deployment](../deployment/).

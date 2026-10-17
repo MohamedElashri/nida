@@ -763,3 +763,67 @@ h3 {
     padding-top: 1.25rem;
   }
 }
+
+/* Callouts: > [!NOTE], > [!WARNING], ... */
+.callout {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid #0969da;
+  border-radius: 4px;
+  background: #f6f8fa;
+}
+
+.callout > :last-child {
+  margin-bottom: 0;
+}
+
+.callout-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+.callout-tip { border-inline-start-color: #1a7f37; }
+.callout-important { border-inline-start-color: #8250df; }
+.callout-warning { border-inline-start-color: #9a6700; }
+.callout-caution { border-inline-start-color: #cf222e; }
+
+/* Code block titles and highlighted lines */
+.code-block {
+  margin: 1.25rem 0;
+}
+
+.code-block pre {
+  margin-top: 0;
+}
+
+.code-title {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
+.z-hl {
+  display: block;
+  background: rgba(255, 213, 79, 0.25);
+}
+
+.z-ln {
+  margin-inline-end: 0.75rem;
+  color: #8c959f;
+  user-select: none;
+}
+
+/* Heading self-links from markdown.heading_anchors */
+.heading-anchor {
+  margin-inline-start: 0.4rem;
+  text-decoration: none;
+  opacity: 0;
+}
+
+:is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 0.6;
+}

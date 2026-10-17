@@ -14,6 +14,19 @@ All notable changes to Nida are documented here.
 * `.Theme.Extra`, the merged theme and site `[extra]` table.
 * Full YAML front matter support, including block lists and nested maps.
 * Zola-style `[taxonomies]` front matter tables are read as taxonomy terms.
+* Summaries: `<!-- more -->` splits a page, and `.Page.Summary` falls back to the first paragraph. Feeds use it when a page has no `description`.
+* `.Page.TOC` and `.Section.TOC`: nested heading data for tables of contents. Custom heading IDs with `## Title {#id}`.
+* `markdown.heading_anchors` adds a `#` self-link to each heading.
+* GitHub-style callouts (`> [!NOTE]`, `> [!WARNING] Custom title`).
+* Code block options in the info string: `title`, `hl_lines`, `linenos`, and `linenostart`.
+* `markdown.math` passes `$...$` and `$$...$$` TeX through for KaTeX or MathJax.
+* ```` ```mermaid ```` blocks render as `<pre class="mermaid">` for Mermaid.
+* `.Page.WordCount`.
+* Template functions: `dict`, `slice`, `seq`, `first`, `last`, `where`, `truncate`, `plainify`, `markdownify`, `absURL`, `relURL`, `jsonify`, `upper`, `title`, `split`, and `urlize`.
+* `.Index.GetPage` and `.Index.GetSection` look up content by path.
+* A "Writing Content" docs page and a template function reference.
+* Template shortcodes: `{{< name args >}}` and paired `{{< name >}}...{{< /name >}}`, loaded from `templates/shortcodes/` in the site and themes. Built-in `figure`, `youtube`, and `callout` shortcodes.
+* Themes can omit `config.toml`, and a site using a theme no longer needs its own `base.html`.
 
 ### Changed
 * **Breaking:** single newlines in Markdown paragraphs are now soft breaks (a space), matching CommonMark. Set `markdown.hard_wraps = true` to keep the old `<br>` behavior.
@@ -23,6 +36,12 @@ All notable changes to Nida are documented here.
 * Atom entry `updated` times now use the page's `updated` front matter when it is newer than `date`.
 
 ### Fixed
+* Theme inheritance now applies to templates, partials, static files, and SCSS. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
+* A parent theme's `[extra]` values no longer override its child theme's values.
+* Site partials and `base.html` now override theme versions as documented. Before, the order depended on file paths.
+* Shortcode syntax inside code blocks and inline code is no longer processed, including the `details` shortcode.
+* `@/` internal links in Markdown left out the `base_url` path, so they broke on sites published under a subpath such as `/nida/`.
+* Feeds now make links absolute the way a browser does. Root-relative links previously got the `base_url` path added a second time.
 * Pagination links ignored a custom `paginate_path` and always pointed to `/page/N/`, so Next/Previous links led to 404s.
 * `[sections]` `paginate_path`, `default_sort_by`, and `default_page_template` were documented but had no effect.
 * The canonical URL for a section without pagination was missing its trailing slash.

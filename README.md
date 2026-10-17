@@ -175,9 +175,9 @@ assets from `templates/` and `static/` directly.
 Set `theme = "name"` in `config.toml` to use a theme from `themes/name/`. Themes
 support inheritance via `extends = "parent"` in their `config.toml`.
 
-Theme template files override site templates with the same name. Theme SCSS and
-static assets are compiled/copied before site assets, allowing site customization
-while keeping theme defaults.
+Site templates override theme templates with the same name, and a theme overrides
+the theme it extends. The same order applies to partials, shortcodes, static files,
+and SCSS, so a site can customize a theme without copying it.
 
 ```toml
 # site config.toml

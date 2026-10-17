@@ -482,35 +482,22 @@ func stripHTML(markup string) string {
 
 var htmlURLRegex = regexp.MustCompile(`(?i)(href|src)=["']([^"']+)["']`)
 
+// resolveURL makes a link from a page's HTML absolute the way a browser
+// would: root-relative paths resolve against the host, other relative paths
+// against the page URL.
 func resolveURL(baseURL, itemURL, rawURL string) string {
-	if u, err := url.Parse(rawURL); err == nil && (u.Scheme != "" || u.Host != "") {
-		return rawURL
-	}
 	if strings.HasPrefix(rawURL, "data:") || strings.HasPrefix(rawURL, "#") || strings.HasPrefix(rawURL, "mailto:") {
 		return rawURL
 	}
-
 	rel, err := url.Parse(rawURL)
+	if err != nil || rel.Scheme != "" || rel.Host != "" {
+		return rawURL
+	}
+	page, err := url.Parse(canonicalURL(baseURL, itemURL))
 	if err != nil {
 		return rawURL
 	}
-
-	var route string
-	if strings.HasPrefix(rel.Path, "/") {
-		route = rel.Path
-	} else {
-		route = path.Join(itemURL, rel.Path)
-	}
-
-	resolved := canonicalURL(baseURL, route)
-
-	if resURL, err := url.Parse(resolved); err == nil {
-		resURL.RawQuery = rel.RawQuery
-		resURL.Fragment = rel.Fragment
-		return resURL.String()
-	}
-
-	return resolved
+	return page.ResolveReference(rel).String()
 }
 
 func absolutizeHTML(htmlStr string, baseURL string, itemURL string) string {

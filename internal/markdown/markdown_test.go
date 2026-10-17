@@ -184,7 +184,7 @@ func TestRenderPagesStoresBodyHTML(t *testing.T) {
 		BodyMarkdown: "# Hello\n",
 	}}
 
-	rendered, err := RenderPages(pages, cfg, nil)
+	rendered, err := RenderPages(pages, cfg, Env{})
 	if err != nil {
 		t.Fatalf("RenderPages returned error: %v", err)
 	}

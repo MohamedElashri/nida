@@ -18,6 +18,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/searchindex"
+	"github.com/MohamedElashri/nida/internal/shortcodes"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/sitemap"
 )
@@ -109,6 +110,11 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	contentPrefix := filepath.ToSlash(cfg.ContentDir + "/")
 
 	pathLookup := buildPathLookupFromPages(previous.state.Pages, previous.state.Sections, cfg)
+	codes, err := shortcodes.Load(opts.siteRoot, cfg)
+	if err != nil {
+		return buildResult{}, err
+	}
+	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes}
 
 	changedByRelPath := make(map[string]content.Page)
 	removedByRelPath := make(map[string]bool)
@@ -145,7 +151,7 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 			return buildResult{}, loadErr
 		}
 
-		pages, err := markdown.RenderPages([]content.Page{page}, cfg, pathLookup)
+		pages, err := markdown.RenderPages([]content.Page{page}, cfg, env)
 		if err != nil {
 			return buildResult{}, err
 		}

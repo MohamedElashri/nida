@@ -290,3 +290,19 @@ func mustDate(t *testing.T, value string) time.Time {
 	}
 	return parsed
 }
+
+func TestResolveURLUnderSubpath(t *testing.T) {
+	base := "https://example.com/docs/"
+	cases := map[string]string{
+		"/docs/guide/":  "https://example.com/docs/guide/",
+		"shot.png":      "https://example.com/docs/posts/a/shot.png",
+		"../b/":         "https://example.com/docs/posts/b/",
+		"#top":          "#top",
+		"https://x.org": "https://x.org",
+	}
+	for raw, want := range cases {
+		if got := resolveURL(base, "/posts/a/", raw); got != want {
+			t.Errorf("resolveURL(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}

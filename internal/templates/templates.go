@@ -14,11 +14,13 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
 
 const (
 	baseTemplateFile = "base.html"
 	templateExt      = ".html"
+	shortcodeDir     = "shortcodes"
 )
 
 type Set struct {
@@ -31,19 +33,11 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 		return Set{}, fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	var templateRoots []string
-
-	if cfg.Theme != "" {
-		themeRoot, err := safepath.Join(absSiteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "templates"))
-		if err != nil {
-			return Set{}, fmt.Errorf("resolve theme templates: %w", err)
-		}
-		if err := safepath.EnsureNoSymlinkPath(absSiteRoot, themeRoot); err != nil && !os.IsNotExist(err) {
-			return Set{}, fmt.Errorf("check theme templates: %w", err)
-		}
-		if _, err := os.Stat(themeRoot); err == nil {
-			templateRoots = append(templateRoots, themeRoot)
-		}
+	// Roots are ordered from least to most specific: parent themes, the
+	// selected theme, then the site. Later roots override earlier ones.
+	templateRoots, err := themes.Dirs(absSiteRoot, cfg, "templates")
+	if err != nil {
+		return Set{}, fmt.Errorf("resolve theme templates: %w", err)
 	}
 
 	siteTemplateRoot, err := safepath.Join(absSiteRoot, cfg.TemplateDir)
@@ -55,12 +49,17 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 	}
 	templateRoots = append(templateRoots, siteTemplateRoot)
 
-	basePath := filepath.Join(siteTemplateRoot, baseTemplateFile)
-	if _, err := os.Stat(basePath); err != nil {
-		if os.IsNotExist(err) {
-			return Set{}, fmt.Errorf("load templates: missing required %s", baseTemplateFile)
+	hasBase := false
+	for _, root := range templateRoots {
+		if _, err := os.Stat(filepath.Join(root, baseTemplateFile)); err == nil {
+			hasBase = true
+			break
+		} else if !os.IsNotExist(err) {
+			return Set{}, fmt.Errorf("load templates: %w", err)
 		}
-		return Set{}, fmt.Errorf("load templates: %w", err)
+	}
+	if !hasBase {
+		return Set{}, fmt.Errorf("load templates: missing required %s", baseTemplateFile)
 	}
 
 	return loadFromRoots(templateRoots, absSiteRoot, cfg)
@@ -71,6 +70,12 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 	entries := map[string]string{}
 
 	for _, root := range roots {
+		if _, err := os.Stat(root); os.IsNotExist(err) {
+			continue
+		}
+		// Files within a root are parsed in path order; roots are parsed in
+		// the order given so a later root's {{ define }} replaces an earlier one.
+		var rootShared []string
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
@@ -88,21 +93,17 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 			}
 			relative = filepath.ToSlash(relative)
 
-			if relative == baseTemplateFile {
-				shared = append(shared, path)
+			if strings.HasPrefix(relative, shortcodeDir+"/") {
+				// Shortcode templates are loaded separately by internal/shortcodes.
 				return nil
 			}
 
-			if strings.Contains(relative, "/") {
-				shared = append(shared, path)
+			if relative == baseTemplateFile || strings.Contains(relative, "/") {
+				rootShared = append(rootShared, path)
 				return nil
 			}
 
 			name := strings.TrimSuffix(relative, filepath.Ext(relative))
-			if name == "base" {
-				shared = append(shared, path)
-				return nil
-			}
 
 			entries[name] = path
 			return nil
@@ -110,9 +111,10 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 		if err != nil {
 			return Set{}, fmt.Errorf("read template directory %q: %w", root, err)
 		}
+		slices.Sort(rootShared)
+		shared = append(shared, rootShared...)
 	}
 
-	slices.Sort(shared)
 	set := Set{templates: map[string]*template.Template{}}
 	for name, entry := range entries {
 		files := append(append([]string(nil), shared...), entry)
@@ -186,6 +188,22 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 		"resizeImage":       resizeImageFunc(siteRoot),
 		"sortDesc":          sortDesc,
 		"dig":               digValue,
+		"dict":              dict,
+		"slice":             sliceOf,
+		"seq":               seq,
+		"first":             first,
+		"last":              last,
+		"where":             where,
+		"truncate":          truncate,
+		"plainify":          plainify,
+		"markdownify":       markdownifyFunc(cfg),
+		"absURL":            absURLFunc(cfg),
+		"relURL":            relURLFunc(cfg),
+		"jsonify":           jsonify,
+		"upper":             strings.ToUpper,
+		"title":             titleWords,
+		"split":             strings.Split,
+		"urlize":            content.DeriveSlug,
 	}
 }
 
@@ -407,4 +425,10 @@ func digValue(values map[string]any, path string) any {
 		}
 	}
 	return values
+}
+
+// FuncMap returns the template functions available to site templates, for
+// other template sets such as shortcodes.
+func FuncMap(siteRoot string, cfg config.SiteConfig) template.FuncMap {
+	return funcMap(siteRoot, cfg)
 }

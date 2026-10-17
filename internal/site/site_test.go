@@ -279,3 +279,33 @@ func TestBuildIndexExcludesFutureDatedPages(t *testing.T) {
 		t.Fatalf("expected future page with future enabled, got %d pages", len(index.AllPages))
 	}
 }
+
+func TestIndexGetPageAndSection(t *testing.T) {
+	index := SiteIndex{
+		AllPages: []content.Page{
+			{RelativePath: "posts/hello.md", Title: "Hello"},
+			{RelativePath: "posts/bundle/index.md", Title: "Bundle"},
+		},
+		SectionLookup: map[string]content.Section{
+			"":      {Title: "Home"},
+			"posts": {Title: "Posts"},
+		},
+	}
+	for _, path := range []string{"posts/hello.md", "@/posts/hello.md", "posts/hello"} {
+		if page := index.GetPage(path); page == nil || page.Title != "Hello" {
+			t.Fatalf("GetPage(%q) = %+v", path, page)
+		}
+	}
+	if page := index.GetPage("posts/bundle"); page == nil || page.Title != "Bundle" {
+		t.Fatalf("expected bundle lookup, got %+v", page)
+	}
+	if index.GetPage("missing.md") != nil {
+		t.Fatal("expected nil for a missing page")
+	}
+	if section := index.GetSection("posts/_index.md"); section == nil || section.Title != "Posts" {
+		t.Fatalf("unexpected section %+v", section)
+	}
+	if section := index.GetSection(""); section == nil || section.Title != "Home" {
+		t.Fatalf("unexpected root section %+v", section)
+	}
+}

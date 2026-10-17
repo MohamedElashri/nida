@@ -69,6 +69,10 @@ type MarkdownConfig struct {
 	// HardWraps renders single newlines inside a paragraph as <br>. CommonMark
 	// and most generators treat them as spaces, so this is off by default.
 	HardWraps bool `toml:"hard_wraps"`
+	// HeadingAnchors appends a "#" self-link to every heading.
+	HeadingAnchors bool `toml:"heading_anchors"`
+	// Math passes $...$ and $$...$$ TeX through for KaTeX or MathJax.
+	Math bool `toml:"math"`
 	// UnsafeHTML is an explicit opt-in for trusted-author sites that need raw
 	// HTML in Markdown. Keep this false when Markdown can come from untrusted
 	// contributors.

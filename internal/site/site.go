@@ -11,6 +11,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/diagnostics"
 	"github.com/MohamedElashri/nida/internal/markdown"
+	"github.com/MohamedElashri/nida/internal/shortcodes"
 	"github.com/MohamedElashri/nida/internal/taxonomies"
 )
 
@@ -44,12 +45,18 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 		}
 	}
 
-	renderedPages, err := markdown.RenderPages(pages, cfg, pathLookup)
+	codes, err := shortcodes.Load(siteRoot, cfg)
+	if err != nil {
+		return State{}, err
+	}
+	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes}
+
+	renderedPages, err := markdown.RenderPages(pages, cfg, env)
 	if err != nil {
 		return State{}, err
 	}
 
-	renderedSections, err := markdown.RenderSections(sections, cfg, pathLookup)
+	renderedSections, err := markdown.RenderSections(sections, cfg, env)
 	if err != nil {
 		return State{}, err
 	}
@@ -436,4 +443,37 @@ func sortPagesBySection(pages []content.Page, section content.Section, cfg confi
 	}
 
 	return pages
+}
+
+// GetPage finds a page by its content path, such as "posts/hello.md" or
+// "@/posts/hello.md". It returns nil when no published page matches, so
+// templates can guard with {{ with .Index.GetPage "..." }}.
+func (index SiteIndex) GetPage(contentPath string) *content.Page {
+	contentPath = normalizeContentPath(contentPath)
+	for i := range index.AllPages {
+		page := &index.AllPages[i]
+		rel := page.RelativePath
+		if rel == contentPath || strings.TrimSuffix(rel, ".md") == contentPath || strings.TrimSuffix(rel, "/index.md") == contentPath {
+			return page
+		}
+	}
+	return nil
+}
+
+// GetSection finds a section by its path, such as "posts" or
+// "posts/_index.md". An empty path or "_index.md" returns the root section.
+func (index SiteIndex) GetSection(sectionPath string) *content.Section {
+	sectionPath = normalizeContentPath(sectionPath)
+	sectionPath = strings.TrimSuffix(strings.TrimSuffix(sectionPath, "_index.md"), "/")
+	section, ok := index.SectionLookup[sectionPath]
+	if !ok {
+		return nil
+	}
+	return &section
+}
+
+func normalizeContentPath(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.TrimPrefix(value, "@/")
+	return strings.TrimPrefix(value, "/")
 }
