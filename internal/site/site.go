@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
@@ -84,15 +85,18 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 		return strings.Compare(a.Slug, b.Slug)
 	})
 
-	if !cfg.Drafts {
-		filtered := make([]content.Page, 0, len(sortedPages))
-		for _, p := range sortedPages {
-			if !p.Draft {
-				filtered = append(filtered, p)
-			}
+	now := time.Now()
+	filtered := make([]content.Page, 0, len(sortedPages))
+	for _, p := range sortedPages {
+		if p.Draft && !cfg.Drafts {
+			continue
 		}
-		sortedPages = filtered
+		if !cfg.Future && p.Date.After(now) {
+			continue
+		}
+		filtered = append(filtered, p)
 	}
+	sortedPages = filtered
 
 	for i := range sortedPages {
 		routed, err := routePage(sortedPages[i], cfg)

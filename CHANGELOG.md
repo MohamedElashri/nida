@@ -2,7 +2,41 @@
 
 All notable changes to Nida are documented here.
 
-## [0.6.0] - Unreleased
+## [0.7.0] - Unreleased
+
+### Added
+* Optional RSS 2.0 feed through a new `[rss]` table, written next to the Atom feed. Off by default.
+* Warnings for unrecognized `config.toml` keys, so typos and settings from other generators no longer get dropped without notice.
+* `future` config option and `--future`/`-f` flag. Future-dated pages are now skipped by default.
+* `robots_meta` config option, exposed to templates as `.Robots`.
+* `[home]` table with `sections` and `limit` to control which pages the homepage lists.
+* `markdown.hard_wraps` option.
+* `.Theme.Extra`, the merged theme and site `[extra]` table.
+* Full YAML front matter support, including block lists and nested maps.
+* Zola-style `[taxonomies]` front matter tables are read as taxonomy terms.
+
+### Changed
+* **Breaking:** single newlines in Markdown paragraphs are now soft breaks (a space), matching CommonMark. Set `markdown.hard_wraps = true` to keep the old `<br>` behavior.
+* **Breaking:** pages with a `date` in the future are no longer published unless `future = true` or `--future` is used.
+* **Breaking:** pages no longer get `noai, noimageai` in `.Robots` by default. Set `robots_meta = "noai, noimageai"` to keep it.
+* The homepage list now respects `[home]` instead of always showing the five newest pages from every section.
+* Atom entry `updated` times now use the page's `updated` front matter when it is newer than `date`.
+
+### Fixed
+* Pagination links ignored a custom `paginate_path` and always pointed to `/page/N/`, so Next/Previous links led to 404s.
+* `[sections]` `paginate_path`, `default_sort_by`, and `default_page_template` were documented but had no effect.
+* The canonical URL for a section without pagination was missing its trailing slash.
+* `nida init` wrote `[rss]` and `[atom]` tables that the 0.6 engine ignored. It now writes `[feed]`.
+* The docs described `[rss]`/`[atom]` settings that did not exist. They now match the engine.
+* Removed unsupported `taxonomies.path` and `taxonomies.page_template` keys from the example sites.
+* The serve rebuild now cleans up a disabled search index file.
+
+### Migration Notes
+* To keep hard line breaks: `[markdown] hard_wraps = true`.
+* To keep publishing future-dated posts: `future = true`.
+* To keep the previous robots meta value: `robots_meta = "noai, noimageai"`.
+
+## [0.6.0] - 2026-08-02
 
 ### Added
 * N/A

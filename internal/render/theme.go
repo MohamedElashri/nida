@@ -25,6 +25,7 @@ func buildTheme(siteRoot string, cfg config.SiteConfig) (Theme, error) {
 		return Theme{}, fmt.Errorf("load inline css: %w", err)
 	}
 	return Theme{
+		Extra:      mergedExtra,
 		InlineCSS:  template.CSS(inlineCSS),
 		MainMenu:   navItems(mergedExtra["main_menu"]),
 		Social:     navItems(mergedExtra["social_icons"]),

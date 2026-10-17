@@ -16,14 +16,10 @@ syntax_theme = "github"
 
 [[taxonomies]]
 name = "tags"
-path = "tags"
-page_template = "tag"
 render = true
 
 [[taxonomies]]
 name = "categories"
-path = "categories"
-page_template = "category"
 render = true
 
 [feed]

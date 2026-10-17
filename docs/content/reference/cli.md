@@ -30,6 +30,7 @@ Flags:
 - `--site`, `-s`: site root directory
 - `--config`, `-c`: config file path relative to the site root or absolute
 - `--drafts`, `-d`: include draft content
+- `--future`, `-f`: include pages dated in the future
 
 ## Serve
 
@@ -42,6 +43,7 @@ Flags:
 - `--site`, `-s`: site root directory
 - `--config`, `-c`: config file path relative to the site root or absolute
 - `--drafts`, `-d`: include draft content
+- `--future`, `-f`: include pages dated in the future
 - `--port`, `-p`: override the configured server port
 
 ## Version

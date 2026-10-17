@@ -253,3 +253,29 @@ func TestExtractTaxonomyValue(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildIndexExcludesFutureDatedPages(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	pages := []content.Page{
+		{RelativePath: "posts/past.md", Slug: "past", Date: mustDate(t, "2020-01-01T00:00:00Z"), SectionPath: "posts"},
+		{RelativePath: "posts/later.md", Slug: "later", Date: time.Now().Add(48 * time.Hour), SectionPath: "posts"},
+	}
+
+	index, _, err := BuildIndex(pages, nil, cfg)
+	if err != nil {
+		t.Fatalf("BuildIndex returned error: %v", err)
+	}
+	if len(index.AllPages) != 1 || index.AllPages[0].Slug != "past" {
+		t.Fatalf("expected only the past page, got %+v", index.AllPages)
+	}
+
+	cfg.Future = true
+	index, _, err = BuildIndex(pages, nil, cfg)
+	if err != nil {
+		t.Fatalf("BuildIndex returned error: %v", err)
+	}
+	if len(index.AllPages) != 2 {
+		t.Fatalf("expected future page with future enabled, got %d pages", len(index.AllPages))
+	}
+}

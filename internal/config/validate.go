@@ -30,8 +30,17 @@ func Validate(cfg SiteConfig) error {
 		problems = append(problems, "paginate must be greater than 0")
 	}
 
+	if cfg.RSS.Enabled && cfg.RSS.Limit <= 0 {
+		problems = append(problems, "rss.limit must be greater than 0 when rss is enabled")
+	}
 	if cfg.Feed.Enabled && cfg.Feed.Limit <= 0 {
-		problems = append(problems, "feed.limit must be greater than 0 when Feed is enabled")
+		problems = append(problems, "feed.limit must be greater than 0 when feed is enabled")
+	}
+	if cfg.RSS.Enabled && cfg.Feed.Enabled && cfg.RSS.Filename == cfg.Feed.Filename {
+		problems = append(problems, "rss.filename and feed.filename must differ")
+	}
+	if cfg.Home.Limit < 0 {
+		problems = append(problems, "home.limit must not be negative")
 	}
 
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
@@ -57,6 +66,7 @@ func Validate(cfg SiteConfig) error {
 		"static_dir":       cfg.StaticDir,
 		"output_dir":       cfg.OutputDir,
 		"themes_dir":       cfg.ThemesDir,
+		"rss.filename":     cfg.RSS.Filename,
 		"feed.filename":    cfg.Feed.Filename,
 		"sitemap.filename": cfg.Sitemap.Filename,
 		"robots.filename":  cfg.Robots.Filename,

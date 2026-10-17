@@ -51,6 +51,18 @@ func decodeMetadata(values map[string]any) (Metadata, error) {
 		meta.Extra = extra
 	}
 
+	// Zola keeps taxonomy terms under a [taxonomies] table. Flatten it so
+	// those sites work unchanged; Nida reads terms from top-level extra keys.
+	if taxonomies, ok := mapValue(values["taxonomies"]); ok {
+		values = maps.Clone(values)
+		delete(values, "taxonomies")
+		for name, terms := range taxonomies {
+			if _, exists := values[name]; !exists {
+				values[name] = terms
+			}
+		}
+	}
+
 	for key, value := range values {
 		if knownFields[key] {
 			continue

@@ -72,36 +72,66 @@ type atomContent struct {
 	Value string `xml:",chardata"`
 }
 
+// spec describes one feed document. Site feeds, section feeds, and taxonomy
+// term feeds all share the same item selection and rendering code.
+type spec struct {
+	Title    string
+	Filename string
+	AltURL   string
+	Items    []content.Page
+}
+
 func GenerateAll(cfg config.SiteConfig, index site.SiteIndex) ([]Output, error) {
-	outputs := make([]Output, 0, 1)
-
-	feedOutput, err := Generate(cfg, index)
-	if err != nil {
-		return nil, err
+	outputs := make([]Output, 0, 2)
+	for _, generate := range []func(config.SiteConfig, site.SiteIndex) (*Output, error){Generate, GenerateRSS} {
+		out, err := generate(cfg, index)
+		if err != nil {
+			return nil, err
+		}
+		if out != nil {
+			outputs = append(outputs, *out)
+		}
 	}
-	if feedOutput != nil {
-		outputs = append(outputs, *feedOutput)
-	}
-
 	return outputs, nil
 }
 
+// GenerateRSS renders the optional site-wide RSS 2.0 feed configured by [rss].
+func GenerateRSS(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
+	if !cfg.RSS.Enabled {
+		return nil, nil
+	}
+	return renderRSS(cfg, siteSpec(cfg, cfg.RSS, index))
+}
+
+// Generate renders the site-wide Atom feed configured by [feed].
 func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 	if !cfg.Feed.Enabled {
 		return nil, nil
 	}
+	return renderAtom(cfg, siteSpec(cfg, cfg.Feed, index))
+}
 
-	items := feedItems(index.AllPages, cfg.Feed.Sections, cfg.Feed.Limit)
+func siteSpec(cfg config.SiteConfig, feed config.FeedConfig, index site.SiteIndex) spec {
+	return spec{
+		Title:    cfg.Title,
+		Filename: feed.Filename,
+		AltURL:   strings.TrimSpace(cfg.BaseURL),
+		Items:    feedItems(index.AllPages, feed.Sections, feed.Limit),
+	}
+}
 
-	feedURL, err := feedURL(cfg.BaseURL, cfg.Feed.Filename)
+func renderAtom(cfg config.SiteConfig, feed spec) (*Output, error) {
+	items := feed.Items
+
+	feedURL, err := feedURL(cfg.BaseURL, feed.Filename)
 	if err != nil {
-		return nil, fmt.Errorf("generate Feed: %w", err)
+		return nil, fmt.Errorf("generate Atom feed: %w", err)
 	}
 
 	updated := latestUpdated(items)
 	doc := atomDocument{
 		Lang:  cfg.Language,
-		Title: stripHTML(cfg.Title),
+		Title: stripHTML(feed.Title),
 		Generator: &atomGenerator{
 			URI:     "https://github.com/MohamedElashri/nida",
 			Version: buildinfo.Version,
@@ -109,7 +139,7 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 		},
 		Link: []atomLink{
 			{Href: feedURL, Rel: "self", Type: "application/atom+xml"},
-			{Href: strings.TrimSpace(cfg.BaseURL), Rel: "alternate", Type: "text/html"},
+			{Href: feed.AltURL, Rel: "alternate", Type: "text/html"},
 		},
 		Updated: formatAtomDate(updated),
 		ID:      feedURL,
@@ -122,8 +152,6 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 	for _, item := range items {
 		link := canonicalURL(cfg.BaseURL, item.URL)
 
-		summary := stripHTML(strings.TrimSpace(item.Description))
-
 		doc.Entries = append(doc.Entries, atomEntry{
 			Title:      stripHTML(item.Title),
 			Link:       atomLink{Href: link, Rel: "alternate", Type: "text/html"},
@@ -131,8 +159,8 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 			Authors:    atomEntryAuthors(item, cfg),
 			Categories: atomEntryCategories(item),
 			Published:  formatAtomDate(item.Date),
-			Updated:    formatAtomDate(item.Date),
-			Summary:    summary,
+			Updated:    formatAtomDate(itemUpdated(item)),
+			Summary:    itemSummary(item),
 			Content: &atomContent{
 				Type:  "html",
 				Value: absolutizeHTML(item.BodyHTML, cfg.BaseURL, item.URL),
@@ -142,16 +170,138 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 
 	data, err := xml.MarshalIndent(doc, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("generate Feed XML: %w", err)
+		return nil, fmt.Errorf("generate Atom feed XML: %w", err)
 	}
 
 	data = append([]byte(xml.Header), data...)
 	data = append(data, '\n')
 
 	return &Output{
-		Filename: cfg.Feed.Filename,
+		Filename: feed.Filename,
 		Content:  data,
 	}, nil
+}
+
+type rssDocument struct {
+	XMLName xml.Name   `xml:"rss"`
+	Version string     `xml:"version,attr"`
+	Content string     `xml:"xmlns:content,attr"`
+	DC      string     `xml:"xmlns:dc,attr"`
+	AtomNS  string     `xml:"xmlns:atom,attr"`
+	Channel rssChannel `xml:"channel"`
+}
+
+type rssChannel struct {
+	Title         string      `xml:"title"`
+	Link          string      `xml:"link"`
+	Description   string      `xml:"description"`
+	Language      string      `xml:"language,omitempty"`
+	Generator     string      `xml:"generator"`
+	LastBuildDate string      `xml:"lastBuildDate,omitempty"`
+	AtomLink      rssAtomLink `xml:"atom:link"`
+	Items         []rssItem   `xml:"item"`
+}
+
+type rssAtomLink struct {
+	Href string `xml:"href,attr"`
+	Rel  string `xml:"rel,attr"`
+	Type string `xml:"type,attr"`
+}
+
+type rssItem struct {
+	Title       string    `xml:"title"`
+	Link        string    `xml:"link"`
+	GUID        rssGUID   `xml:"guid"`
+	PubDate     string    `xml:"pubDate,omitempty"`
+	Creators    []string  `xml:"dc:creator,omitempty"`
+	Categories  []string  `xml:"category,omitempty"`
+	Description string    `xml:"description,omitempty"`
+	Content     *rssCDATA `xml:"content:encoded,omitempty"`
+}
+
+type rssGUID struct {
+	IsPermaLink string `xml:"isPermaLink,attr"`
+	Value       string `xml:",chardata"`
+}
+
+type rssCDATA struct {
+	Value string `xml:",cdata"`
+}
+
+func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
+	selfURL, err := feedURL(cfg.BaseURL, feed.Filename)
+	if err != nil {
+		return nil, fmt.Errorf("generate RSS feed: %w", err)
+	}
+
+	channel := rssChannel{
+		Title:       stripHTML(feed.Title),
+		Link:        feed.AltURL,
+		Description: stripHTML(cfg.Description),
+		Language:    cfg.Language,
+		Generator:   "Nida " + buildinfo.Version,
+		AtomLink:    rssAtomLink{Href: selfURL, Rel: "self", Type: "application/rss+xml"},
+		Items:       make([]rssItem, 0, len(feed.Items)),
+	}
+	if channel.Description == "" {
+		channel.Description = channel.Title
+	}
+	if latest := latestUpdated(feed.Items); !latest.IsZero() {
+		channel.LastBuildDate = latest.UTC().Format(time.RFC1123Z)
+	}
+
+	for _, item := range feed.Items {
+		link := canonicalURL(cfg.BaseURL, item.URL)
+		entry := rssItem{
+			Title:       stripHTML(item.Title),
+			Link:        link,
+			GUID:        rssGUID{IsPermaLink: "true", Value: link},
+			Description: itemSummary(item),
+			Content:     &rssCDATA{Value: absolutizeHTML(item.BodyHTML, cfg.BaseURL, item.URL)},
+		}
+		if !item.Date.IsZero() {
+			entry.PubDate = item.Date.UTC().Format(time.RFC1123Z)
+		}
+		for _, author := range atomEntryAuthors(item, cfg) {
+			entry.Creators = append(entry.Creators, author.Name)
+		}
+		for _, category := range atomEntryCategories(item) {
+			entry.Categories = append(entry.Categories, category.Term)
+		}
+		channel.Items = append(channel.Items, entry)
+	}
+
+	doc := rssDocument{
+		Version: "2.0",
+		Content: "http://purl.org/rss/1.0/modules/content/",
+		DC:      "http://purl.org/dc/elements/1.1/",
+		AtomNS:  "http://www.w3.org/2005/Atom",
+		Channel: channel,
+	}
+	data, err := xml.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("generate RSS feed XML: %w", err)
+	}
+	data = append([]byte(xml.Header), data...)
+	data = append(data, '\n')
+
+	return &Output{Filename: feed.Filename, Content: data}, nil
+}
+
+// itemSummary prefers the author-written description and falls back to the
+// rendered summary so feed readers always get a short teaser.
+func itemSummary(item content.Page) string {
+	if summary := stripHTML(strings.TrimSpace(item.Description)); summary != "" {
+		return summary
+	}
+	return stripHTML(item.Summary)
+}
+
+func itemUpdated(item content.Page) time.Time {
+	if item.Updated.After(item.Date) {
+		return item.Updated
+	}
+	return item.Date
 }
 
 func formatAtomDate(value time.Time) string {
@@ -164,8 +314,8 @@ func formatAtomDate(value time.Time) string {
 func latestUpdated(items []content.Page) time.Time {
 	var latest time.Time
 	for _, item := range items {
-		if item.Date.After(latest) {
-			latest = item.Date
+		if updated := itemUpdated(item); updated.After(latest) {
+			latest = updated
 		}
 	}
 	return latest

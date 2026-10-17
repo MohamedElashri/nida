@@ -41,6 +41,16 @@ Templates receive useful values such as:
 - `.CurrentURL` for the current route
 - `.CanonicalURL` for the absolute canonical URL
 - `.BasePath` for the path prefix derived from `base_url`
+- `.Paginator` on paginated section and taxonomy pages, with `.Previous`, `.Next`, and `.PageLinks`
+- `.Robots` for the configured `robots_meta` value
+- `.Theme.Extra` for the theme `[extra]` table merged with the site's `[extra]` (site values win)
+
+```html
+{{ with .Robots }}<meta name="robots" content="{{ . }}">{{ end }}
+{{ with dig .Theme.Extra "analytics.src" }}<script defer src="{{ . }}"></script>{{ end }}
+```
+
+`.Theme` also has older shortcut fields: `MainMenu`, `Social`, `FooterText`, `DateFormat`, `AuthorName`, `Favicon`, and `Umami`. They still work, but new themes should read from `.Theme.Extra` so the engine doesn't need to know about each theme setting.
 
 Rendered Markdown is available as `.Page.BodyHTML` or `.Section.BodyHTML`.
 

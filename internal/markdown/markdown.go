@@ -40,7 +40,9 @@ func renderMarkdownCore(source string, cfg config.SiteConfig, pathLookup PathLoo
 			util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup}, 600),
 			util.Prioritized(&imageRenderer{pathLookup: pathLookup}, 700),
 		),
-		renderhtml.WithHardWraps(),
+	}
+	if cfg.Markdown.HardWraps {
+		options = append(options, renderhtml.WithHardWraps())
 	}
 	if cfg.Markdown.UnsafeHTML {
 		options = append(options, renderhtml.WithUnsafe())

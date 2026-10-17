@@ -31,7 +31,7 @@ func redirectHTML(target string) string {
 `
 }
 
-func buildPaginator(baseURL string, current, total int, pages []content.Page) *Paginator {
+func buildPaginator(baseURL, paginatePath string, current, total int, pages []content.Page) *Paginator {
 	if total <= 1 {
 		return nil
 	}
@@ -39,7 +39,7 @@ func buildPaginator(baseURL string, current, total int, pages []content.Page) *P
 	for i := 1; i <= total; i++ {
 		pageLinks = append(pageLinks, PageLink{
 			Number:  i,
-			URL:     pageURL(baseURL, i),
+			URL:     pageURL(baseURL, paginatePath, i),
 			Current: i == current,
 		})
 	}
@@ -50,19 +50,22 @@ func buildPaginator(baseURL string, current, total int, pages []content.Page) *P
 		Pages:        pages,
 	}
 	if current > 1 {
-		paginator.Previous = pageURL(baseURL, current-1)
+		paginator.Previous = pageURL(baseURL, paginatePath, current-1)
 	}
 	if current < total {
-		paginator.Next = pageURL(baseURL, current+1)
+		paginator.Next = pageURL(baseURL, paginatePath, current+1)
 	}
 	return paginator
 }
 
-func pageURL(baseURL string, pageNum int) string {
+func pageURL(baseURL, paginatePath string, pageNum int) string {
 	if pageNum <= 1 {
 		return baseURL
 	}
-	return strings.TrimSuffix(baseURL, "/") + "/page/" + strconv.Itoa(pageNum) + "/"
+	if paginatePath == "" {
+		paginatePath = "page"
+	}
+	return strings.TrimSuffix(baseURL, "/") + "/" + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 }
 
 func latestItems(items []content.Page, mainSections []string, limit int) []content.Page {
@@ -89,10 +92,20 @@ func latestItems(items []content.Page, mainSections []string, limit int) []conte
 		}
 		return strings.Compare(a.Title, b.Title)
 	})
-	if len(filtered) > limit {
+	if limit > 0 && len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
 	return filtered
+}
+
+// joinRobots combines a required robots directive with the site-wide
+// robots_meta value, skipping whichever is empty.
+func joinRobots(required, configured string) string {
+	configured = strings.TrimSpace(configured)
+	if configured == "" {
+		return required
+	}
+	return required + ", " + configured
 }
 
 func pickExistingTemplate(set templates.Set, names ...string) string {

@@ -12,6 +12,7 @@ type Page struct {
 	RawFrontMatter string
 	BodyMarkdown   string
 	BodyHTML       string
+	Summary        string
 	Title          string
 	Slug           string
 	URL            string

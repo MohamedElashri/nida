@@ -43,15 +43,10 @@ name = "tags"
 render = true
 paginate_by = 20
 
-[rss]
+# Atom feed. Add an [rss] table with the same keys for an extra RSS 2.0 feed.
+[feed]
 enabled = true
-filename = "rss.xml"
-limit = 20
-sections = ["posts"]
-
-[atom]
-enabled = true
-filename = "atom.xml"
+filename = "feed.xml"
 limit = 20
 sections = ["posts"]
 

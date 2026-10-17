@@ -5,7 +5,7 @@ weight = 20
 template = "page"
 +++
 
-Nida supports TOML front matter with `+++` delimiters and simple YAML front matter with `---` delimiters.
+Nida supports TOML front matter with `+++` delimiters and YAML front matter with `---` delimiters. YAML supports the full syntax, including block lists and nested maps, so front matter from Jekyll or Hugo usually works unchanged.
 
 The implementation lives in [`internal/frontmatter`](https://github.com/MohamedElashri/nida/tree/main/internal/frontmatter) and feeds the page and section types in [`internal/content`](https://github.com/MohamedElashri/nida/tree/main/internal/content).
 
@@ -32,7 +32,7 @@ tags = ["docs"]
 
 `description` sets the page summary used by templates, metadata, and list pages.
 
-`date` sets the publication date.
+`date` sets the publication date. Pages dated in the future are skipped unless the site sets `future = true` or the build uses `--future`.
 
 `updated` sets the update date.
 
@@ -47,6 +47,13 @@ tags = ["docs"]
 `aliases` creates redirect pages for old URLs.
 
 `extra` stores custom metadata, including taxonomy values.
+
+Keys Nida does not recognize at the top level are added to `extra`, so `tags = ["go"]` and `[extra] tags = ["go"]` mean the same thing. Zola's `[taxonomies]` table is supported as well: its entries are moved into `extra`, so this works unchanged:
+
+```toml
+[taxonomies]
+tags = ["rust", "zola"]
+```
 
 ## Section fields
 

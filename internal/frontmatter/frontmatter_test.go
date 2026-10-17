@@ -107,3 +107,57 @@ Body
 		t.Fatal("expected date to parse")
 	}
 }
+
+func TestParseYAMLBlockListsAndMaps(t *testing.T) {
+	doc, err := Parse([]byte(`---
+title: Migrated post
+date: 2024-03-05T09:30:00Z
+tags:
+  - go
+  - static sites
+aliases:
+  - /old/path/
+author:
+  name: Ada
+---
+
+Body
+`))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	tags, ok := doc.Metadata.Extra["tags"].([]any)
+	if !ok || len(tags) != 2 || tags[1] != "static sites" {
+		t.Fatalf("expected block list tags, got %#v", doc.Metadata.Extra["tags"])
+	}
+	if len(doc.Metadata.Aliases) != 1 || doc.Metadata.Aliases[0] != "/old/path/" {
+		t.Fatalf("unexpected aliases %#v", doc.Metadata.Aliases)
+	}
+	author, ok := doc.Metadata.Extra["author"].(map[string]any)
+	if !ok || author["name"] != "Ada" {
+		t.Fatalf("expected nested author map, got %#v", doc.Metadata.Extra["author"])
+	}
+	if doc.Metadata.Date.Year() != 2024 {
+		t.Fatalf("unexpected date %v", doc.Metadata.Date)
+	}
+}
+
+func TestParseFlattensZolaTaxonomiesTable(t *testing.T) {
+	doc, err := Parse([]byte(`+++
+title = "Zola post"
+
+[taxonomies]
+tags = ["rust", "zola"]
++++
+`))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if _, ok := doc.Metadata.Extra["taxonomies"]; ok {
+		t.Fatal("expected taxonomies table to be flattened")
+	}
+	tags, ok := doc.Metadata.Extra["tags"].([]any)
+	if !ok || len(tags) != 2 || tags[0] != "rust" {
+		t.Fatalf("expected flattened tags, got %#v", doc.Metadata.Extra["tags"])
+	}
+}

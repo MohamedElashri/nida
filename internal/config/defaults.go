@@ -19,6 +19,14 @@ func DefaultSiteConfig() SiteConfig {
 			Filename: "feed.xml",
 			Limit:    20,
 		},
+		RSS: FeedConfig{
+			Enabled:  false,
+			Filename: "rss.xml",
+			Limit:    20,
+		},
+		Home: HomeConfig{
+			Limit: 5,
+		},
 		Sitemap: SitemapConfig{
 			Enabled:  true,
 			Filename: "sitemap.xml",

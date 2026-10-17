@@ -131,7 +131,7 @@ func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Page, []Section, 
 		}
 	}
 
-	sections = synthesizeImplicitSections(contentRoot, pages, sections)
+	sections = synthesizeImplicitSections(contentRoot, pages, sections, cfg)
 
 	slices.SortFunc(pages, func(a, b Page) int {
 		return strings.Compare(a.RelativePath, b.RelativePath)
@@ -143,7 +143,7 @@ func discoverAll(contentRoot string, cfg config.SiteConfig) ([]Page, []Section, 
 	return pages, sections, nil
 }
 
-func synthesizeImplicitSections(contentRoot string, pages []Page, sections []Section) []Section {
+func synthesizeImplicitSections(contentRoot string, pages []Page, sections []Section, cfg config.SiteConfig) []Section {
 	existingPaths := map[string]bool{}
 	for _, s := range sections {
 		existingPaths[s.SectionPath] = true
@@ -171,9 +171,9 @@ func synthesizeImplicitSections(contentRoot string, pages []Page, sections []Sec
 			Slug:             DeriveSlug(base),
 			URL:              "/" + dirPath + "/",
 			PaginateBy:       0,
-			PaginatePath:     "page",
+			PaginatePath:     defaultString(cfg.Sections.PaginatePath, "page"),
 			PaginateReversed: false,
-			SortBy:           "date",
+			SortBy:           defaultString(cfg.Sections.DefaultSortBy, "date"),
 			Transparent:      false,
 			GenerateFeeds:    false,
 			Sections:         nil,
@@ -221,9 +221,9 @@ func loadSection(contentRoot, sourcePath string, cfg config.SiteConfig) (Section
 		Template:         strings.TrimSpace(meta.Template),
 		PageTemplate:     strings.TrimSpace(meta.PageTemplate),
 		PaginateBy:       meta.PaginateBy,
-		PaginatePath:     strings.TrimSpace(defaultString(meta.PaginatePath, "page")),
+		PaginatePath:     strings.TrimSpace(defaultString(meta.PaginatePath, defaultString(cfg.Sections.PaginatePath, "page"))),
 		PaginateReversed: false,
-		SortBy:           strings.TrimSpace(defaultString(meta.SortBy, "date")),
+		SortBy:           strings.TrimSpace(defaultString(meta.SortBy, defaultString(cfg.Sections.DefaultSortBy, "date"))),
 		Transparent:      meta.Transparent,
 		GenerateFeeds:    meta.GenerateFeeds,
 		Extra:            meta.Extra,

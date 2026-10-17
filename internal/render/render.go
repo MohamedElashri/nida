@@ -92,7 +92,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 	var ctxPages []content.Page
 	if section.SectionPath == "" {
-		ctxPages = latestItems(index.AllPages, nil, 5)
+		ctxPages = latestItems(index.AllPages, cfg.Home.Sections, cfg.Home.Limit)
 	} else {
 		ctxPages = section.Pages
 	}
@@ -113,7 +113,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	// rendering a separate non-paginated page would produce a URL conflict.
 	paginateSection := perPage > 0
 	if !paginateSection && set.Has(templateName) {
-		canonical := canonicalURL(cfg.BaseURL, "/"+section.SectionPath)
+		canonical := canonicalURL(cfg.BaseURL, sectionURL)
 
 		ctx := templateContext{
 			Title:        section.Title,
@@ -126,7 +126,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 			Index:        index,
 			Section:      section,
 			Pages:        ctxPages,
-			Robots:       "noai, noimageai",
+			Robots:       cfg.RobotsMeta,
 		}
 
 		out, err = renderTemplate(set, templateName, ctx)
@@ -148,7 +148,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	if paginateSection {
 		var paginatePages []content.Page
 		if section.SectionPath == "" {
-			paginatePages = index.AllPages
+			paginatePages = latestItems(index.AllPages, cfg.Home.Sections, 0)
 		} else {
 			paginatePages = section.Pages
 		}
@@ -167,7 +167,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 				pageURL = sectionURL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 			}
 
-			paginator := buildPaginator(sectionURL, pageNum, totalPages, paginatePages[start:end])
+			paginator := buildPaginator(sectionURL, paginatePath, pageNum, totalPages, paginatePages[start:end])
 
 			ctx := templateContext{
 				Title:        section.Title,
@@ -181,7 +181,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 				Section:      section,
 				Pages:        paginatePages[start:end],
 				Paginator:    paginator,
-				Robots:       "noai, noimageai",
+				Robots:       cfg.RobotsMeta,
 			}
 
 			out, err = renderTemplate(set, templateName, ctx)
@@ -231,7 +231,7 @@ func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index si
 	var out []Page
 
 	for _, page := range pages {
-		templateName := pageTemplateName(set, index, page)
+		templateName := pageTemplateName(set, cfg, index, page)
 		canonical := canonicalURL(cfg.BaseURL, page.URL)
 
 		ctx := templateContext{
@@ -245,7 +245,7 @@ func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index si
 			Index:        index,
 			Page:         page,
 			Section:      index.SectionLookup[page.SectionPath],
-			Robots:       "noai, noimageai",
+			Robots:       cfg.RobotsMeta,
 		}
 
 		rendered, err := renderTemplate(set, templateName, ctx)
@@ -288,7 +288,7 @@ func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index si
 	return out, nil
 }
 
-func pageTemplateName(set templates.Set, index site.SiteIndex, page content.Page) string {
+func pageTemplateName(set templates.Set, cfg config.SiteConfig, index site.SiteIndex, page content.Page) string {
 	tmpl := normalizeTemplateName(page.Template)
 	if tmpl != "" && set.Has(tmpl) {
 		return tmpl
@@ -298,6 +298,9 @@ func pageTemplateName(set templates.Set, index site.SiteIndex, page content.Page
 		if ptmpl != "" && set.Has(ptmpl) {
 			return ptmpl
 		}
+	}
+	if dflt := normalizeTemplateName(cfg.Sections.DefaultPageTemplate); dflt != "" && set.Has(dflt) {
+		return dflt
 	}
 	if set.Has("post") {
 		return "post"
@@ -328,7 +331,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 				Index:        index,
 				Taxonomy:     collection,
 				Terms:        collection.Terms,
-				Robots:       "noai, noimageai",
+				Robots:       cfg.RobotsMeta,
 			}
 
 			rendered, err := renderTemplate(set, listTemplate, ctx)
@@ -369,7 +372,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 					Taxonomy:     collection,
 					Term:         term,
 					Pages:        term.Items,
-					Robots:       "noai, noimageai",
+					Robots:       cfg.RobotsMeta,
 				}
 
 				rendered, err := renderTemplate(set, singleTemplate, ctx)
@@ -396,7 +399,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 					pageURL = term.URL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 				}
 
-				paginator := buildPaginator(term.URL, pageNum, totalPages, term.Items[start:end])
+				paginator := buildPaginator(term.URL, paginatePath, pageNum, totalPages, term.Items[start:end])
 
 				ctx := templateContext{
 					Title:        term.Name,
@@ -411,7 +414,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 					Term:         term,
 					Pages:        term.Items[start:end],
 					Paginator:    paginator,
-					Robots:       "noai, noimageai",
+					Robots:       cfg.RobotsMeta,
 				}
 
 				rendered, err := renderTemplate(set, singleTemplate, ctx)
@@ -467,7 +470,7 @@ func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme) (
 			CanonicalURL: canonical,
 			Config:       cfg,
 			Theme:        theme,
-			Robots:       "noindex, noai, noimageai",
+			Robots:       joinRobots("noindex", cfg.RobotsMeta),
 		})
 		if err != nil {
 			return Page{}, err

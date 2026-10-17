@@ -19,6 +19,8 @@ title = "My Site"
 
 `base_url` and `title` are the important starting points. Most other settings have defaults.
 
+Nida warns about keys it does not recognize, for example `warning: unknown config key "paginte" is ignored`. Unknown keys never fail the build, but the warning catches typos and settings from other generators that Nida does not support. Keys under `extra` are never reported.
+
 ## Top-level settings
 
 | Key | Type | Default | Description |
@@ -37,6 +39,8 @@ title = "My Site"
 | `theme` | string | empty | Theme name under `themes_dir`. Empty means use site templates/static directly. |
 | `paginate` | integer | `10` | Default pagination size. Must be greater than zero. |
 | `drafts` | boolean | `false` | Include draft content when building. |
+| `future` | boolean | `false` | Include pages whose `date` is in the future. Future-dated pages are skipped by default so scheduled posts stay hidden until the next build after their date. |
+| `robots_meta` | string | empty | Value exposed to templates as `.Robots` for a `<meta name="robots">` tag, such as `"noai, noimageai"`. The 404 page always adds `noindex`. |
 | `minify_html` | boolean | `false` | Minify rendered HTML output. |
 | `syntax_theme` | string | `github` | Syntax highlighting theme name. |
 | `extra` | table | empty | Custom values available to templates as `.Config.Extra`. |
@@ -45,6 +49,7 @@ title = "My Site"
 
 ```toml
 [markdown]
+hard_wraps = false
 external_links_target_blank = false
 external_links_no_follow = false
 external_links_no_referrer = false
@@ -53,6 +58,7 @@ unsafe_html = false
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
+| `markdown.hard_wraps` | boolean | `false` | Render single newlines inside a paragraph as `<br>`. Off by default, matching CommonMark: a single newline is a space and a blank line starts a new paragraph. |
 | `markdown.external_links_target_blank` | boolean | `false` | Add `target="_blank"` to external HTTP(S) links. |
 | `markdown.external_links_no_follow` | boolean | `false` | Add `nofollow` to external link `rel` values. |
 | `markdown.external_links_no_referrer` | boolean | `false` | Add `noreferrer` to external link `rel` values. |
@@ -70,10 +76,25 @@ paginate_path = "page"
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `sections.default_page_template` | string | empty | Default template for pages in sections when no page or section override is set. |
+| `sections.default_page_template` | string | empty | Default template for pages when neither the page `template` nor the section `page_template` is set. Falls back to `post`, then `page`. |
 | `sections.default_sort_by` | string | `date` | Default section sort mode. Common values include `date`, `title`, `weight`, and `slug`. |
 | `sections.paginate_by` | integer | `0` | Section pagination size. Falls back to top-level `paginate` when unset. |
-| `sections.paginate_path` | string | `page` | Path segment used for paginated section pages. |
+| `sections.paginate_path` | string | `page` | Path segment used for paginated section pages. A section's own `paginate_path` front matter takes precedence. |
+
+## Home
+
+```toml
+[home]
+sections = ["posts"]
+limit = 5
+```
+
+The homepage template receives recent pages in `.Pages`.
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `home.sections` | array of strings | empty | Root sections to list on the homepage. Empty includes every section. Nested sections match by root, so `posts/2026` matches `posts`. |
+| `home.limit` | integer | `5` | Number of pages in `.Pages` on the homepage. `0` lists all of them. When the homepage paginates, `home.sections` also filters the paginated list. |
 
 ## Taxonomies
 
@@ -117,39 +138,40 @@ pages = "/{slug}/"
 
 Permalink routes must stay site-relative and safe. Nida validates generated routes before writing output.
 
+## Feed
+
+Nida generates an Atom feed by default.
+
+```toml
+[feed]
+enabled = true
+filename = "feed.xml"
+limit = 20
+sections = ["posts"]
+```
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `feed.enabled` | boolean | `true` | Generate the Atom feed. |
+| `feed.filename` | string | `feed.xml` | Output filename for the Atom feed. |
+| `feed.limit` | integer | `20` | Maximum number of feed entries. |
+| `feed.sections` | array of strings | empty | Root content sections to include, such as `["posts"]`. Omit or leave empty to include all pages. Nested section paths match by root section, so `posts/notes` matches `posts`. |
+
+Entries use the page `description` as the summary and include the full rendered HTML with links made absolute. An entry's `updated` time comes from the page's `updated` front matter when that is newer than `date`.
+
 ## RSS
+
+Some feed readers and services still expect RSS 2.0. Nida can write an RSS feed next to the Atom feed. It is off by default.
 
 ```toml
 [rss]
 enabled = true
 filename = "rss.xml"
 limit = 20
-sections = ["post"]
+sections = ["posts"]
 ```
 
-| Key | Type | Default | Description |
-| --- | --- | --- | --- |
-| `rss.enabled` | boolean | `true` | Generate an RSS feed. |
-| `rss.filename` | string | `rss.xml` | Output filename for the RSS feed. |
-| `rss.limit` | integer | `20` | Maximum number of feed entries. |
-| `rss.sections` | array of strings | empty | Root content sections to include, such as `["post"]`. Omit or leave empty to include all pages. Nested section paths match by root section, so `post/notes` matches `post`. |
-
-## Atom
-
-```toml
-[atom]
-enabled = false
-filename = "atom.xml"
-limit = 20
-sections = ["post"]
-```
-
-| Key | Type | Default | Description |
-| --- | --- | --- | --- |
-| `atom.enabled` | boolean | `false` | Generate an Atom feed. |
-| `atom.filename` | string | `atom.xml` | Output filename for the Atom feed. |
-| `atom.limit` | integer | `20` | Maximum number of feed entries. |
-| `atom.sections` | array of strings | empty | Root content sections to include, such as `["post"]`. Omit or leave empty to include all pages. Nested section paths match by root section, so `post/notes` matches `post`. |
+The keys mean the same as in `[feed]`. The defaults are `enabled = false` and `filename = "rss.xml"`. `rss.filename` must differ from `feed.filename`.
 
 ## Sitemap
 

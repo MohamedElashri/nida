@@ -35,7 +35,11 @@ type Umami struct {
 	WebsiteID string
 }
 
+// Theme carries values derived from the merged theme and site [extra]
+// tables. Extra is the general-purpose map; the named fields below predate
+// it and are kept so existing themes continue to work.
 type Theme struct {
+	Extra      map[string]any
 	InlineCSS  template.CSS
 	MainMenu   []NavItem
 	Social     []NavItem

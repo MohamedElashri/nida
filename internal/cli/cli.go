@@ -39,6 +39,7 @@ type commandOptions struct {
 	siteRoot   string
 	configPath string
 	drafts     bool
+	future     bool
 	port       int
 }
 
@@ -120,6 +121,8 @@ func parseBuildFlags(args []string) (commandOptions, error) {
 	fs.StringVar(&opts.configPath, "c", "", "config file path")
 	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
 	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
+	fs.BoolVar(&opts.future, "future", false, "include future-dated content")
+	fs.BoolVar(&opts.future, "f", false, "include future-dated content")
 
 	if err := fs.Parse(args); err != nil {
 		return commandOptions{}, err
@@ -138,6 +141,8 @@ func parseServeFlags(args []string) (commandOptions, error) {
 	fs.StringVar(&opts.configPath, "c", "", "config file path")
 	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
 	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
+	fs.BoolVar(&opts.future, "future", false, "include future-dated content")
+	fs.BoolVar(&opts.future, "f", false, "include future-dated content")
 	fs.IntVar(&opts.port, "port", 0, "override server port")
 	fs.IntVar(&opts.port, "p", 0, "override server port")
 
@@ -164,6 +169,7 @@ func runBuild(stdout, stderr io.Writer, opts commandOptions) int {
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
+	writeWarnings(stderr, result.cfg.Warnings)
 
 	colors := colorsFor(stdout)
 	_, _ = fmt.Fprintf(stdout, "%s %s config=%s drafts=%t output=%s pages=%d routes=%d rendered=%d\n", colors.command("nida build:"), colors.success("complete"), result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.AllPages), len(result.state.Index.RouteRegistry), len(result.pages))
@@ -175,6 +181,7 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
+	writeWarnings(stderr, current.cfg.Warnings)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -252,20 +259,7 @@ func buildSite(opts commandOptions) (buildResult, error) {
 		return buildResult{}, err
 	}
 
-	artifacts := make([]output.Artifact, 0, 3)
-	if cfg.Feed.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Feed.Filename})
-	}
-	if cfg.Sitemap.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
-	}
-	if cfg.Robots.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Robots.Filename})
-	}
-	if cfg.Search.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Search.Filename})
-	}
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, artifacts); err != nil {
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
 		return buildResult{}, err
 	}
 
@@ -339,6 +333,9 @@ func loadCommandConfig(opts commandOptions) (config.SiteConfig, string, error) {
 	if opts.drafts {
 		cfg.Drafts = true
 	}
+	if opts.future {
+		cfg.Future = true
+	}
 	if opts.port != 0 {
 		cfg.Server.Port = opts.port
 	}
@@ -355,11 +352,18 @@ func writeCommandError(stderr io.Writer, err error) int {
 	return 1
 }
 
+func writeWarnings(stderr io.Writer, warnings []string) {
+	colors := colorsFor(stderr)
+	for _, warning := range warnings {
+		_, _ = fmt.Fprintf(stderr, "%s %s\n", colors.warning("warning:"), warning)
+	}
+}
+
 func writeUsage(w io.Writer) {
 	_, _ = io.WriteString(w, `Usage:
   nida init [PATH]
-  nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-p PORT] [--port PORT]
-  nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts]
+  nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [-p PORT] [--port PORT]
+  nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future]
   nida version
 
 Commands:

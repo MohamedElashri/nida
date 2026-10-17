@@ -77,6 +77,9 @@ func buildArtifactList(cfg config.SiteConfig) []output.Artifact {
 	if cfg.Feed.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Feed.Filename})
 	}
+	if cfg.RSS.Enabled {
+		artifacts = append(artifacts, output.Artifact{Path: cfg.RSS.Filename})
+	}
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
 	}
@@ -355,15 +358,10 @@ func diffRenderedPages(previous, next []render.Page) ([]render.Page, []string) {
 }
 
 func artifactPaths(cfg config.SiteConfig) []string {
-	paths := make([]string, 0, 2)
-	if cfg.Feed.Enabled {
-		paths = append(paths, cfg.Feed.Filename)
-	}
-	if cfg.Sitemap.Enabled {
-		paths = append(paths, cfg.Sitemap.Filename)
-	}
-	if cfg.Robots.Enabled {
-		paths = append(paths, cfg.Robots.Filename)
+	artifacts := buildArtifactList(cfg)
+	paths := make([]string, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		paths = append(paths, artifact.Path)
 	}
 	return paths
 }

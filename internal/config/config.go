@@ -1,10 +1,12 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -41,6 +43,7 @@ func Load(opts Options) (SiteConfig, string, error) {
 	if err := toml.Unmarshal(data, &cfg); err != nil {
 		return SiteConfig{}, "", fmt.Errorf("parse config %q: %w", configPath, err)
 	}
+	cfg.Warnings = append(cfg.Warnings, unknownKeyWarnings(data)...)
 
 	normalize(&cfg)
 	if err := Validate(cfg); err != nil {
@@ -48,4 +51,22 @@ func Load(opts Options) (SiteConfig, string, error) {
 	}
 
 	return cfg, configPath, nil
+}
+
+// unknownKeyWarnings reports config keys Nida does not understand. Unknown
+// keys are ignored rather than rejected so a typo never blocks a build, but
+// silently dropping them hides mistakes, so each one becomes a warning.
+func unknownKeyWarnings(data []byte) []string {
+	var probe SiteConfig
+	err := toml.NewDecoder(bytes.NewReader(data)).DisallowUnknownFields().Decode(&probe)
+	var strict *toml.StrictMissingError
+	if !errors.As(err, &strict) {
+		return nil
+	}
+	warnings := make([]string, 0, len(strict.Errors))
+	for _, decodeErr := range strict.Errors {
+		key := strings.Join(decodeErr.Key(), ".")
+		warnings = append(warnings, fmt.Sprintf("unknown config key %q is ignored", key))
+	}
+	return warnings
 }

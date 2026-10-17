@@ -3,6 +3,7 @@ package feeds
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -170,7 +171,7 @@ func TestGenerateFiltersNestedSectionsByRoot(t *testing.T) {
 func TestGenerateAllReturnsEnabledFeeds(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com"
-	cfg.Feed.Enabled = true
+	cfg.RSS.Enabled = true
 
 	index := site.SiteIndex{
 		AllPages: []content.Page{{Title: "Post", URL: "/posts/post/"}},
@@ -183,8 +184,8 @@ func TestGenerateAllReturnsEnabledFeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateAll returned error: %v", err)
 	}
-	if len(outputs) != 1 {
-		t.Fatalf("expected 1 feed, got %+v", outputs)
+	if len(outputs) != 2 || outputs[0].Filename != "feed.xml" || outputs[1].Filename != "rss.xml" {
+		t.Fatalf("expected feed.xml and rss.xml, got %+v", outputs)
 	}
 }
 
@@ -198,6 +199,72 @@ func TestGenerateDisabledFeed(t *testing.T) {
 	}
 	if out != nil {
 		t.Fatalf("expected nil output when disabled, got %+v", out)
+	}
+}
+
+func TestGenerateRSSGolden(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Title = "Fixture Site"
+	cfg.Description = "Fixture feed"
+	cfg.Author = "Fixture Author"
+
+	index := site.SiteIndex{
+		AllPages: []content.Page{
+			{
+				Title:       "Hello World",
+				URL:         "/posts/hello-world/",
+				Description: "A fixture post for early tests.",
+				Date:        mustDate(t, "2026-04-12T10:00:00Z"),
+				Updated:     mustDate(t, "2026-04-14T10:00:00Z"),
+				BodyHTML:    "<p>Hello <a href=\"/about/\">feed</a>.</p>\n",
+				Extra:       map[string]any{"tags": []any{"go"}},
+			},
+		},
+	}
+
+	cfg.RSS.Enabled = true
+	out, err := GenerateRSS(cfg, index)
+	if err != nil {
+		t.Fatalf("GenerateRSS returned error: %v", err)
+	}
+	assertGolden(t, "rss.golden.xml", out.Content)
+}
+
+func TestAtomUsesUpdatedDate(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	index := site.SiteIndex{AllPages: []content.Page{{
+		Title:   "Edited",
+		URL:     "/posts/edited/",
+		Date:    mustDate(t, "2026-04-12T10:00:00Z"),
+		Updated: mustDate(t, "2026-05-01T10:00:00Z"),
+	}}}
+
+	out, err := Generate(cfg, index)
+	if err != nil {
+		t.Fatalf("GenerateAtom returned error: %v", err)
+	}
+	body := string(out.Content)
+	if !strings.Contains(body, "<published>2026-04-12T10:00:00Z</published>") || !strings.Contains(body, "<updated>2026-05-01T10:00:00Z</updated>") {
+		t.Fatalf("expected published and updated dates to differ, got %s", body)
+	}
+}
+
+func assertGolden(t *testing.T, name string, got []byte) {
+	t.Helper()
+	path := filepath.Join("testdata", name)
+	if os.Getenv("UPDATE_GOLDEN") == "1" {
+		if err := os.WriteFile(path, got, 0o644); err != nil {
+			t.Fatalf("write golden: %v", err)
+		}
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read golden: %v", err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("golden mismatch\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
