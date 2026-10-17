@@ -30,20 +30,29 @@
     {{- end }}
   </section>
 
+  {{- with .Section.BodyHTML }}
+  <section class="home-section prose">{{ unsafeHTML . }}</section>
+  {{- end }}
+
   {{- with dig .Data "home.features" }}
-  <section class="features" aria-label="{{ t "features" }}">
-    {{- range . }}
-    <a class="feature" href="{{ $.BasePath }}{{ .url }}">
-      <span class="feature-icon">{{ template "icon" .icon }}</span>
-      <span class="feature-title">{{ .title }}</span>
-      <span class="feature-text">{{ .text }}</span>
-    </a>
-    {{- end }}
+  <section class="home-section prose" aria-labelledby="features">
+    <h2 id="features">{{ t "features" }}</h2>
+    <div class="card-grid">
+      {{- range . }}
+      <a class="card" href="{{ $.BasePath }}{{ .url }}">
+        <span class="card-title"><span class="card-icon">{{ template "icon" .icon }}</span>{{ .title }}</span>
+        <span class="card-text">{{ .text }}</span>
+      </a>
+      {{- end }}
+    </div>
   </section>
   {{- end }}
 
-  {{- with .Section.BodyHTML }}
-  <section class="home-body prose">{{ unsafeHTML . }}</section>
+  {{- with dig .Data "home.about" }}
+  <section class="home-section prose">
+    {{ with dig $.Data "home.about_title" }}<h2>{{ . }}</h2>{{ end }}
+    {{ markdownify . }}
+  </section>
   {{- end }}
 </main>
 {{- end }}

@@ -14,7 +14,3 @@ sort_by = "weight"
 {{< card title="Configuration reference" href="@/reference/config.md" >}}Every `config.toml` key with its default.{{< /card >}}
 {{< card title="CLI reference" href="@/reference/cli.md" >}}`init`, `new`, `serve`, `check`, and `build`.{{< /card >}}
 {{< /cards >}}
-
-## Built with Nida
-
-This site is built with Nida, using a theme that lives in the repository at [`docs/themes/nida-docs`](https://github.com/MohamedElashri/nida/tree/main/docs/themes/nida-docs). Its sidebar, search, breadcrumbs, page outline, "last updated" dates, translations, and shortcodes all come from features described in these docs, so it doubles as a working example.

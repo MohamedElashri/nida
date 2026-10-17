@@ -18,9 +18,8 @@ var minifier = func() *minify.M {
 	return m
 }()
 
-// minifyAsset returns minified bytes for CSS and JS files when the matching
-// pipeline option is on. Other files, and files the minifier cannot parse,
-// are returned unchanged so a minifier problem never breaks a build.
+// minifyAsset minifies CSS or JS when enabled. Other files, and files that
+// fail to parse, are returned unchanged.
 func minifyAsset(name string, data []byte, cfg config.PipelineConfig) []byte {
 	mediaType := ""
 	switch strings.ToLower(filepath.Ext(name)) {

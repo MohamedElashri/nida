@@ -53,9 +53,8 @@ func Load(opts Options) (SiteConfig, string, error) {
 	return cfg, configPath, nil
 }
 
-// unknownKeyWarnings reports config keys Nida does not understand. Unknown
-// keys are ignored rather than rejected so a typo never blocks a build, but
-// silently dropping them hides mistakes, so each one becomes a warning.
+// unknownKeyWarnings turns unrecognized config keys into warnings rather than
+// errors, so a typo is visible but never blocks a build.
 func unknownKeyWarnings(data []byte) []string {
 	var probe SiteConfig
 	err := toml.NewDecoder(bytes.NewReader(data)).DisallowUnknownFields().Decode(&probe)

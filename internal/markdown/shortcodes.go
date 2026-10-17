@@ -19,9 +19,8 @@ var (
 	summaryAttrRe  = regexp.MustCompile(`summary\s*=\s*"([^"]*)"`)
 )
 
-// Shortcodes renders template shortcodes such as {{< figure src="a.png" >}}.
-// internal/shortcodes provides the implementation; it lives behind an
-// interface because the templates it executes depend on this package.
+// Shortcodes renders template shortcodes. It is an interface because
+// internal/shortcodes depends on this package through its templates.
 type Shortcodes interface {
 	Has(name string) bool
 	Render(call *ShortcodeCall) (string, error)

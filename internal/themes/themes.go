@@ -20,9 +20,8 @@ type Theme struct {
 	Extra   map[string]any `toml:"extra"`
 }
 
-// Chain returns the configured theme and its ancestors, parent first, so
-// callers that apply them in order let a child theme override its parent.
-// It returns nil when no theme is configured.
+// Chain returns the configured theme and its ancestors, parent first, or nil
+// when no theme is set.
 func Chain(siteRoot string, cfg config.SiteConfig) ([]Theme, error) {
 	if cfg.Theme == "" {
 		return nil, nil

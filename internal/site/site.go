@@ -187,9 +187,7 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 	return index, sortedPages, nil
 }
 
-// ResolveSectionURL returns the route a section renders at. Sections always
-// render at /<section path>/; [permalinks] patterns apply to the pages in a
-// section, not to the section itself.
+// ResolveSectionURL returns /<section>/; permalinks apply only to pages.
 func ResolveSectionURL(section content.Section, cfg config.SiteConfig) (string, error) {
 	route := "/" + section.SectionPath + "/"
 	if section.SectionPath == "" {
@@ -472,9 +470,8 @@ func sortPagesBySection(pages []content.Page, section content.Section, cfg confi
 	return pages
 }
 
-// GetPage finds a page by its content path, such as "posts/hello.md" or
-// "@/posts/hello.md". It returns nil when no published page matches, so
-// templates can guard with {{ with .Index.GetPage "..." }}.
+// GetPage finds a published page by content path ("posts/hello.md", with or
+// without ".md" or "@/"), or returns nil.
 func (index SiteIndex) GetPage(contentPath string) *content.Page {
 	contentPath = normalizeContentPath(contentPath)
 	for i := range index.AllPages {

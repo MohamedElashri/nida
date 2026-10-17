@@ -9,9 +9,8 @@ import (
 // Zola. It must sit on its own line.
 var summaryMarker = regexp.MustCompile(`^\s*<!--\s*more\s*-->\s*$`)
 
-// splitSummary removes the first summary marker outside a fenced code block.
-// It returns the body without the marker, the Markdown before it, and
-// whether a marker was found.
+// splitSummary removes the first marker outside code and returns the body,
+// the Markdown before the marker, and whether one was found.
 func splitSummary(source string) (body, summary string, found bool) {
 	lines := strings.SplitAfter(source, "\n")
 	fence := ""

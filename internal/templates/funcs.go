@@ -102,13 +102,8 @@ func last(n int, items any) (any, error) {
 	return v.Slice(max(v.Len()-n, 0), v.Len()).Interface(), nil
 }
 
-// where filters a list by a field path such as "SectionPath" or
-// "Extra.tags". Two forms are supported:
-//
-//	where .Pages "SectionPath" "posts"
-//	where .Pages "Extra.series" "!=" "intro"
-//
-// A field holding a list matches when it contains the value.
+// where keeps items whose field path (such as "Extra.tags") equals, or for
+// lists contains, the value. An optional "!=" operator inverts the match.
 func where(items any, field string, args ...any) (any, error) {
 	op, value := "==", any(nil)
 	switch len(args) {
@@ -220,9 +215,8 @@ func plainify(value string) string {
 	return strings.Join(strings.Fields(stdhtml.UnescapeString(b.String())), " ")
 }
 
-// markdownifyFunc renders a short Markdown string, such as a description
-// from front matter. A single paragraph is unwrapped so the result can sit
-// inline.
+// markdownifyFunc renders a short Markdown string, unwrapping a single
+// paragraph so the result can sit inline.
 func markdownifyFunc(cfg config.SiteConfig) func(string) (template.HTML, error) {
 	return func(value string) (template.HTML, error) {
 		html, err := markdown.Render(value, cfg, nil)

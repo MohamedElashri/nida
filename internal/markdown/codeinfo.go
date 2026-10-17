@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-// codeInfo is the parsed info string of a fenced code block, for example
-//
-//	```go {title="main.go", hl_lines="2 4-6", linenos=true, linenostart=10}
+// codeInfo is a parsed info string: go {title="x", hl_lines="2 4-6", linenos}.
 type codeInfo struct {
 	Language    string
 	Title       string

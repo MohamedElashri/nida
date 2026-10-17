@@ -12,9 +12,8 @@ import (
 	"github.com/MohamedElashri/nida/internal/site"
 )
 
-// runCheck runs everything a build does up to writing files: config
-// validation, content diagnostics, Markdown and template rendering, and
-// route conflict checks. With --external it also requests external links.
+// runCheck runs the build up to the write plan, with diagnostics on, and
+// writes nothing. --external also requests outbound links.
 func runCheck(stdout, stderr io.Writer, opts commandOptions) int {
 	started := time.Now()
 	cfg, path, err := loadCommandConfig(opts)

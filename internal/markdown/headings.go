@@ -59,9 +59,8 @@ func headingID(n *ast.Heading) string {
 	return ""
 }
 
-// collectTOC returns the document's headings nested by level. A heading
-// becomes a child of the closest preceding heading with a smaller level, so
-// documents that skip levels (h2 then h4) still produce a sensible tree.
+// collectTOC nests each heading under the closest preceding heading with a
+// smaller level, so skipped levels still form a tree.
 func collectTOC(doc ast.Node, source []byte) []content.Heading {
 	var flat []content.Heading
 	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -110,10 +109,8 @@ func stripPlaceholders(value string) string {
 	return strings.TrimSpace(placeholderPattern.ReplaceAllString(value, ""))
 }
 
-// headingIDs generates heading IDs. It matches goldmark's rules for ASCII
-// text, so existing anchors keep working, but it also keeps Unicode letters
-// and digits (goldmark drops them, which gives every Arabic heading the ID
-// "heading"), and it ignores shortcode placeholders.
+// headingIDs follows goldmark's ID rules for ASCII but keeps Unicode letters,
+// which goldmark drops, and ignores shortcode placeholders.
 type headingIDs struct {
 	values map[string]bool
 }

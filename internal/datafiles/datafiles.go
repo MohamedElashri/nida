@@ -17,10 +17,8 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// Load reads .toml, .json, .yaml, and .yml files under data_dir in each
-// theme (parent first) and then the site. data/authors.toml becomes
-// .Data.authors and data/team/core.json becomes .Data.team.core. A file
-// from a later directory replaces the same key from an earlier one.
+// Load reads TOML, JSON, and YAML files from each theme's data_dir and then
+// the site's; data/team/core.json becomes .Data.team.core.
 func Load(siteRoot string, cfg config.SiteConfig) (map[string]any, error) {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {

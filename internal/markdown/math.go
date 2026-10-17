@@ -10,13 +10,8 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-// Math support passes TeX through untouched so a client-side renderer such as
-// KaTeX or MathJax can typeset it. Without this, Markdown would turn
-// underscores and asterisks inside formulas into emphasis.
-//
-// Inline math is $...$ or $$...$$ on one line. Display math is a block that
-// opens with $$ and closes with a line ending in $$. Output uses the \( \)
-// and \[ \] delimiters that KaTeX auto-render and MathJax look for.
+// Math passes $...$ and $$...$$ TeX through untouched, wrapped in \( \) and
+// \[ \] delimiters for KaTeX or MathJax.
 
 var (
 	kindMathInline = ast.NewNodeKind("MathInline")
@@ -69,9 +64,8 @@ func (mathInlineParser) Parse(_ ast.Node, block text.Reader, _ parser.Context) a
 		return &mathInline{Display: true, TeX: append([]byte(nil), tex...)}
 	}
 
-	// Pandoc's rules keep prices like "$5 and $10" as plain text: the opening
-	// $ must not be followed by a space, and the closing $ must not follow a
-	// space or precede a digit.
+	// Pandoc's rules, so "$5 and $10" stays text: no space after the opening
+	// $, and no space before or digit after the closing $.
 	if line[1] == ' ' || line[1] == '\t' {
 		return nil
 	}

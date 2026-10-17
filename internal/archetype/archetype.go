@@ -43,9 +43,8 @@ type Result struct {
 	Archetype string
 }
 
-// Create writes a new content file at target, a path inside the content
-// directory such as "posts/my-post.md". A target without .md becomes a page
-// bundle: "posts/my-post" creates posts/my-post/index.md.
+// Create writes target, such as "posts/my-post.md", into the content
+// directory. Without ".md" it creates a bundle: posts/my-post/index.md.
 func Create(siteRoot string, cfg config.SiteConfig, target string, now time.Time) (Result, error) {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {
@@ -129,9 +128,8 @@ func Create(siteRoot string, cfg config.SiteConfig, target string, now time.Time
 	return Result{Path: outPath, Archetype: source}, nil
 }
 
-// findArchetype looks for <section>.md, then default.md, in the site's
-// archetypes/ directory and then in each theme (child first), and falls
-// back to a built-in default.
+// findArchetype tries <section>.md then default.md in the site and each
+// theme, falling back to a built-in default.
 func findArchetype(absSiteRoot string, cfg config.SiteConfig, section string) (string, string, error) {
 	dirs := []string{filepath.Join(absSiteRoot, dirName)}
 	themeDirs, err := themes.Dirs(absSiteRoot, cfg, dirName)

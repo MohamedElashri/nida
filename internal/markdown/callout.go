@@ -11,10 +11,7 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-// Callouts use GitHub's alert syntax, with an optional custom title:
-//
-//	> [!WARNING] Back up first
-//	> This command rewrites history.
+// calloutMarker matches GitHub's "> [!WARNING] Optional title" syntax.
 var calloutMarker = regexp.MustCompile(`^\[!([A-Za-z]+)\][ \t]*(.*)$`)
 
 var calloutTitles = map[string]string{
@@ -80,9 +77,7 @@ func convertCallout(quote *ast.Blockquote, source []byte, translate func(string)
 		title = strings.ToUpper(kind[:1]) + kind[1:]
 	}
 
-	// Drop the inline nodes that make up the marker line. They end at the
-	// first soft or hard line break; if there is none the paragraph held only
-	// the marker and is removed entirely.
+	// Drop the marker line's inline nodes; an emptied paragraph is removed.
 	lineEnd := firstLine.Stop
 	for child := para.FirstChild(); child != nil; {
 		next := child.NextSibling()

@@ -9,10 +9,8 @@ import (
 	"time"
 )
 
-// ApplyGitDates fills in Updated from the last commit that touched each
-// page's file, for pages whose front matter does not set updated. It runs a
-// single git log over the content directory. Outside a git repository, or
-// without git installed, pages are left unchanged.
+// ApplyGitDates sets Updated from each file's last commit when front matter
+// does not set it. Without git or a repository, pages are left unchanged.
 func ApplyGitDates(contentRoot string, pages []Page) {
 	dates := gitLastModified(contentRoot)
 	if len(dates) == 0 {

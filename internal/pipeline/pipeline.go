@@ -60,9 +60,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 		}
 	}
 
-	// The site's static files come first, then the selected theme's, then
-	// each parent theme's. A path handled by an earlier root is skipped,
-	// matching how plain asset copying lets the site override a theme.
+	// Site first, then theme, then parent themes; the first root wins a path.
 	var roots []string
 	if staticExists {
 		roots = append(roots, staticRoot)

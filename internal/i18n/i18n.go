@@ -18,10 +18,8 @@ const dirName = "i18n"
 // Translations maps keys to strings for the site language.
 type Translations map[string]string
 
-// Load reads i18n/<lang>.toml from each theme (parent first) and the site.
-// For language "ar-EG" it layers en.toml, then ar.toml, then ar-eg.toml, so
-// a key missing from a more specific file falls back to a broader one.
-// Nested tables become dotted keys: [nav] home = "..." is "nav.home".
+// Load layers i18n/en.toml, i18n/<lang>.toml, and i18n/<lang-region>.toml
+// from each theme and then the site. Nested tables become dotted keys.
 func Load(siteRoot string, cfg config.SiteConfig) (Translations, error) {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {

@@ -22,10 +22,8 @@ type NavEntry struct {
 // IsSection reports whether the entry is a section.
 func (e NavEntry) IsSection() bool { return e.Section != nil }
 
-// Nav returns the pages and child sections of a section as one list ordered
-// by weight, then title, with child sections expanded recursively. It is
-// meant for documentation sidebars, where authors interleave pages and
-// subsections with weights. Use "" for the root section.
+// Nav returns a section's pages and child sections ordered by weight, then
+// title, recursively. Use "" for the root section.
 func (index SiteIndex) Nav(sectionPath string) []NavEntry {
 	section, ok := index.SectionLookup[strings.Trim(sectionPath, "/")]
 	if !ok {
@@ -63,9 +61,8 @@ func (index SiteIndex) navEntries(section content.Section) []NavEntry {
 	return entries
 }
 
-// Neighbors returns the entries before and after currentURL when the
-// navigation tree under sectionPath is read top to bottom, with each section
-// placed before its children. Either result is nil at the ends.
+// Neighbors returns the entries around currentURL in the flattened Nav tree,
+// with each section before its children.
 func (index SiteIndex) Neighbors(sectionPath, currentURL string) Neighbors {
 	var flat []NavEntry
 	var walk func([]NavEntry)

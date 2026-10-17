@@ -120,9 +120,8 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	var out string
 	var err error
 
-	// When pagination is disabled, render the section once without a paginator.
-	// For sections with pagination, paginated page 1 occupies sectionURL, so
-	// rendering a separate non-paginated page would produce a URL conflict.
+	// Without pagination, render the section once. With it, page 1 of the
+	// paginated output already occupies sectionURL.
 	paginateSection := perPage > 0
 	if !paginateSection && set.Has(templateName) {
 		canonical := canonicalURL(cfg.BaseURL, sectionURL)

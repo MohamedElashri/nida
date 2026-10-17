@@ -6,10 +6,8 @@ import (
 	"sync"
 )
 
-// Map applies fn to every item using up to GOMAXPROCS goroutines and
-// returns results in input order. If any call fails, it returns the error
-// from the lowest index, so failures are reported the same way as a
-// sequential loop would report them.
+// Map applies fn concurrently and returns results in input order. On failure
+// it returns the lowest-index error, as a sequential loop would.
 func Map[T, R any](items []T, fn func(T) (R, error)) ([]R, error) {
 	results := make([]R, len(items))
 	if len(items) == 0 {

@@ -2,6 +2,8 @@
 eyebrow = "Static site generator"
 title = "Publish Markdown, *without the ceremony*."
 tagline = "Nida is a small, fast Go static site generator for blogs, personal sites, and documentation. One binary, plain templates, and output you can host anywhere."
+about_title = "Built with Nida"
+about = """This site is built with Nida, using a theme that lives in the repository at [`docs/themes/nida-docs`](https://github.com/MohamedElashri/nida/tree/main/docs/themes/nida-docs). Its sidebar, search, breadcrumbs, page outline, "last updated" dates, translations, and shortcodes all come from features described in these docs, so it doubles as a working example."""
 sample_title = "content/posts/hello.md"
 sample = '''
 ```markdown
@@ -18,7 +20,7 @@ A short post with a summary.
 > [!TIP]
 > Run `nida serve` and edit; the browser reloads.
 
-{{< figure src="cover.png" caption="Bundles keep images next to posts." >}}
+{{< figure src="cover.png" alt="Cover" >}}
 ```
 '''
 

@@ -88,10 +88,8 @@ func RemovePages(siteRoot string, cfg config.SiteConfig, routes []string) error 
 	return nil
 }
 
-// removeEmptyParents removes ancestor directories left empty by a page
-// removal, stopping at (and never including) the output root. Without this,
-// Go's http.FileServer serves a directory listing (HTTP 200) for a removed
-// page's URL instead of 404.
+// removeEmptyParents removes directories emptied by a page removal, so the
+// dev server returns 404 instead of a directory listing.
 func removeEmptyParents(outputDir, removedPath string) error {
 	dir := filepath.Clean(filepath.Dir(removedPath))
 	for dir != outputDir {

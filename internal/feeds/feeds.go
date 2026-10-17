@@ -134,9 +134,8 @@ func Filenames(cfg config.SiteConfig, index site.SiteIndex) []string {
 	return names
 }
 
-// scopedSpecs returns feeds for sections with generate_feeds = true and for
-// every term of taxonomies with feed = true. Filename holds the directory
-// prefix; withFilename adds the configured file name.
+// scopedSpecs returns section and taxonomy term feeds. Filename holds only
+// the directory prefix until withFilename adds the file name.
 func scopedSpecs(cfg config.SiteConfig, index site.SiteIndex) []spec {
 	var specs []spec
 
@@ -586,9 +585,7 @@ func stripHTML(markup string) string {
 
 var htmlURLRegex = regexp.MustCompile(`(?i)(href|src)=["']([^"']+)["']`)
 
-// resolveURL makes a link from a page's HTML absolute the way a browser
-// would: root-relative paths resolve against the host, other relative paths
-// against the page URL.
+// resolveURL makes a page link absolute the way a browser resolves it.
 func resolveURL(baseURL, itemURL, rawURL string) string {
 	if strings.HasPrefix(rawURL, "data:") || strings.HasPrefix(rawURL, "#") || strings.HasPrefix(rawURL, "mailto:") {
 		return rawURL

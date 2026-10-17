@@ -7,9 +7,8 @@ import (
 	"github.com/MohamedElashri/nida/internal/content"
 )
 
-// Related returns up to limit pages that share taxonomy terms with page,
-// most shared terms first, then newest first. Only configured taxonomies
-// count, and pages with nothing in common are left out.
+// Related returns up to limit pages ranked by shared taxonomy terms, then
+// by date.
 func (index SiteIndex) Related(page content.Page, limit int) []content.Page {
 	own := map[string]bool{}
 	for _, collection := range index.Taxonomies {

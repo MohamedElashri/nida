@@ -38,9 +38,7 @@ func SplitReferenceSuffix(value string) (string, string) {
 	return value[:suffixIndex], value[suffixIndex:]
 }
 
-// resolveWithBasePath resolves an @/ path and prefixes the base_url path, so
-// the link works when the site is published under a subpath like /docs/.
-// Other destinations are returned unchanged.
+// resolveWithBasePath resolves an @/ path and prefixes the base_url path.
 func resolveWithBasePath(destination string, lookup PathLookup, basePath string) string {
 	resolved := ResolveInternalPath(destination, lookup)
 	if resolved == destination || !strings.HasPrefix(destination, "@/") {

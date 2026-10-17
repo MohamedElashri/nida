@@ -84,9 +84,7 @@ type MarkdownConfig struct {
 	HeadingAnchors bool `toml:"heading_anchors"`
 	// Math passes $...$ and $$...$$ TeX through for KaTeX or MathJax.
 	Math bool `toml:"math"`
-	// UnsafeHTML is an explicit opt-in for trusted-author sites that need raw
-	// HTML in Markdown. Keep this false when Markdown can come from untrusted
-	// contributors.
+	// UnsafeHTML allows raw HTML in Markdown; only for trusted authors.
 	UnsafeHTML bool `toml:"unsafe_html"`
 }
 

@@ -1,9 +1,5 @@
-// Package shortcodes loads shortcode templates and renders shortcode calls
-// found in Markdown.
-//
-// Templates come from three places, later ones overriding earlier ones:
-// built-in shortcodes, templates/shortcodes/ in each theme (parent first),
-// and the site's templates/shortcodes/.
+// Package shortcodes loads shortcode templates: built-ins, then each theme's
+// templates/shortcodes/, then the site's, with later ones overriding.
 package shortcodes
 
 import (

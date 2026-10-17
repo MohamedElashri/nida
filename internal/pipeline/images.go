@@ -163,10 +163,8 @@ func encodeImage(path string, img image.Image, format string, quality int) error
 	return nil
 }
 
-// ResizeVariants writes width variants of the image at srcPath into dstDir
-// as name.480w.ext and so on, for every configured width smaller than the
-// original. Page bundle images use this; their variants sit next to the
-// copied original so relative srcset URLs resolve.
+// ResizeVariants writes name.<width>w.ext variants of a bundle image into
+// dstDir for each configured width smaller than the original.
 func ResizeVariants(srcPath, dstDir string, cfg config.SiteConfig) error {
 	if !IsImageFile(srcPath) {
 		return nil

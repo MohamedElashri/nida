@@ -481,9 +481,8 @@ func digValue(values map[string]any, path string) any {
 	return values
 }
 
-// FuncMap returns the template functions available to site templates, for
-// other template sets such as shortcodes. It loads the site translations
-// used by the t function.
+// FuncMap returns the site template functions, including translations, for
+// other template sets such as shortcodes.
 func FuncMap(siteRoot string, cfg config.SiteConfig) (template.FuncMap, error) {
 	tr, err := i18n.Load(siteRoot, cfg)
 	if err != nil {
