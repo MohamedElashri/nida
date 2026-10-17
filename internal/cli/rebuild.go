@@ -11,6 +11,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/diagnostics"
 	"github.com/MohamedElashri/nida/internal/feeds"
+	"github.com/MohamedElashri/nida/internal/i18n"
 	"github.com/MohamedElashri/nida/internal/markdown"
 	"github.com/MohamedElashri/nida/internal/output"
 	"github.com/MohamedElashri/nida/internal/pipeline"
@@ -111,7 +112,11 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	if err != nil {
 		return buildResult{}, err
 	}
-	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes, Images: site.NewImages(opts.siteRoot, cfg)}
+	tr, err := i18n.Load(opts.siteRoot, cfg)
+	if err != nil {
+		return buildResult{}, err
+	}
+	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes, Images: site.NewImages(opts.siteRoot, cfg), Translate: tr.Lookup}
 
 	changedByRelPath := make(map[string]content.Page)
 	removedByRelPath := make(map[string]bool)

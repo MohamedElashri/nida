@@ -1,4 +1,7 @@
 {{- $type := lower (default (.Get "type") (default (.Get 0) "note")) -}}
+{{- $key := printf "callout.%s" $type -}}
+{{- $label := t $key -}}
+{{- if eq $label $key }}{{ $label = title $type }}{{ end -}}
 <div class="callout callout-{{ $type }}" data-callout="{{ $type }}">
-<p class="callout-title">{{ default (.Get "title") (title $type) }}</p>
+<p class="callout-title">{{ default (.Get "title") $label }}</p>
 {{ .InnerHTML }}</div>

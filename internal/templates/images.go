@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"golang.org/x/image/draw"
@@ -22,12 +23,18 @@ const (
 	maxImageBytes      = 50 << 20
 )
 
+var resizeMu sync.Mutex
+
 func resizeImageFunc(siteRoot string) func(string, int, int, string) string {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {
 		absSiteRoot = siteRoot
 	}
 	return func(srcPath string, width, height int, format string) string {
+		// Pages render concurrently and may resize the same image; the lock
+		// keeps two writers from producing the same output file at once.
+		resizeMu.Lock()
+		defer resizeMu.Unlock()
 		if !validResizeDimensions(width, height) {
 			return "/" + strings.TrimPrefix(srcPath, "/")
 		}

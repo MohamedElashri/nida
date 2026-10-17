@@ -290,3 +290,55 @@ func TestColorsRespectNoColor(t *testing.T) {
 		t.Fatalf("expected plain error with NO_COLOR, got %q", got)
 	}
 }
+
+func TestCheckReportsBrokenLinksWithoutWritingOutput(t *testing.T) {
+	dir := t.TempDir()
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	if code := run(stdout, stderr, []string{"init", dir}); code != 0 {
+		t.Fatalf("init failed: %s", stderr.String())
+	}
+
+	stdout.Reset()
+	if code := run(stdout, stderr, []string{"check", "--site", dir}); code != 0 {
+		t.Fatalf("expected a clean check, got %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "nida check: ok") {
+		t.Fatalf("unexpected output %q", stdout.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "public")); !os.IsNotExist(err) {
+		t.Fatalf("check must not write output, stat err=%v", err)
+	}
+
+	about := filepath.Join(dir, "content", "pages", "about.md")
+	data, err := os.ReadFile(about)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(about, append(data, []byte("\n[gone](@/posts/missing.md)\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr.Reset()
+	if code := run(stdout, stderr, []string{"check", "--site", dir}); code == 0 {
+		t.Fatal("expected check to fail on a broken internal link")
+	}
+	if !strings.Contains(stderr.String(), "posts/missing.md") {
+		t.Fatalf("expected the broken link in the error, got %q", stderr.String())
+	}
+}
+
+func TestLoadCommandConfigAppliesBuildOverrides(t *testing.T) {
+	cfg, _, err := loadCommandConfig(commandOptions{
+		siteRoot:  filepath.Join("..", "..", "example-site"),
+		baseURL:   "https://preview.example.org/pr-1/",
+		outputDir: "./preview/",
+	})
+	if err != nil {
+		t.Fatalf("loadCommandConfig returned error: %v", err)
+	}
+	if cfg.BaseURL != "https://preview.example.org/pr-1/" || cfg.OutputDir != "preview" {
+		t.Fatalf("overrides not applied: base_url=%q output_dir=%q", cfg.BaseURL, cfg.OutputDir)
+	}
+	if _, _, err := loadCommandConfig(commandOptions{siteRoot: filepath.Join("..", "..", "example-site"), baseURL: "not a url"}); err == nil {
+		t.Fatal("expected invalid base URL override to fail")
+	}
+}

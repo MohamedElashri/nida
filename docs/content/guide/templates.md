@@ -44,6 +44,8 @@ Templates receive useful values such as:
 - `.Paginator` on paginated section and taxonomy pages, with `.Previous`, `.Next`, and `.PageLinks`
 - `.Robots` for the configured `robots_meta` value
 - `.Theme.Extra` for the theme `[extra]` table merged with the site's `[extra]` (site values win)
+- `.Data` for values from the data directory
+- `.EditURL` when `edit_url` is configured
 
 ```html
 {{ with .Robots }}<meta name="robots" content="{{ . }}">{{ end }}
@@ -98,6 +100,61 @@ Besides front matter values, `.Page` has fields Nida computes:
 | `.URL` | Site-relative URL. Prefix with `.BasePath` in links. |
 | `.PrevURL`, `.PrevTitle`, `.NextURL`, `.NextTitle` | Neighbors within the section. |
 | `.Extra` | Custom front matter values. |
+
+## Navigation for docs sites
+
+Every section has `.Sections` (child sections, ordered by `weight` and then title) and `.Pages` (ordered by the section's `sort_by`), along with `.URL` and `.Title`. Together they give the whole content tree, so a sidebar can be generated instead of written by hand:
+
+```html
+{{ define "nav-items" }}
+  {{ $ctx := .Ctx }}
+  {{ range .Section.Sections }}
+    <details{{ if hasPrefix $ctx.CurrentURL .URL }} open{{ end }}>
+      <summary>{{ .Title }}</summary>
+      {{ template "nav-items" (dict "Section" . "Ctx" $ctx) }}
+    </details>
+  {{ end }}
+  {{ range .Section.Pages }}
+    <a{{ if eq .URL $ctx.CurrentURL }} aria-current="page"{{ end }} href="{{ $ctx.BasePath }}{{ .URL }}">{{ .Title }}</a>
+  {{ end }}
+{{ end }}
+
+{{ with .Index.GetSection "" }}{{ template "nav-items" (dict "Section" . "Ctx" $) }}{{ end }}
+```
+
+`.Index.Ancestors` returns the sections from the root down to a section path, for breadcrumbs:
+
+```html
+<nav aria-label="Breadcrumb">
+  {{ range .Index.Ancestors .Page.SectionPath }}<a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a> / {{ end }}
+  {{ .Page.Title }}
+</nav>
+```
+
+With `edit_url` set, `.EditURL` links to the page's source file:
+
+```html
+{{ with .EditURL }}<a href="{{ . }}">Edit this page</a>{{ end }}
+```
+
+## Data files
+
+Files in `data/` are available as `.Data`, keyed by file name and nested by directory. `data/authors.toml` is `.Data.authors` and `data/team/core.json` is `.Data.team.core`. TOML, JSON, and YAML are supported. Themes can ship a `data/` directory too; site files replace theme files with the same name.
+
+```html
+{{ range .Data.links }}<a href="{{ .url }}">{{ .name }}</a>{{ end }}
+```
+
+## Translations
+
+`t` looks up a UI string from `i18n/<language>.toml` and returns the key when there is no translation. Placeholders in braces are filled from an optional `dict`:
+
+```html
+<a href="{{ $.BasePath }}{{ .URL }}">{{ t "read_more" }}</a>
+<p>{{ t "posts_count" (dict "count" (len .Pages)) }}</p>
+```
+
+See [Translations](@/reference/config.md#translations) for file layout and fallback rules.
 
 ## Looking up content
 
@@ -181,6 +238,7 @@ On top of Go's built-in template functions, Nida provides:
 | `default` | `default .Title "Untitled"` | The first argument, or the second when the first is empty. Note the order: value first, fallback second. |
 | `lower`, `upper`, `title`, `trimSpace`, `replace`, `split`, `contains`, `hasPrefix`, `hasSuffix`, `join` | | String helpers. |
 | `slugify`, `urlize` | `slugify "Hello World"` | `hello-world`. |
+| `t` | `t "read_more"` | Translate a UI string. See [Translations](#translations). |
 | `add`, `sub` | `add .Paginator.CurrentIndex 1` | Integer math. |
 | `asset`, `imageSrcset`, `imagePresetSrcset`, `imagePresetSizes`, `imageVariant`, `resizeImage` | | Asset and image helpers, described above. |
 | `readFile` | `readFile "static/logo.svg"` | Read a file from the content, template, or static directories. |

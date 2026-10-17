@@ -32,6 +32,8 @@ type Env struct {
 	Lookup     PathLookup
 	Shortcodes Shortcodes
 	Images     Images
+	// Translate looks up UI strings such as callout titles ("callout.note").
+	Translate func(key string) (string, bool)
 	// Page is the page being rendered, or nil for sections and snippets.
 	Page *content.Page
 }

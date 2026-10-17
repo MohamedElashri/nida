@@ -57,6 +57,8 @@ Flags:
 - `--config`, `-c`: config file path relative to the site root or absolute
 - `--drafts`, `-d`: include draft content
 - `--future`, `-f`: include pages dated in the future
+- `--base-url`: override `base_url`, for example for preview deployments
+- `--output`, `-o`: override `output_dir` (relative to the site root)
 
 ## Serve
 
@@ -70,7 +72,22 @@ Flags:
 - `--config`, `-c`: config file path relative to the site root or absolute
 - `--drafts`, `-d`: include draft content
 - `--future`, `-f`: include pages dated in the future
+- `--base-url`: override `base_url`, for example for preview deployments
+- `--output`, `-o`: override `output_dir` (relative to the site root)
 - `--port`, `-p`: override the configured server port
+
+## Check
+
+```bash
+nida check --site ./my-site
+nida check --site ./my-site --external
+```
+
+Runs a full build without writing any files. It reports unknown config keys, broken `@/` links, missing Markdown images, template errors, unknown shortcodes, and route conflicts, and exits with status 1 if any of these fail. Content diagnostics always run here, whatever `diagnostics.enabled` says. It is a good fit for CI and pre-commit hooks.
+
+`--external` also requests every external link in page content (HEAD, falling back to GET) and fails on network errors or HTTP 4xx/5xx. It needs network access, so it is opt-in.
+
+Flags: `--site`, `--config`, `--drafts`, `--future`, and `--external`.
 
 ## Version
 

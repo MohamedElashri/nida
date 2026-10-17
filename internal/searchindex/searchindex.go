@@ -30,35 +30,38 @@ func Generate(cfg config.SiteConfig, state site.State) (*Output, error) {
 	}
 
 	docs := make(map[string]Doc)
+	allowed := map[string]bool{}
+	for _, section := range cfg.Search.Sections {
+		if root := rootSection(section); root != "" {
+			allowed[root] = true
+		}
+	}
+	include := func(sectionPath string) bool {
+		return len(allowed) == 0 || allowed[rootSection(sectionPath)]
+	}
 
-	// Add all pages
 	for _, page := range state.Index.AllPages {
 		if page.Draft && !cfg.Drafts {
 			continue
 		}
-		url := page.URL
-		if url == "" {
+		if page.URL == "" || !include(page.SectionPath) {
 			continue
 		}
-		body := stripHTML(page.BodyHTML)
-		docs[url] = Doc{
+		docs[page.URL] = Doc{
 			Title:       page.Title,
 			Description: page.Description,
-			Body:        body,
+			Body:        limitBody(stripHTML(page.BodyHTML), cfg.Search.BodyLimit),
 		}
 	}
 
-	// Add all sections
-	for _, section := range state.Index.Sections {
-		url := section.URL
-		if url == "" {
+	for _, section := range state.Index.SectionLookup {
+		if section.URL == "" || !include(section.SectionPath) {
 			continue
 		}
-		body := stripHTML(section.BodyHTML)
-		docs[url] = Doc{
+		docs[section.URL] = Doc{
 			Title:       section.Title,
 			Description: section.Description,
-			Body:        body,
+			Body:        limitBody(stripHTML(section.BodyHTML), cfg.Search.BodyLimit),
 		}
 	}
 
@@ -102,4 +105,21 @@ func stripHTML(markup string) string {
 		}
 	}
 	return strings.Join(strings.Fields(html.UnescapeString(result.String())), " ")
+}
+
+func rootSection(sectionPath string) string {
+	sectionPath = strings.Trim(sectionPath, "/")
+	root, _, _ := strings.Cut(sectionPath, "/")
+	return root
+}
+
+func limitBody(body string, limit int) string {
+	if limit <= 0 {
+		return body
+	}
+	runes := []rune(body)
+	if len(runes) <= limit {
+		return body
+	}
+	return string(runes[:limit])
 }

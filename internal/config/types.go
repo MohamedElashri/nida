@@ -11,11 +11,15 @@ type SiteConfig struct {
 	StaticDir   string `toml:"static_dir"`
 	OutputDir   string `toml:"output_dir"`
 	ThemesDir   string `toml:"themes_dir"`
+	DataDir     string `toml:"data_dir"`
 	Theme       string `toml:"theme"`
 	Paginate    int    `toml:"paginate"`
 	Drafts      bool   `toml:"drafts"`
 	Future      bool   `toml:"future"`
 	RobotsMeta  string `toml:"robots_meta"`
+	// EditURL is prefixed to a page's content path to build .EditURL, for
+	// example "https://github.com/user/repo/edit/main/content/".
+	EditURL string `toml:"edit_url"`
 	// UpdatedFromGit sets a page's updated date from its last git commit
 	// when front matter does not set one.
 	UpdatedFromGit bool             `toml:"updated_from_git"`
@@ -55,6 +59,10 @@ type DiagnosticsConfig struct {
 type SearchConfig struct {
 	Enabled  bool   `toml:"enabled"`
 	Filename string `toml:"filename"`
+	// Sections limits the index to these root sections. Empty indexes all.
+	Sections []string `toml:"sections"`
+	// BodyLimit truncates each body to this many characters. 0 keeps it all.
+	BodyLimit int `toml:"body_limit"`
 }
 
 type TaxonomyConfig struct {

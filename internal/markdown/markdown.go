@@ -13,6 +13,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/highlight"
+	"github.com/MohamedElashri/nida/internal/parallel"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -70,7 +71,7 @@ func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
 	parserOptions := []parser.Option{
 		parser.WithAutoHeadingID(),
 		parser.WithAttribute(),
-		parser.WithASTTransformers(util.Prioritized(calloutTransformer{}, 100)),
+		parser.WithASTTransformers(util.Prioritized(calloutTransformer{translate: env.Translate}, 100)),
 	}
 	if cfg.Markdown.Math {
 		parserOptions = append(parserOptions,
@@ -252,17 +253,11 @@ func RenderItem(item content.Page, cfg config.SiteConfig, env Env) (content.Page
 	return item, nil
 }
 
+// RenderItems renders pages concurrently; results keep the input order.
 func RenderItems(items []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {
-	rendered := make([]content.Page, 0, len(items))
-	for _, item := range items {
-		next, err := RenderItem(item, cfg, env)
-		if err != nil {
-			return nil, err
-		}
-		rendered = append(rendered, next)
-	}
-
-	return rendered, nil
+	return parallel.Map(items, func(item content.Page) (content.Page, error) {
+		return RenderItem(item, cfg, env)
+	})
 }
 
 func RenderPages(pages []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {

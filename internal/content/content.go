@@ -218,6 +218,7 @@ func loadSection(contentRoot, sourcePath string, cfg config.SiteConfig) (Section
 		Description:      strings.TrimSpace(meta.Description),
 		Slug:             slug,
 		Draft:            meta.Draft,
+		Weight:           meta.Weight,
 		Template:         strings.TrimSpace(meta.Template),
 		PageTemplate:     strings.TrimSpace(meta.PageTemplate),
 		PaginateBy:       meta.PaginateBy,

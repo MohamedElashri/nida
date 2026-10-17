@@ -2,6 +2,7 @@
 title = "Advanced"
 description = "Internals, contributor notes, and maintainer workflows."
 sort_by = "weight"
+weight = 30
 +++
 
 These pages are for people changing Nida itself, debugging a build deeply, or preparing a release.

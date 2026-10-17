@@ -139,3 +139,31 @@ func TestSEOPartial(t *testing.T) {
 		}
 	}
 }
+
+func TestTranslateFunc(t *testing.T) {
+	root := t.TempDir()
+	for rel, body := range map[string]string{
+		"i18n/en.toml":        "read_more = \"Read more\"\nposts = \"{count} posts\"\n",
+		"templates/base.html": "",
+		"templates/page.html": `{{ define "page" }}{{ t "read_more" }}|{{ t "posts" (dict "count" 2) }}|{{ t "nope" }}{{ end }}`,
+	} {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set, err := Load(root, config.DefaultSiteConfig())
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	got, err := set.Execute("page", nil)
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if got != "Read more|2 posts|nope" {
+		t.Fatalf("unexpected output %q", got)
+	}
+}

@@ -19,7 +19,7 @@ Sections can be nested, and pages inherit behavior from their section when a sec
 
 ## Markdown rendering
 
-Nida uses GitHub-flavored Markdown, footnotes, heading IDs, and syntax-highlighted fenced code blocks.
+Nida uses GitHub-flavored Markdown, footnotes, heading IDs, and syntax-highlighted fenced code blocks. It also supports summaries, tables of contents, callouts, code block titles and highlighted lines, math, Mermaid diagrams, and shortcodes. See [Writing Content](@/guide/writing.md).
 
 Internal links can use Zola-style `@/` paths:
 
@@ -53,15 +53,23 @@ Content can assign taxonomy values in front matter through `extra`:
 tags = ["docs", "release"]
 ```
 
+## Blog helpers
+
+Templates can list related posts by shared tags (`.Index.Related`), navigate a series (`.Index.Series`), group archives by year or month, and include a built-in SEO partial. `nida new` creates posts from archetypes.
+
+## Docs helpers
+
+Sections expose their child sections and pages for generated sidebars, `.Index.Ancestors` gives breadcrumbs, `.EditURL` links to the source file, `.Data` reads files from `data/`, and `t` translates theme UI strings.
+
 ## Generated files
 
-Nida can generate RSS, Atom, sitemap, robots.txt, and a JavaScript search index.
+Nida can generate Atom and RSS feeds (site-wide, per section, and per taxonomy term), a sitemap, robots.txt, and a JavaScript search index.
 
 These features are controlled from `config.toml`, so small sites can disable what they do not need. The generated search index is a plain `window.searchIndex` script that templates can load for client-side search.
 
 ## Content diagnostics
 
-Nida can check content before rendering and report broken `@/` internal links and missing Markdown image assets.
+Nida can check content before rendering and report broken `@/` internal links and missing Markdown image assets. `nida check` runs the whole build without writing files, and `--external` also checks outbound links.
 
 ## Static assets and pipeline
 

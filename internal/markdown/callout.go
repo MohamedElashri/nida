@@ -39,9 +39,11 @@ func (n *calloutNode) Dump(source []byte, level int) {
 	ast.DumpHelper(n, source, level, map[string]string{"Variant": n.Variant, "Title": n.Title}, nil)
 }
 
-type calloutTransformer struct{}
+type calloutTransformer struct {
+	translate func(key string) (string, bool)
+}
 
-func (calloutTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+func (t calloutTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
 	source := reader.Source()
 	var quotes []*ast.Blockquote
 	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -51,11 +53,11 @@ func (calloutTransformer) Transform(doc *ast.Document, reader text.Reader, _ par
 		return ast.WalkContinue, nil
 	})
 	for _, quote := range quotes {
-		convertCallout(quote, source)
+		convertCallout(quote, source, t.translate)
 	}
 }
 
-func convertCallout(quote *ast.Blockquote, source []byte) {
+func convertCallout(quote *ast.Blockquote, source []byte, translate func(string) (string, bool)) {
 	para, ok := quote.FirstChild().(*ast.Paragraph)
 	if !ok || para.Lines().Len() == 0 {
 		return
@@ -68,6 +70,9 @@ func convertCallout(quote *ast.Blockquote, source []byte) {
 
 	kind := strings.ToLower(string(match[1]))
 	title := strings.TrimSpace(string(match[2]))
+	if title == "" && translate != nil {
+		title, _ = translate("callout." + kind)
+	}
 	if title == "" {
 		title = calloutTitles[kind]
 	}

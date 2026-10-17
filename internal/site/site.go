@@ -10,6 +10,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/diagnostics"
+	"github.com/MohamedElashri/nida/internal/i18n"
 	"github.com/MohamedElashri/nida/internal/markdown"
 	"github.com/MohamedElashri/nida/internal/shortcodes"
 	"github.com/MohamedElashri/nida/internal/taxonomies"
@@ -54,7 +55,11 @@ func Load(siteRoot string, cfg config.SiteConfig) (State, error) {
 	if err != nil {
 		return State{}, err
 	}
-	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes, Images: NewImages(siteRoot, cfg)}
+	tr, err := i18n.Load(siteRoot, cfg)
+	if err != nil {
+		return State{}, err
+	}
+	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes, Images: NewImages(siteRoot, cfg), Translate: tr.Lookup}
 
 	renderedPages, err := markdown.RenderPages(pages, cfg, env)
 	if err != nil {
@@ -123,6 +128,12 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 		index.RouteRegistry[routed] = sortedPages[i].RelativePath
 	}
 
+	sections = slices.Clone(sections)
+	for i := range sections {
+		if url, err := ResolveSectionURL(sections[i], cfg); err == nil {
+			sections[i].URL = url
+		}
+	}
 	builtSections, sectionMap := buildSectionTree(sections, sortedPages, cfg)
 
 	for path, s := range sectionMap {
@@ -176,22 +187,14 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 	return index, sortedPages, nil
 }
 
+// ResolveSectionURL returns the route a section renders at. Sections always
+// render at /<section path>/; [permalinks] patterns apply to the pages in a
+// section, not to the section itself.
 func ResolveSectionURL(section content.Section, cfg config.SiteConfig) (string, error) {
 	route := "/" + section.SectionPath + "/"
 	if section.SectionPath == "" {
 		route = "/"
 	}
-
-	if p, ok := cfg.Permalinks[section.SectionPath]; ok && p != "" {
-		route = p
-		if !strings.HasPrefix(route, "/") {
-			route = "/" + route
-		}
-		if !strings.HasSuffix(route, "/") {
-			route += "/"
-		}
-	}
-
 	return NormalizeRoute("section route", route)
 }
 
@@ -328,8 +331,12 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 			dir = ""
 		}
 		if parent, ok := ptrMap[dir]; ok {
+			sortSubsections(s.Sections)
 			parent.Sections = append(parent.Sections, *s)
 		}
+	}
+	for _, s := range ptrMap {
+		sortSubsections(s.Sections)
 	}
 
 	sectionMap := map[string]content.Section{}
@@ -352,6 +359,7 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 				topLevelSections = append(topLevelSections, *ptrMap[path])
 			}
 		}
+		sortSubsections(topLevelSections)
 		rootSection = content.Section{
 			SectionPath:      "",
 			Title:            "Home",
@@ -378,6 +386,20 @@ func buildSectionTree(sections []content.Section, allPages []content.Page, cfg c
 	}
 
 	return roots, sectionMap
+}
+
+// sortSubsections orders child sections by weight, then title, so navigation
+// can follow the order authors set in _index.md.
+func sortSubsections(sections []content.Section) {
+	slices.SortStableFunc(sections, func(a, b content.Section) int {
+		if a.Weight != b.Weight {
+			return a.Weight - b.Weight
+		}
+		if c := strings.Compare(a.Title, b.Title); c != 0 {
+			return c
+		}
+		return strings.Compare(a.SectionPath, b.SectionPath)
+	})
 }
 
 func filterPagesForSection(pages []content.Page, sectionPath string) []content.Page {
@@ -490,4 +512,24 @@ func NewImages(siteRoot string, cfg config.SiteConfig) markdown.Images {
 		return r
 	}
 	return nil
+}
+
+// Ancestors returns the sections from the root down to sectionPath,
+// inclusive, for breadcrumbs. Sections without an entry are skipped.
+func (index SiteIndex) Ancestors(sectionPath string) []content.Section {
+	sectionPath = strings.Trim(sectionPath, "/")
+	paths := []string{""}
+	if sectionPath != "" {
+		parts := strings.Split(sectionPath, "/")
+		for i := range parts {
+			paths = append(paths, strings.Join(parts[:i+1], "/"))
+		}
+	}
+	var out []content.Section
+	for _, path := range paths {
+		if section, ok := index.SectionLookup[path]; ok {
+			out = append(out, section)
+		}
+	}
+	return out
 }

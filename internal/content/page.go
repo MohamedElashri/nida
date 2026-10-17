@@ -47,6 +47,7 @@ type Section struct {
 	Slug             string
 	URL              string
 	Draft            bool
+	Weight           int
 	Template         string
 	PageTemplate     string
 	PaginateBy       int

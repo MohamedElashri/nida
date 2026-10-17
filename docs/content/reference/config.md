@@ -36,11 +36,13 @@ Nida warns about keys it does not recognize, for example `warning: unknown confi
 | `static_dir` | string | `static` | Directory containing static assets. |
 | `output_dir` | string | `public` | Directory where generated output is written. |
 | `themes_dir` | string | `themes` | Directory containing available themes. |
+| `data_dir` | string | `data` | Directory of TOML, JSON, and YAML files exposed to templates as `.Data`. |
 | `theme` | string | empty | Theme name under `themes_dir`. Empty means use site templates/static directly. |
 | `paginate` | integer | `10` | Default pagination size. Must be greater than zero. |
 | `drafts` | boolean | `false` | Include draft content when building. |
 | `future` | boolean | `false` | Include pages whose `date` is in the future. Future-dated pages are skipped by default so scheduled posts stay hidden until the next build after their date. |
 | `updated_from_git` | boolean | `false` | Set each page's `updated` date from the last git commit that changed its file, unless front matter sets `updated`. Uses one `git log` call per build; skipped outside a git repository. |
+| `edit_url` | string | empty | Prefix for `.EditURL`, the link to a page's source. For GitHub, use `https://github.com/user/repo/edit/main/content/`. |
 | `robots_meta` | string | empty | Value exposed to templates as `.Robots` for a `<meta name="robots">` tag, such as `"noai, noimageai"`. The 404 page always adds `noindex`. |
 | `minify_html` | boolean | `false` | Minify rendered HTML output. |
 | `syntax_theme` | string | `github` | Syntax highlighting theme name. |
@@ -214,12 +216,16 @@ content = ""
 [search]
 enabled = false
 filename = "search_index.en.js"
+sections = []
+body_limit = 0
 ```
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `search.enabled` | boolean | `false` | Generate a JavaScript search index. |
 | `search.filename` | string | `search_index.en.js` | Output filename for the search index. |
+| `search.sections` | array of strings | empty | Root sections to index, such as `["guide", "reference"]`. Empty indexes everything. |
+| `search.body_limit` | integer | `0` | Keep at most this many characters of each body. `0` keeps full text. Lowering it shrinks the index for larger sites. |
 
 See [Search](@/reference/search.md) for the generated index format and a small
 client-side template pattern.
@@ -298,3 +304,20 @@ main_menu = [
 ```
 
 `extra` is intentionally open-ended. Templates can read values with `.Config.Extra`.
+
+## Translations
+
+Theme and template UI strings can be translated with `i18n/<language>.toml` files in the site or a theme:
+
+```toml
+# i18n/ar.toml
+read_more = "اقرأ المزيد"
+posts_count = "{count} مقالات"
+
+[callout]
+note = "ملاحظة"
+warning = "تحذير"
+```
+
+Nida picks files from the site `language`. For `ar-EG` it layers `en.toml`, then `ar.toml`, then `ar-eg.toml`, so missing keys fall back to broader languages. Site files override theme files. Templates use the `t` function, and `callout.<type>` keys translate default callout titles.
+

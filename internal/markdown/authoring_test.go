@@ -194,3 +194,19 @@ func TestRenderImageAttributesFromResolver(t *testing.T) {
 		t.Fatalf("unknown images should keep plain attributes, got %s", result.HTML)
 	}
 }
+
+func TestCalloutTitlesUseTranslations(t *testing.T) {
+	env := Env{Translate: func(key string) (string, bool) {
+		if key == "callout.note" {
+			return "ملاحظة", true
+		}
+		return "", false
+	}}
+	result, err := RenderDocument("> [!NOTE]\n> نص\n\n> [!TIP]\n> x\n", config.DefaultSiteConfig(), env)
+	if err != nil {
+		t.Fatalf("RenderDocument returned error: %v", err)
+	}
+	if !strings.Contains(result.HTML, `<p class="callout-title">ملاحظة</p>`) || !strings.Contains(result.HTML, `<p class="callout-title">Tip</p>`) {
+		t.Fatalf("expected translated and fallback titles, got %s", result.HTML)
+	}
+}

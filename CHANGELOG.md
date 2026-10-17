@@ -34,8 +34,17 @@ All notable changes to Nida are documented here.
 * `updated_from_git` sets `updated` dates from git history.
 * Section feeds (`generate_feeds = true`) and per-term taxonomy feeds (`feed = true`). Both settings were parsed before but had no effect.
 * Markdown images get `width` and `height` from the image file, and a `srcset` when the image pipeline is enabled.
+* `nida check` validates config, content links, templates, shortcodes, and routes without writing output; `--external` also checks outbound links.
+* `--base-url` and `--output`/`-o` flags for `build` and `serve`, for preview deployments.
+* Build output reports elapsed time.
+* `.Index.Ancestors` for breadcrumbs, section `weight` for ordering child sections, and `edit_url` with `.EditURL`.
+* Data files: TOML, JSON, and YAML from `data/` (and themes) as `.Data`.
+* Translations: `i18n/<language>.toml` files and the `t` template function, with language fallback. Default callout titles can be translated.
+* `search.sections` and `search.body_limit`, plus a Pagefind guide for larger sites.
+* The docs site uses a generated sidebar, breadcrumbs, a page TOC, and edit links.
 
 ### Changed
+* Markdown rendering, page templates, and page writes now run in parallel. A 2,000-post site builds about 1.7× faster.
 * **Breaking:** single newlines in Markdown paragraphs are now soft breaks (a space), matching CommonMark. Set `markdown.hard_wraps = true` to keep the old `<br>` behavior.
 * **Breaking:** pages with a `date` in the future are no longer published unless `future = true` or `--future` is used.
 * **Breaking:** pages no longer get `noai, noimageai` in `.Robots` by default. Set `robots_meta = "noai, noimageai"` to keep it.
@@ -43,6 +52,8 @@ All notable changes to Nida are documented here.
 * Atom entry `updated` times now use the page's `updated` front matter when it is newer than `date`.
 
 ### Fixed
+* `@/section/_index.md` links resolved through page permalink patterns and could produce URLs like `/posts/{slug}/`. Section links and `.Section.URL` now use the route the section renders at.
+* Nested sections were missing from the search index, and explicit sections had an empty `.URL`.
 * Theme inheritance now applies to templates, partials, static files, and SCSS. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
 * A parent theme's `[extra]` values no longer override its child theme's values.
 * Site partials and `base.html` now override theme versions as documented. Before, the order depended on file paths.

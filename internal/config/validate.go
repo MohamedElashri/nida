@@ -39,6 +39,9 @@ func Validate(cfg SiteConfig) error {
 	if cfg.RSS.Enabled && cfg.Feed.Enabled && cfg.RSS.Filename == cfg.Feed.Filename {
 		problems = append(problems, "rss.filename and feed.filename must differ")
 	}
+	if cfg.Search.BodyLimit < 0 {
+		problems = append(problems, "search.body_limit must not be negative")
+	}
 	if cfg.Home.Limit < 0 {
 		problems = append(problems, "home.limit must not be negative")
 	}
@@ -66,6 +69,7 @@ func Validate(cfg SiteConfig) error {
 		"static_dir":       cfg.StaticDir,
 		"output_dir":       cfg.OutputDir,
 		"themes_dir":       cfg.ThemesDir,
+		"data_dir":         cfg.DataDir,
 		"rss.filename":     cfg.RSS.Filename,
 		"feed.filename":    cfg.Feed.Filename,
 		"sitemap.filename": cfg.Sitemap.Filename,

@@ -9,6 +9,8 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/datafiles"
+	"github.com/MohamedElashri/nida/internal/parallel"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/templates"
 )
@@ -16,6 +18,9 @@ import (
 func RenderSite(siteRoot string, cfg config.SiteConfig, state site.State) ([]Page, error) {
 	set, err := templates.Load(siteRoot, cfg)
 	if err != nil {
+		return nil, err
+	}
+	if set.Data, err = datafiles.Load(siteRoot, cfg); err != nil {
 		return nil, err
 	}
 
@@ -228,63 +233,74 @@ func sectionTemplateName(set templates.Set, section content.Section) string {
 }
 
 func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index site.SiteIndex, pages []content.Page) ([]Page, error) {
+	// Each page renders independently, so spread the work across cores and
+	// flatten the per-page results (page plus alias redirects) in order.
+	perPage, err := parallel.Map(pages, func(page content.Page) ([]Page, error) {
+		return renderPage(set, cfg, theme, index, page)
+	})
+	if err != nil {
+		return nil, err
+	}
 	var out []Page
+	for _, rendered := range perPage {
+		out = append(out, rendered...)
+	}
+	return out, nil
+}
 
-	for _, page := range pages {
-		templateName := pageTemplateName(set, cfg, index, page)
-		canonical := canonicalURL(cfg.BaseURL, page.URL)
+func renderPage(set templates.Set, cfg config.SiteConfig, theme Theme, index site.SiteIndex, page content.Page) ([]Page, error) {
+	templateName := pageTemplateName(set, cfg, index, page)
+	canonical := canonicalURL(cfg.BaseURL, page.URL)
 
-		ctx := templateContext{
-			Title:        page.Title,
-			Description:  page.Description,
-			HomeURL:      "/",
-			CurrentURL:   page.URL,
-			CanonicalURL: canonical,
-			Config:       cfg,
-			Theme:        theme,
-			Index:        index,
-			Page:         page,
-			Section:      index.SectionLookup[page.SectionPath],
-			Robots:       cfg.RobotsMeta,
-		}
-
-		rendered, err := renderTemplate(set, templateName, ctx)
-		if err != nil {
-			return nil, fmt.Errorf("render page %q: %w", page.RelativePath, err)
-		}
-
-		out = append(out, Page{
-			URL:          page.URL,
-			CanonicalURL: canonical,
-			TemplateName: templateName,
-			Title:        page.Title,
-			Content:      rendered,
-		})
-
-		// Generate alias redirect pages
-		for _, alias := range page.Aliases {
-			aliasURL := alias
-			if !strings.HasPrefix(aliasURL, "/") {
-				aliasURL = "/" + aliasURL
-			}
-			if !strings.HasSuffix(aliasURL, "/") {
-				aliasURL += "/"
-			}
-			aliasURL, err = site.NormalizeRoute("alias", aliasURL)
-			if err != nil {
-				return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
-			}
-			targetURL := canonicalURL(cfg.BaseURL, page.URL)
-			out = append(out, Page{
-				URL:          aliasURL,
-				CanonicalURL: targetURL,
-				TemplateName: "redirect",
-				Title:        "Redirect",
-				Content:      redirectHTML(targetURL),
-			})
-		}
+	ctx := templateContext{
+		Title:        page.Title,
+		Description:  page.Description,
+		HomeURL:      "/",
+		CurrentURL:   page.URL,
+		CanonicalURL: canonical,
+		Config:       cfg,
+		Theme:        theme,
+		Index:        index,
+		Page:         page,
+		Section:      index.SectionLookup[page.SectionPath],
+		Robots:       cfg.RobotsMeta,
 	}
 
+	rendered, err := renderTemplate(set, templateName, ctx)
+	if err != nil {
+		return nil, fmt.Errorf("render page %q: %w", page.RelativePath, err)
+	}
+
+	out := []Page{{
+		URL:          page.URL,
+		CanonicalURL: canonical,
+		TemplateName: templateName,
+		Title:        page.Title,
+		Content:      rendered,
+	}}
+
+	// Generate alias redirect pages
+	for _, alias := range page.Aliases {
+		aliasURL := alias
+		if !strings.HasPrefix(aliasURL, "/") {
+			aliasURL = "/" + aliasURL
+		}
+		if !strings.HasSuffix(aliasURL, "/") {
+			aliasURL += "/"
+		}
+		aliasURL, err = site.NormalizeRoute("alias", aliasURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
+		}
+		targetURL := canonicalURL(cfg.BaseURL, page.URL)
+		out = append(out, Page{
+			URL:          aliasURL,
+			CanonicalURL: targetURL,
+			TemplateName: "redirect",
+			Title:        "Redirect",
+			Content:      redirectHTML(targetURL),
+		})
+	}
 	return out, nil
 }
 
@@ -448,6 +464,15 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 
 func renderTemplate(set templates.Set, name string, data templateContext) (string, error) {
 	data.BasePath = config.BasePath(data.Config.BaseURL)
+	data.Data = set.Data
+	if data.Config.EditURL != "" {
+		switch {
+		case data.Page.RelativePath != "":
+			data.EditURL = joinEditURL(data.Config.EditURL, data.Page.RelativePath)
+		case data.Section.SourcePath != "" && data.Taxonomy.Name == "":
+			data.EditURL = joinEditURL(data.Config.EditURL, data.Section.RelativePath)
+		}
+	}
 	out, err := set.Execute(name, data)
 	if err != nil {
 		return "", fmt.Errorf("render %s page: %w", name, err)

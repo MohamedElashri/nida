@@ -9,6 +9,7 @@ func DefaultSiteConfig() SiteConfig {
 		StaticDir:   "static",
 		OutputDir:   "public",
 		ThemesDir:   "themes",
+		DataDir:     "data",
 		Paginate:    10,
 		Drafts:      false,
 		MinifyHTML:  false,

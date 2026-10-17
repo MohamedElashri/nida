@@ -79,6 +79,8 @@ Useful section fields include:
 
 `generate_feeds = true` writes a feed for the section and its nested sections at `<section>/feed.xml`.
 
+`weight` on a section orders it among its sibling sections in `.Sections`, lowest first, and then by title.
+
 ## Page bundles
 
 A directory with `index.md` is treated as a page bundle.

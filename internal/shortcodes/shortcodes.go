@@ -38,7 +38,10 @@ func Load(siteRoot string, cfg config.SiteConfig) (*Set, error) {
 		return nil, fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 	set := &Set{templates: map[string]*template.Template{}}
-	funcs := templates.FuncMap(absSiteRoot, cfg)
+	funcs, err := templates.FuncMap(absSiteRoot, cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	entries, err := fs.ReadDir(builtin, "builtin")
 	if err != nil {

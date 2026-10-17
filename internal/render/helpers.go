@@ -153,3 +153,10 @@ func canonicalURL(baseURL, route string) string {
 	}
 	return base.String()
 }
+
+func joinEditURL(prefix, relativePath string) string {
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	return prefix + strings.TrimPrefix(relativePath, "/")
+}

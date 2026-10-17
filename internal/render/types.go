@@ -83,4 +83,8 @@ type templateContext struct {
 	Term         taxonomies.Term
 	Paginator    *Paginator
 	Robots       string
+	// EditURL links to the source file when edit_url is configured.
+	EditURL string
+	// Data holds values loaded from the data directory.
+	Data map[string]any
 }

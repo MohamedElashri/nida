@@ -6,16 +6,20 @@ a static site you can serve anywhere.
 
 ## Features
 
-* posts and standalone pages
-* Go template themes using `.html` files with override chains
-* loadable themes with template inheritance
-* tags and categories
-* RSS, Atom, sitemap, robots.txt, and search index generation
-* static asset copying
-* content diagnostics for broken internal links and missing Markdown images
+* posts, standalone pages, nested sections, and page bundles
+* Markdown with summaries, tables of contents, heading anchors, callouts,
+  code block titles and line highlighting, math, and Mermaid diagrams
+* shortcodes from templates, with built-in `figure`, `youtube`, and `callout`
+* Go template themes with inheritance, partials, shortcodes, and data files
+* taxonomies, related posts, series, and archive helpers
+* Atom and RSS feeds, including per-section and per-tag feeds
+* SEO partial with Open Graph, Twitter cards, and JSON-LD
+* sitemap, robots.txt, and a client-side search index
+* image dimensions and responsive `srcset` for Markdown images
+* `nida check` for broken links, template errors, and config typos
+* `nida new` with archetypes
 * local development server with watch mode and livereload
-* optional custom `404.html`
-* RTL document support for languages such as Arabic/Persian
+* translations for theme UI strings and RTL support for languages such as Arabic and Persian
 
 ## Install
 
@@ -131,8 +135,10 @@ Commands:
 
 ```bash
 nida init [PATH]
-nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts]
-nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-p PORT] [--port PORT]
+nida new [-s PATH] CONTENT_PATH
+nida build [-s PATH] [-c PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR]
+nida check [-s PATH] [-c PATH] [-d] [-f] [--external]
+nida serve [-s PATH] [-c PATH] [-d] [-f] [--base-url URL] [-o DIR] [-p PORT]
 nida version
 ```
 

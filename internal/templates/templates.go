@@ -14,6 +14,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/i18n"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/themes"
 )
@@ -29,6 +30,9 @@ const (
 
 type Set struct {
 	templates map[string]*template.Template
+	// Data is site data from the data directory, exposed to every template
+	// execution as .Data.
+	Data map[string]any
 }
 
 func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
@@ -66,10 +70,14 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 		return Set{}, fmt.Errorf("load templates: missing required %s", baseTemplateFile)
 	}
 
-	return loadFromRoots(templateRoots, absSiteRoot, cfg)
+	funcs, err := FuncMap(absSiteRoot, cfg)
+	if err != nil {
+		return Set{}, err
+	}
+	return loadFromRoots(templateRoots, funcs)
 }
 
-func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set, error) {
+func loadFromRoots(roots []string, funcs template.FuncMap) (Set, error) {
 	var shared []string
 	entries := map[string]string{}
 
@@ -122,7 +130,7 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 	set := Set{templates: map[string]*template.Template{}}
 	for name, entry := range entries {
 		files := append(append([]string(nil), shared...), entry)
-		tmpl := template.New("root").Funcs(funcMap(siteRoot, cfg))
+		tmpl := template.New("root").Funcs(funcs)
 		// Built-in partials are parsed first so site and theme templates can
 		// replace them by defining the same name.
 		if _, err := tmpl.ParseFS(builtinFS, "builtin/*.html"); err != nil {
@@ -166,7 +174,12 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 	if len(cfgs) > 0 {
 		cfg = cfgs[0]
 	}
+	return funcMapWith(siteRoot, cfg, i18n.Translations{})
+}
+
+func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) template.FuncMap {
 	return template.FuncMap{
+		"t":                 tr.T,
 		"formatDate":        formatDate,
 		"formatDateWith":    formatDateWith,
 		"safeHTML":          unsafeHTML,
@@ -469,7 +482,12 @@ func digValue(values map[string]any, path string) any {
 }
 
 // FuncMap returns the template functions available to site templates, for
-// other template sets such as shortcodes.
-func FuncMap(siteRoot string, cfg config.SiteConfig) template.FuncMap {
-	return funcMap(siteRoot, cfg)
+// other template sets such as shortcodes. It loads the site translations
+// used by the t function.
+func FuncMap(siteRoot string, cfg config.SiteConfig) (template.FuncMap, error) {
+	tr, err := i18n.Load(siteRoot, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return funcMapWith(siteRoot, cfg, tr), nil
 }
