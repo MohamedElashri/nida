@@ -2,7 +2,7 @@
 
 All notable changes to Nida are documented here.
 
-## [0.7.0] - Unreleased
+## [0.7.0] - 2026-10-18
 
 ### Added
 * Optional RSS 2.0 feed through a new `[rss]` table, written next to the Atom feed. Off by default.
