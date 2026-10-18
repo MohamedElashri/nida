@@ -35,16 +35,30 @@ nida build ./my-site                      # write the site to my-site/public
 
 ## Documentation
 
-Full documentation is at [melashri.net/nida](https://melashri.net/nida/):
-[Getting Started](https://melashri.net/nida/guide/getting-started/),
-[CLI](https://melashri.net/nida/reference/cli/),
-[Configuration](https://melashri.net/nida/reference/config/),
-[Templates](https://melashri.net/nida/guide/templates/), and
-[Migrating from Zola, Hugo, or Jekyll](https://melashri.net/nida/guide/migrating/).
-See the [Changelog](./CHANGELOG.md) for release history.
+The full documentation lives at [melashri.net/nida](https://melashri.net/nida/).
 
-Example sites: [English](./example-site), [Arabic (RTL)](./example-site-ar),
-and the [documentation site](./docs) itself.
+| Guide | What it covers |
+| --- | --- |
+| [Getting Started](https://melashri.net/nida/guide/getting-started/) | Installing Nida and building your first site |
+| [Features](https://melashri.net/nida/guide/features/) | Everything Nida supports, at a glance |
+| [Writing Content](https://melashri.net/nida/guide/writing/) | Front matter, sections, shortcodes, math, and diagrams |
+| [Templates](https://melashri.net/nida/guide/templates/) | Layouts, partials, and template functions |
+| [Themes](https://melashri.net/nida/guide/themes/) | Using and writing themes |
+| [CLI Reference](https://melashri.net/nida/reference/cli/) | Every command and flag |
+| [Config Reference](https://melashri.net/nida/reference/config/) | Every `config.toml` option |
+| [Migrating](https://melashri.net/nida/guide/migrating/) | Moving a site from Zola, Hugo, or Jekyll |
+
+Release history is in the [Changelog](./CHANGELOG.md).
+
+## Examples
+
+| Site | Description |
+| --- | --- |
+| [`example-site`](./example-site) | English blog |
+| [`example-site-ar`](./example-site-ar) | Arabic blog with right-to-left layout |
+| [`docs`](./docs) | The Nida documentation site, with its own theme |
+
+Preview any of them with `nida serve ./example-site`.
 
 ## License
 
