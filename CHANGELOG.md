@@ -2,6 +2,16 @@
 
 All notable changes to Nida are documented here.
 
+## [0.8.0] - Unreleased
+
+### Added
+* `nida migrate SOURCE DEST` converts a Hugo, Jekyll, Zola, Eleventy, or Pelican site into a new Nida site. It converts config, content, front matter, shortcodes, static files, and data. It keeps every page's old URL, picks templates that build, and writes a `MIGRATION.md` report listing every change and everything left to do. The source is never modified. See [Migrating to Nida](https://melashri.net/nida/guide/migrating/).
+* `path` front matter sets a page's URL exactly, as in Zola.
+* Permalink patterns, `path`, and aliases that end in a file name, such as `/{year}/{slug}.html`, write that file instead of a directory with an `index.html`. Sites moving from generators with `.html` URLs can keep them.
+
+### Changed
+* `path` is now a recognized front matter field. Sites that used a top-level `path` key as custom data should read it from `.Page.Path` or move it under `[extra]`.
+
 ## [0.7.1] - 2026-10-18
 
 ### Fixed
