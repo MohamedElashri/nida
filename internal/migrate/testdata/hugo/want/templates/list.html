@@ -1,0 +1,2 @@
+{{ define "list" }}{{ template "base" . }}{{ end }}
+{{ define "main" }}<h1>{{ .Title }}</h1>{{ unsafeHTML .Section.BodyHTML }}<ul>{{ range .Pages }}<li><a href="{{ relURL .URL }}">{{ .Title }}</a></li>{{ end }}</ul>{{ end }}

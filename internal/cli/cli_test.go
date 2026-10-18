@@ -502,3 +502,176 @@ func TestServeLoadsPositionalSitePath(t *testing.T) {
 		t.Fatalf("expected serve to load %s, got stderr=%q", missing, stderr.String())
 	}
 }
+
+func TestBuildWritesFileRoutesForPathsPermalinksAndAliases(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"config.toml": `base_url = "https://example.com"
+title = "Routes"
+
+[permalinks]
+notes = "/{year}/{month}/{slug}.html"
+`,
+		"content/_index.md":             "+++\ntitle = \"Home\"\n+++\n",
+		"content/posts/_index.md":       "+++\ntitle = \"Posts\"\n+++\n",
+		"content/posts/exact.md":        "+++\ntitle = \"Exact\"\npath = \"/legacy/exact.html\"\n+++\nbody\n",
+		"content/posts/folder.md":       "+++\ntitle = \"Folder\"\npath = \"elsewhere/folder\"\naliases = [\"/old/folder.html\", \"/old/folder/\"]\n+++\nbody\n",
+		"content/posts/bundle/index.md": "+++\ntitle = \"Bundle\"\npath = \"/2024/01/02/bundle.html\"\n+++\n![pic](pic.txt)\n",
+		"content/posts/bundle/pic.txt":  "resource",
+		"content/notes/_index.md":       "+++\ntitle = \"Notes\"\n+++\n",
+		"content/notes/dated.md":        "+++\ntitle = \"Dated\"\ndate = 2023-07-09\n+++\nbody\n",
+		"content/posts/dotted.md":       "+++\ntitle = \"Dotted\"\nslug = \"node.js\"\naliases = [\"/old/v2.0\"]\n+++\nbody\n",
+		"templates/base.html":           `{{ define "base" }}{{ end }}`,
+		"templates/index.html":          `{{ define "index" }}home{{ end }}`,
+		"templates/list.html":           `{{ define "list" }}list{{ end }}`,
+		"templates/page.html":           `{{ define "page" }}page {{ .Page.URL }}{{ end }}`,
+		"templates/post.html":           `{{ define "post" }}post {{ .Page.URL }}{{ end }}`,
+	}
+	for name, body := range files {
+		full := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	stderr := &bytes.Buffer{}
+	if code := run(&bytes.Buffer{}, stderr, []string{"build", root}); code != 0 {
+		t.Fatalf("build failed: %s", stderr.String())
+	}
+
+	public := filepath.Join(root, "public")
+	for path, want := range map[string]string{
+		"legacy/exact.html":           "post /legacy/exact.html",
+		"elsewhere/folder/index.html": "post /elsewhere/folder/",
+		"2024/01/02/bundle.html":      "post /2024/01/02/bundle.html",
+		"2024/01/02/pic.txt":          "resource",
+		"2023/07/dated.html":          "post /2023/07/dated.html",
+		"old/folder.html":             "https://example.com/elsewhere/folder/",
+		"old/folder/index.html":       "https://example.com/elsewhere/folder/",
+		"posts/node.js/index.html":    "post /posts/node.js/",
+		"old/v2.0/index.html":         "https://example.com/posts/node.js/",
+	} {
+		data, err := os.ReadFile(filepath.Join(public, filepath.FromSlash(path)))
+		if err != nil {
+			t.Errorf("expected %s: %v", path, err)
+			continue
+		}
+		if !strings.Contains(string(data), want) {
+			t.Errorf("%s: expected %q in %q", path, want, data)
+		}
+	}
+	sitemap, err := os.ReadFile(filepath.Join(public, "sitemap.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(sitemap), "https://example.com/legacy/exact.html<") {
+		t.Errorf("expected file route in sitemap, got %s", sitemap)
+	}
+}
+
+func TestMigrateWritesBuildableSite(t *testing.T) {
+	// A small Zola site of its own: the migrate fixtures use SCSS, and a
+	// full build of those would need the external sass command.
+	src := t.TempDir()
+	for name, body := range map[string]string{
+		"config.toml":                      "base_url = \"https://example.org\"\ntitle = \"Zola\"\ngenerate_feeds = true\ntaxonomies = [{ name = \"tags\" }]\n",
+		"content/_index.md":                "+++\ntitle = \"Home\"\n+++\n",
+		"content/blog/_index.md":           "+++\ntitle = \"Blog\"\nsort_by = \"date\"\n+++\n",
+		"content/blog/2024-03-05-hello.md": "+++\ntitle = \"Hello\"\n[taxonomies]\ntags = [\"intro\"]\n+++\nSee {{ note(text=\"hi\") }} and <em>raw</em>.\n",
+		"static/logo.txt":                  "logo",
+		"templates/index.html":             "{% block content %}{% endblock %}",
+	} {
+		full := filepath.Join(src, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dest := filepath.Join(t.TempDir(), "migrated")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	if code := run(stdout, stderr, []string{"migrate", src, dest}); code != 0 {
+		t.Fatalf("migrate failed: %s", stderr.String())
+	}
+	for _, want := range []string{"nida migrate: complete", "from=zola", "check=passed", "Report: "} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("expected %q in %q", want, stdout.String())
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dest, "MIGRATION.md")); err != nil {
+		t.Fatalf("expected report: %v", err)
+	}
+	stderr.Reset()
+	if code := run(&bytes.Buffer{}, stderr, []string{"build", dest}); code != 0 {
+		t.Fatalf("migrated site does not build: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(dest, "public", "blog", "hello", "index.html")); err != nil {
+		t.Errorf("expected the migrated post at its Zola URL: %v", err)
+	}
+}
+
+func TestMigrateDryRunPrintsReport(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "migrated")
+	stdout := &bytes.Buffer{}
+	src := filepath.Join("..", "migrate", "testdata", "zola", "site")
+	if code := run(stdout, &bytes.Buffer{}, []string{"migrate", "-n", src, dest}); code != 0 {
+		t.Fatal("dry run failed")
+	}
+	if !strings.Contains(stdout.String(), "# Migration report") || !strings.Contains(stdout.String(), "dry run") {
+		t.Errorf("expected the report on stdout, got %q", stdout.String())
+	}
+	if _, err := os.Stat(dest); !os.IsNotExist(err) {
+		t.Error("dry run must not create the destination")
+	}
+}
+
+func TestMigrateRejectsBadArguments(t *testing.T) {
+	for _, args := range [][]string{
+		{"migrate"},
+		{"migrate", "only-one"},
+		{"migrate", "a", "b", "c"},
+		{"migrate", "--urls", "sideways", filepath.Join("..", "migrate", "testdata", "zola", "site"), filepath.Join(t.TempDir(), "y")},
+		{"migrate", "--from", "wordpress", ".", filepath.Join(t.TempDir(), "x")},
+	} {
+		stderr := &bytes.Buffer{}
+		if code := run(&bytes.Buffer{}, stderr, args); code == 0 {
+			t.Errorf("%v: expected failure", args)
+		}
+	}
+}
+
+func TestBuildRefusesBundleResourceClash(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"config.toml":               "base_url = \"https://example.com\"\ntitle = \"T\"\n",
+		"content/_index.md":         "+++\ntitle = \"Home\"\n+++\n",
+		"content/posts/_index.md":   "+++\ntitle = \"Posts\"\n+++\n",
+		"content/posts/a/index.md":  "+++\ntitle = \"A\"\npath = \"/posts/a.html\"\n+++\n",
+		"content/posts/a/cover.png": "a",
+		"content/posts/b/index.md":  "+++\ntitle = \"B\"\npath = \"/posts/b.html\"\n+++\n",
+		"content/posts/b/cover.png": "b",
+		"templates/base.html":       `{{ define "base" }}{{ end }}`,
+		"templates/index.html":      `{{ define "index" }}home{{ end }}`,
+		"templates/list.html":       `{{ define "list" }}list{{ end }}`,
+		"templates/page.html":       `{{ define "page" }}page{{ end }}`,
+		"templates/post.html":       `{{ define "post" }}post{{ end }}`,
+	}
+	for name, body := range files {
+		full := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stderr := &bytes.Buffer{}
+	if code := run(&bytes.Buffer{}, stderr, []string{"build", root}); code == 0 || !strings.Contains(stderr.String(), "would overwrite") {
+		t.Fatalf("expected a resource clash error, got code=%d stderr=%s", code, stderr.String())
+	}
+}

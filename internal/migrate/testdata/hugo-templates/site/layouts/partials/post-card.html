@@ -1,0 +1,6 @@
+<article class="card">
+  <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+  <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date | time.Format ":date_long" }}</time>
+  <p>{{ .Summary | plainify | truncate 80 }}</p>
+  {{ with .Params.tags }}<ul class="tags">{{ range . }}<li><a href="{{ "/tags/" | relURL }}{{ . | urlize }}/">{{ . }}</a></li>{{ end }}</ul>{{ end }}
+</article>

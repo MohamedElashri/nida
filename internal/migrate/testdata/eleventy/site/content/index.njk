@@ -1,0 +1,9 @@
+---
+layout: layouts/home.njk
+title: Welcome
+eleventyNavigation:
+  key: Home
+  order: 1
+---
+{% set postslist = collections.posts | head(-3) %}
+<h1>Latest 3 Posts</h1>

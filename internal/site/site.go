@@ -228,6 +228,13 @@ func BuildPathLookup(pages []content.Page, sections []content.Section, cfg confi
 }
 
 func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
+	if page.Path != "" {
+		route, err := routes.Page("path", page.Path)
+		if err != nil {
+			return "", fmt.Errorf("invalid path for %q: %w", page.RelativePath, err)
+		}
+		return route, nil
+	}
 	sectionPath := page.SectionPath
 	if err := routes.ValidateComponent("slug", page.Slug); err != nil {
 		return "", fmt.Errorf("invalid slug for %q: %w", page.RelativePath, err)
@@ -262,14 +269,7 @@ func routePage(page content.Page, cfg config.SiteConfig) (string, error) {
 	if strings.Contains(route, "{") || strings.Contains(route, "}") {
 		return "", fmt.Errorf("unsupported placeholder in permalink pattern %q for %q", pattern, page.RelativePath)
 	}
-	if !strings.HasPrefix(route, "/") {
-		route = "/" + route
-	}
-	if !strings.HasSuffix(route, "/") {
-		route += "/"
-	}
-
-	return routes.Normalize("page route", route)
+	return routes.Page("page route", route)
 }
 
 func extractTaxonomyValue(extra map[string]any, name string) string {

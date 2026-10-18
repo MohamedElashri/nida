@@ -238,6 +238,7 @@ func loadPage(contentRoot, sourcePath string, bundle bool) (Page, error) {
 		BodyMarkdown:   doc.BodyMarkdown,
 		Title:          strings.TrimSpace(meta.Title),
 		Slug:           meta.Slug,
+		Path:           strings.TrimSpace(meta.Path),
 		Description:    strings.TrimSpace(meta.Description),
 		Date:           meta.Date,
 		Updated:        meta.Updated,

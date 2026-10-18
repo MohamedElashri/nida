@@ -1,0 +1,2 @@
+{{ define "taxonomy_list" }}{{ template "base" . }}{{ end }}
+{{ define "main" }}<h1>{{ .Taxonomy.Name }}</h1><ul>{{ range .Terms }}<li><a href="{{ relURL .URL }}">{{ .Name }}</a> ({{ len .Items }})</li>{{ end }}</ul>{{ end }}

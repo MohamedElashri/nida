@@ -17,22 +17,24 @@ type Page struct {
 	WordCount      int
 	Title          string
 	Slug           string
-	URL            string
-	Description    string
-	Date           time.Time
-	Updated        time.Time
-	Draft          bool
-	Weight         int
-	Template       string
-	ReadingTime    int
-	IsBundle       bool
-	Resources      []string
-	Extra          map[string]any
-	Aliases        []string
-	PrevURL        string
-	PrevTitle      string
-	NextURL        string
-	NextTitle      string
+	// Path is the exact URL from front matter, if any.
+	Path        string
+	URL         string
+	Description string
+	Date        time.Time
+	Updated     time.Time
+	Draft       bool
+	Weight      int
+	Template    string
+	ReadingTime int
+	IsBundle    bool
+	Resources   []string
+	Extra       map[string]any
+	Aliases     []string
+	PrevURL     string
+	PrevTitle   string
+	NextURL     string
+	NextTitle   string
 }
 
 type Section struct {

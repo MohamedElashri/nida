@@ -32,3 +32,7 @@ Templates are Go HTML templates with Nida's [template functions](@/guide/templat
 ## Checks and publishing
 
 [`nida check`](@/reference/cli.md#check) finds broken links, missing images, template errors, and config typos without writing files. [`nida serve`](@/reference/cli.md#serve) previews the site with live reload. [`nida build`](@/reference/cli.md#build) writes the site, a sitemap, and `robots.txt`, with optional [fingerprinting and minification](@/reference/config.md#pipeline). See [Deployment](@/guide/deployment.md) for hosting.
+
+## Moving from another generator
+
+[`nida migrate`](@/guide/migrating.md) converts a Hugo, Jekyll, Zola, Eleventy, or Pelican site into a Nida site. It converts the config, content, front matter, shortcodes, and static files, keeps every page at its old URL, and writes a report of what is left to do by hand.

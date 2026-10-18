@@ -1,0 +1,28 @@
+base_url = "https://example.org"
+title = "Zola Fixture"
+description = "A Zola site with edge cases."
+default_language = "en"
+compile_sass = true
+build_search_index = true
+generate_feeds = true
+feed_filenames = ["atom.xml", "rss.xml"]
+theme = "even"
+smart_punctuation = false
+
+taxonomies = [
+  { name = "tags", feed = true },
+  { name = "categories", paginate_by = 5 },
+]
+
+[markdown]
+highlight_code = true
+highlight_theme = "monokai"
+external_links_target_blank = true
+smart_punctuation = true
+
+[slugify]
+paths = "on"
+
+[extra]
+author = "Ada"
+menu = [{ name = "Blog", url = "/blog/" }]

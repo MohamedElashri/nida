@@ -42,6 +42,8 @@ tags = ["docs"]
 
 `slug` overrides the route slug derived from the file name.
 
+`path` sets the page's URL exactly, overriding `slug` and the section's [permalinks](@/guide/configuration.md#permalinks). It is the same field as in Zola. `path = "about/team"` publishes the page at `/about/team/`. A path that ends in a page or feed extension (`.html`, `.htm`, `.php`, `.xml`, `.json`, `.txt`, and similar) names that file: `path = "/2024/05/01/launch.html"` writes `launch.html` instead of a directory with an `index.html`, which keeps URLs from generators that end them in `.html`.
+
 `template` selects a page template.
 
 `aliases` creates redirect pages for old URLs.
@@ -107,4 +109,4 @@ Aliases are useful when changing URLs:
 aliases = ["/old-path/", "/another-old-path/"]
 ```
 
-Nida emits redirect pages for each alias.
+Nida emits redirect pages for each alias. An alias ending in one of those extensions, such as `/2024/05/01/launch.html`, is written as that file, so old `.html` URLs can redirect too.

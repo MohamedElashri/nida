@@ -3,13 +3,15 @@ package frontmatter
 import "time"
 
 type Metadata struct {
-	Title         string
-	Description   string
-	Date          time.Time
-	Updated       time.Time
-	Draft         bool
-	Weight        int
-	Slug          string
+	Title       string
+	Description string
+	Date        time.Time
+	Updated     time.Time
+	Draft       bool
+	Weight      int
+	Slug        string
+	// Path sets the page URL exactly, overriding slug and permalinks.
+	Path          string
 	Template      string
 	PageTemplate  string
 	SortBy        string

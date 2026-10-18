@@ -33,6 +33,9 @@ nida check ./my-site                      # find broken links and errors
 nida build ./my-site                      # write the site to my-site/public
 ```
 
+Coming from Hugo, Jekyll, Zola, Eleventy, or Pelican? `nida migrate ./old-site ./my-site`
+converts the site and writes a report of anything left to do.
+
 ## Documentation
 
 The full documentation lives at [melashri.net/nida](https://melashri.net/nida/).

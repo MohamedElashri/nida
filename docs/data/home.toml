@@ -2,27 +2,33 @@
 eyebrow = "Static site generator"
 title = "Publish Markdown, *without the ceremony*."
 tagline = "Nida is a small, fast Go static site generator for blogs, personal sites, and documentation. One binary, plain templates, and output you can host anywhere."
-about_title = "Built with Nida"
-about = """This site is built with Nida, using a theme that lives in the repository at [`docs/themes/nida-docs`](https://github.com/MohamedElashri/nida/tree/main/docs/themes/nida-docs). Its sidebar, search, breadcrumbs, page outline, "last updated" dates, translations, and shortcodes all come from features described in these docs, so it doubles as a working example."""
+about = "This site is built with Nida. Its theme lives in [`docs/themes/nida-docs`](https://github.com/MohamedElashri/nida/tree/main/docs/themes/nida-docs), and everything on it, from search to the sidebar, uses features these docs describe."
 sample_title = "content/posts/hello.md"
-sample = '''
-```markdown
-+++
-title = "Hello, Nida"
-date = 2026-10-17
-tags = ["intro"]
-+++
+paths_title = "Choose your path"
+# The sample is highlighted by hand with the z- classes of syntax.css:
+# Chroma has no lexer for Markdown with front matter and shortcodes.
+sample = """<span class="z-cm">+++</span>
+<span class="z-nv">title</span> <span class="z-o">=</span> <span class="z-s">"Hello, Nida"</span>
+<span class="z-nv">date</span> <span class="z-o">=</span> <span class="z-m">2026-10-17</span>
+<span class="z-nv">tags</span> <span class="z-o">=</span> <span class="z-p">[</span><span class="z-s">"intro"</span><span class="z-p">]</span>
+<span class="z-cm">+++</span>
 
 A short post with a summary.
 
-<!-- more -->
+<span class="z-c">&lt;!-- more --&gt;</span>
 
-> [!TIP]
-> Run `nida serve` and edit; the browser reloads.
+<span class="z-k">&gt;</span> <span class="z-kc">[!TIP]</span>
+<span class="z-k">&gt;</span> Run <span class="z-sb">`nida serve`</span> and edit; the browser reloads.
 
-{{< figure src="cover.png" alt="Cover" >}}
-```
-'''
+<span class="z-nt">{{&lt;</span> <span class="z-nf">figure</span> <span class="z-na">src</span><span class="z-o">=</span><span class="z-s">"cover.png"</span> <span class="z-na">alt</span><span class="z-o">=</span><span class="z-s">"Cover"</span> <span class="z-nt">&gt;}}</span>"""
+
+[migrate]
+title = "Coming from another generator?"
+text = "`nida migrate` converts the site, keeps every URL, and writes a report of anything left to do by hand."
+command = "nida migrate ./old-site ./new-site"
+link = "Migration guide"
+url = "/guide/migrating/"
+sources = ["Hugo", "Jekyll", "Zola", "Eleventy", "Pelican"]
 
 [[actions]]
 name = "Get started"
@@ -69,3 +75,31 @@ title = "Made for every language"
 text = "Right-to-left layouts and translatable theme text, used by Arabic sites."
 items = ["RTL", "Unicode slugs", "Translations"]
 
+
+
+[[paths]]
+icon = "pen"
+title = "Start a blog"
+links = [
+  { name = "Install and create a site", url = "/guide/getting-started/" },
+  { name = "Write posts with summaries and tags", url = "/guide/writing/" },
+  { name = "Publish it", url = "/guide/deployment/" },
+]
+
+[[paths]]
+icon = "layers"
+title = "Build a docs site"
+links = [
+  { name = "Organize sections with weights", url = "/reference/front-matter/#section-fields" },
+  { name = "Generate navigation", url = "/guide/templates/#navigation-for-docs-sites" },
+  { name = "Add search", url = "/reference/search/" },
+]
+
+[[paths]]
+icon = "edit"
+title = "Make a theme"
+links = [
+  { name = "Learn the override order", url = "/guide/themes/#override-order" },
+  { name = "Start from a minimal theme", url = "/guide/themes/#a-minimal-theme" },
+  { name = "Use the template functions", url = "/guide/templates/#template-functions" },
+]

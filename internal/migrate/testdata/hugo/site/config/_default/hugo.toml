@@ -1,0 +1,33 @@
+baseURL = "https://example.com/"
+title = "Hugo Fixture"
+languageCode = "en-us"
+defaultContentLanguage = "en"
+theme = "paper"
+enableGitInfo = true
+summaryLength = 40
+enableRobotsTXT = true
+copyright = "© Ada"
+mainSections = ["posts"]
+paginate = 7
+someUnknownKey = 1
+
+[outputs]
+home = ["HTML", "RSS", "JSON"]
+
+[taxonomies]
+tag = "tags"
+series = "series"
+
+[permalinks]
+posts = "/:year/:month/:slug/"
+docs = "/docs/:filename/:yearday/"
+tags = "/topic/:slug/"
+
+[markup.goldmark.renderer]
+unsafe = true
+[markup.highlight]
+style = "dracula"
+lineNos = true
+
+[services.googleAnalytics]
+id = "G-123"

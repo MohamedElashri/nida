@@ -23,18 +23,39 @@
     <div class="hero-sample">
       <div class="window">
         <div class="window-bar"><span></span><span></span><span></span><p>{{ dig $.Data "home.sample_title" }}</p></div>
-        <div class="window-body">{{ markdownify . }}</div>
+        {{- /* The sample is pre-highlighted HTML from data/home.toml. */}}
+        <div class="window-body"><pre class="z-chroma"><code>{{ unsafeHTML . }}</code></pre></div>
       </div>
     </div>
     {{- end }}
   </section>
+
+  {{- with dig .Data "home.migrate" }}
+  <section class="migrate-band" aria-labelledby="migrate-title">
+    <div class="migrate-text">
+      <h2 id="migrate-title">{{ .title }}</h2>
+      <p>{{ markdownify .text }}</p>
+      {{- with .sources }}
+      <ul class="chips" aria-label="Supported generators">{{ range . }}<li>{{ . }}</li>{{ end }}</ul>
+      {{- end }}
+    </div>
+    <div class="migrate-actions">
+      <div class="install" data-copy-root>
+        <span class="install-prompt" aria-hidden="true">$</span>
+        <code class="install-command" data-copy-source>{{ .command }}</code>
+        <button class="icon-button copy-button" type="button" data-copy aria-label="{{ t "copy" }}">{{ template "icon" "copy" }}</button>
+      </div>
+      <a class="migrate-link" href="{{ $.BasePath }}{{ .url }}">{{ .link }} {{ template "icon" "arrow-right" }}</a>
+    </div>
+  </section>
+  {{- end }}
 
   {{- with .Section.BodyHTML }}
   <section class="home-section prose">{{ unsafeHTML . }}</section>
   {{- end }}
 
   {{- with dig .Data "home.features" }}
-  <section class="home-section prose" aria-labelledby="features">
+  <section class="home-section" aria-labelledby="features">
     <h2 id="features">{{ t "features" }}</h2>
     <div class="card-grid">
       {{- range . }}
@@ -50,11 +71,26 @@
   </section>
   {{- end }}
 
-  {{- with dig .Data "home.about" }}
-  <section class="home-section prose">
-    {{ with dig $.Data "home.about_title" }}<h2>{{ . }}</h2>{{ end }}
-    {{ markdownify . }}
+  {{- with dig .Data "home.paths" }}
+  <section class="home-section" aria-labelledby="paths">
+    <h2 id="paths">{{ dig $.Data "home.paths_title" }}</h2>
+    <div class="card-grid">
+      {{- range . }}
+      <div class="card card-path">
+        <span class="card-title"><span class="card-icon">{{ template "icon" .icon }}</span>{{ .title }}</span>
+        <ol>
+          {{- range .links }}
+          <li><a href="{{ if hasPrefix .url "/" }}{{ $.BasePath }}{{ end }}{{ .url }}">{{ .name }}</a></li>
+          {{- end }}
+        </ol>
+      </div>
+      {{- end }}
+    </div>
   </section>
+  {{- end }}
+
+  {{- with dig .Data "home.about" }}
+  <p class="home-note">{{ markdownify . }}</p>
   {{- end }}
 </main>
 {{- end }}

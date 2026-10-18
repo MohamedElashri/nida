@@ -87,6 +87,15 @@ notes = "/{section}/{slug}/"
 
 Placeholders are `{section}`, `{slug}`, `{year}`, `{month}`, `{day}`, and any taxonomy name, such as `{tags}`, which uses the page's first term. Sections themselves always live at `/<section>/`.
 
+A pattern that ends in a page or feed file name, such as `.html`, writes each page as that file instead of a directory, which matches generators such as Jekyll and Pelican:
+
+```toml
+[permalinks]
+posts = "/{year}/{month}/{day}/{slug}.html"
+```
+
+A single page can set its URL with `path` in its [front matter](@/reference/front-matter.md#page-fields).
+
 ## Taxonomies
 
 ```toml

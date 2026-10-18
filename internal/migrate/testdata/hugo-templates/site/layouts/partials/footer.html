@@ -1,0 +1,4 @@
+<footer>
+  <p>&copy; {{ now.Year }} {{ .Site.Params.author.name }}. {{ .Site.Copyright | safeHTML }}</p>
+  {{ partial "widgets/social.html" (dict "links" .Site.Params.social "ctx" .) }}
+</footer>

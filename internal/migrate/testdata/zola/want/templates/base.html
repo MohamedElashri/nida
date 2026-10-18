@@ -1,0 +1,28 @@
+{{- define "base" -}}
+<!doctype html>
+<html lang="{{ default .Config.Language "en" }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {{ template "nida-seo" . }}
+  {{ if .Config.Feed.Enabled }}<link rel="alternate" type="application/atom+xml" title="{{ .Config.Title }}" href="{{ .BasePath }}/{{ .Config.Feed.Filename }}">{{ end }}
+  {{ if .Config.RSS.Enabled }}<link rel="alternate" type="application/rss+xml" title="{{ .Config.Title }}" href="{{ .BasePath }}/{{ .Config.RSS.Filename }}">{{ end }}
+  <link rel="stylesheet" href="{{ asset "nida-migrate.css" }}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-title" href="{{ .BasePath }}/">{{ .Config.Title }}</a>
+    <nav class="site-nav" aria-label="Primary">
+      {{ range .Index.Nav "" }}<a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a>{{ end }}
+    </nav>
+  </header>
+  <main>
+    {{- template "content" . }}
+  </main>
+  <footer class="site-footer">
+    {{ with .Config.Description }}<p>{{ . }}</p>{{ end }}
+  </footer>
+  {{- template "nida-scripts" . }}
+</body>
+</html>
+{{- end }}

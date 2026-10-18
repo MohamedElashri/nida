@@ -8,11 +8,11 @@ plan.md
 /dist/
 /example-site/public/*
 !/example-site/public/.gitkeep
-blog*
+/blog*
 */public/*
 bin
 *.github.*
-ar
+/ar
 *plan.md
 *.log
 *.out
@@ -22,3 +22,6 @@ public/
 
 # Local development binaries
 .tmp/
+
+# Migration test fixtures are real sites; never ignore their files.
+!internal/migrate/testdata/**
