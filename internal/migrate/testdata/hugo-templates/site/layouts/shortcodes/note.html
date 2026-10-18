@@ -1,0 +1,5 @@
+<aside class="note note-{{ .Get "type" | default "info" }}">
+  {{ with .Get "title" }}<strong>{{ . }}</strong>{{ end }}
+  {{ .Inner | markdownify }}
+  <small>on {{ .Page.Title }} at {{ .Site.Title }}</small>
+</aside>

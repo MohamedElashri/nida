@@ -1,0 +1,10 @@
+{{ define "main" }}
+<section class="home-intro">{{ .Content }}</section>
+{{ $pages := where .Site.RegularPages "Section" "posts" }}
+<ul class="latest">
+  {{ range first 5 $pages }}
+  <li><a href="{{ .Permalink }}">{{ .Title | upper }}</a> <span>{{ dateFormat "2006" .Date }}</span></li>
+  {{ end }}
+</ul>
+{{ range .Site.RegularPages.GroupByDate "2006" }}<h3 class="year">{{ .Key }}</h3>{{ end }}
+{{ end }}

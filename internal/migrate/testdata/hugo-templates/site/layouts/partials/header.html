@@ -1,0 +1,9 @@
+<header class="site-header">
+  <a class="brand" href="{{ "/" | relURL }}">{{ .Site.Title }}</a>
+  <nav>
+    {{ range .Site.Menus.main }}
+    <a class="{{ if $.IsMenuCurrent "main" . }}active{{ end }}" href="{{ .URL }}">{{ .Name }}</a>
+    {{ end }}
+  </nav>
+  {{ with .Site.Params.tagline }}<p class="tagline">{{ . | markdownify }}</p>{{ end }}
+</header>
