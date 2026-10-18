@@ -83,11 +83,11 @@ nida check --site ./my-site
 nida check --site ./my-site --external
 ```
 
-Runs a full build without writing any files. It reports unknown config keys, broken `@/` links, missing Markdown images, template errors, unknown shortcodes, and route conflicts, and exits with status 1 if any of these fail. Content diagnostics always run here, whatever `diagnostics.enabled` says. It is a good fit for CI and pre-commit hooks.
+Runs a full build without writing any files. It reports unknown config keys, broken `@/` links, missing Markdown images, template errors, unknown shortcodes, and route conflicts, and exits with status 1 if any of these fail. Content [diagnostics](@/reference/config.md#diagnostics) always run here, whatever `diagnostics.enabled` says. It is a good fit for CI and pre-commit hooks.
 
 `--external` also requests every external link in page content (HEAD, falling back to GET) and fails on network errors or HTTP 4xx/5xx. It needs network access, so it is opt-in.
 
-Flags: `--site`, `--config`, `--drafts`, `--future`, and `--external`.
+Flags: `--site`/`-s`, `--config`/`-c`, `--drafts`/`-d`, `--future`/`-f`, and `--external`.
 
 ## Version
 
@@ -95,4 +95,4 @@ Flags: `--site`, `--config`, `--drafts`, `--future`, and `--external`.
 nida version
 ```
 
-Prints the Nida version summary.
+Prints the Nida version summary. `nida --version` does the same, and `nida help`, `-h`, or `--help` prints the command list.

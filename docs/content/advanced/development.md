@@ -17,19 +17,19 @@ This page is for working on Nida from source.
 
 The repository includes a `Makefile`:
 
-```bash
-make build
-make test
-make site-build
-make docs-build
-make serve
-make example-build
-make example-serve
-make arabic-example-build
-make arabic-example-serve
-make check
-make clean
-```
+Run `make help` for the full list. The common targets:
+
+| Target | Does |
+| --- | --- |
+| `make build`, `make rebuild` | Build the `nida` binary (`rebuild` cleans first). |
+| `make test`, `make test-cover` | Run the test suite, optionally with coverage. |
+| `make lint`, `make fmt`, `make tidy` | Run golangci-lint, gofmt, and `go mod tidy`. |
+| `make check` | Formatting, vet, and tests together. |
+| `make docs-build`, `make docs-serve` | Regenerate release notes, then build or serve the docs. |
+| `make example-build`, `make example-serve` | The English example site. |
+| `make arabic-example-build`, `make arabic-example-serve` | The Arabic example site. |
+| `make serve`, `make site-build`, `make dev` | Serve or build `SITE=...` (default `./example-site`). |
+| `make clean` | Remove build output. |
 
 Useful direct Go commands:
 
@@ -98,20 +98,7 @@ internal/watcher/         local watch mode
 
 ## Template Fixtures
 
-Templates use `.html` filenames and Go template definitions. The filename stem is the template name. For example, `post.html` should define `{{ define "post" }}`.
-
-Common template names:
-
-```text
-templates/base.html
-templates/index.html
-templates/post.html
-templates/page.html
-templates/section.html
-templates/list.html
-templates/taxonomy.html
-templates/404.html
-```
+Templates use `.html` filenames, and the file name is the template name: `post.html` defines `{{ define "post" }}`. See [required templates](@/guide/templates.md#required-templates) for the names Nida looks for.
 
 ## Theme Notes
 

@@ -54,21 +54,7 @@ If custom robots content is configured, that content is used. Otherwise Nida wri
 
 `internal/searchindex.Generate` writes JavaScript that assigns JSON data to `window.searchIndex`.
 
-The current shape is:
-
-```json
-{
-  "documentStore": {
-    "docs": {
-      "/page/url/": {
-        "title": "Title",
-        "description": "Optional description",
-        "body": "Plain text"
-      }
-    }
-  }
-}
-```
+The output format is described in the [Search reference](@/reference/search.md#index-format).
 
 Pages and sections, including nested sections, are included. `search.sections` restricts the index to root sections and `search.body_limit` truncates bodies. HTML is stripped with a simple tag scanner, entities are unescaped, and whitespace is collapsed.
 

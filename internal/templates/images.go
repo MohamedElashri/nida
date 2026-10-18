@@ -70,6 +70,9 @@ func resizeImageFunc(siteRoot string, cfg config.SiteConfig) func(string, int, i
 			ext = "." + ext
 		}
 
+		if ext != ".png" && ext != ".gif" && ext != ".jpeg" {
+			ext = ".jpg"
+		}
 		baseName := strings.TrimSuffix(filepath.Base(sourceFile), filepath.Ext(sourceFile))
 		outName := fmt.Sprintf("%s.%s%s", baseName, hashStr, ext)
 		outDir := filepath.Join(absSiteRoot, cfg.StaticDir, "processed_images")

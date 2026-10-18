@@ -103,8 +103,8 @@ Useful habits:
 - keep generated search enabled for small and medium sites
 - disable search for sites where a full-text body index would be too large
 - avoid putting large generated text dumps into Markdown pages
-- use a custom search template if you want fewer fields, section-only search, or
-  a hosted search service
+- set `search.sections` and `search.body_limit` to index less
+- use a hosted search service or Pagefind for large sites
 
 ## Larger sites: Pagefind
 

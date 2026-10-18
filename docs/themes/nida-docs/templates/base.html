@@ -23,7 +23,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.prose'))"></script>
   {{- end }}
 </head>
-<body>
+<body data-copy-label="{{ t "copy" }}" data-copied-label="{{ t "copied" }}">
   <a class="skip-link" href="#main">{{ t "skip_to_content" }}</a>
   {{ template "site-header" . }}
   <div class="page">

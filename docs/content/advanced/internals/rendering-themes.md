@@ -26,7 +26,7 @@ For example, `post.html` registers the template name `post` and should contain:
 {{ define "post" }}...{{ end }}
 ```
 
-At least one template root must contain `base.html`, so a site can rely entirely on its theme. Rendering also requires `index`, `post`, and `page`. Files under `templates/shortcodes/` are not page templates; `internal/shortcodes` loads them.
+At least one template root must contain `base.html`, so a site can rely entirely on its theme; see [required templates](@/guide/templates.md#required-templates). Files under `templates/shortcodes/` are not page templates; `internal/shortcodes` loads them.
 
 ## Override Behavior
 
@@ -36,17 +36,7 @@ Shared templates are parsed into every renderable template, so common definition
 
 ## Template Helpers
 
-`funcMapWith` in `internal/templates` builds the function map once per template load. `FuncMap` exposes the same map, including translations, to `internal/shortcodes`. The helpers fall into these groups (the [template reference](@/guide/templates.md#template-functions) lists them all):
-
-- collections: `dict`, `merge`, `slice`, `seq`, `first`, `last`, `where`, `sortDesc`, `groupByYear`, `groupByMonth`
-- strings: `truncate`, `plainify`, `markdownify`, `title`, `upper`, `lower`, `split`, `replace`, `default`, `slugify`
-- URLs: `asset`, `absURL`, `relURL`
-- data: `dig`, `jsonify`, `readFile`
-- images: `imageSrcset`, `imagePresetSrcset`, `imagePresetSizes`, `imageVariant`, `resizeImage`
-- translation: `t`, backed by `internal/i18n`
-- trusted output: `unsafeHTML`, `unsafeCSS`
-
-`safeHTML` and `safeCSS` are compatibility aliases. New templates should prefer `unsafeHTML` and `unsafeCSS` because the trust boundary is explicit.
+`funcMapWith` in `internal/templates` builds the function map once per template load, and `FuncMap` exposes the same map, including translations, to `internal/shortcodes`. The [template function reference](@/guide/templates.md#template-functions) lists every function.
 
 `resizeImage` holds a package lock while it writes, because pages render concurrently and may resize the same image.
 
@@ -104,7 +94,7 @@ Theme `[extra]` values are merged with site `[extra]` as a shallow map merge: pa
 
 `internal/render/theme.go` merges theme and site `[extra]` with `themes.MergeExtra` and exposes it as `.Theme.Extra`. For older themes it also fills named fields: main menu, social links, footer text, date format, author name, favicon paths, and Umami settings. New themes should read `.Theme.Extra` instead of adding more named fields.
 
-Inline CSS is loaded from theme or site `style.css.html` when present, with a fallback to `static/site.css`.
+`.Theme.InlineCSS` is the first file found among `templates/style.css.html` in the site, `style.css.html` in each theme root (child first), and `static/site.css`. `{% include "file" %}` lines in it are expanded relative to the file.
 
 ## Template Context
 

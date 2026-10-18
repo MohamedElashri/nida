@@ -23,25 +23,28 @@ templates/
 
 Nida requires these template names somewhere in the site or its theme:
 
+- `base.html`, shared by every page (it usually defines `base`)
 - `index`, for the home page
 - `post` and `page`, for content pages
 - `section` (or `list`), once the site has sections such as `content/posts/`
 
-A docs site can make `post.html` reuse the same layout as `page.html` if it does not distinguish posts from pages. Templates can come from a theme instead of `templates/`; see [Themes](@/guide/themes.md) for how the two combine.
+Taxonomy pages use `taxonomy_list` and `taxonomy_single`, or a single `taxonomy` template, and `404.html` renders the not-found page. A docs site can make `post.html` reuse the same layout as `page.html`. Templates can come from a theme instead of `templates/`; see [Themes](@/guide/themes.md#override-order) for how the two combine.
 
 ## Template context
 
-Templates receive useful values such as:
+Every template receives:
 
+- `.Title` and `.Description` for the current page, section, or term
 - `.Config` for site configuration
 - `.Page` for the current page
 - `.Section` for the current section
 - `.Pages` for page lists
 - `.Index` for the site index
-- `.CurrentURL` for the current route
+- `.CurrentURL` for the current route, and `.HomeURL` (`/`)
 - `.CanonicalURL` for the absolute canonical URL
 - `.BasePath` for the path prefix derived from `base_url`
-- `.Paginator` on paginated section and taxonomy pages, with `.Previous`, `.Next`, and `.PageLinks`
+- `.Paginator` on paginated section and taxonomy pages, with `.CurrentIndex` and `.NumberPagers` (1-based page and page count), `.Previous` and `.Next` URLs, `.PageLinks` (each with `.Number`, `.URL`, `.Current`), and `.Pages`
+- `.Taxonomy`, `.Term`, and `.Terms` on taxonomy pages; see [Taxonomy pages](#taxonomy-pages)
 - `.Robots` for the configured `robots_meta` value
 - `.Theme.Extra` for the theme `[extra]` table merged with the site's `[extra]` (site values win)
 - `.Data` for values from the data directory
@@ -52,14 +55,14 @@ Templates receive useful values such as:
 {{ with dig .Theme.Extra "analytics.src" }}<script defer src="{{ . }}"></script>{{ end }}
 ```
 
-`.Theme` also has older shortcut fields: `MainMenu`, `Social`, `FooterText`, `DateFormat`, `AuthorName`, `Favicon`, and `Umami`. They still work, but new themes should read from `.Theme.Extra` so the engine doesn't need to know about each theme setting.
+`.Theme` also has older shortcut fields filled from `[extra]`: `MainMenu` (`main_menu`), `Social` (`social_icons`), `FooterText` (`footer.text`), `DateFormat` (`date_format`), `AuthorName` (`author.name`), `Favicon` (`favicon.webmanifest`, `favicon_16x16`, `favicon_32x32`, `apple_touch_icon`), `Umami` (`umami.enabled`, `src`, `website_id`), and `InlineCSS`, the contents of a `style.css.html` template. They still work, but new themes should read `.Theme.Extra` so the engine doesn't need to know about each theme setting.
 
 Rendered Markdown is available as `.Page.BodyHTML` or `.Section.BodyHTML`.
 
 ```html
 <article>
   <h1>{{ .Page.Title }}</h1>
-  <div>{{ safeHTML .Page.BodyHTML }}</div>
+  <div>{{ unsafeHTML .Page.BodyHTML }}</div>
 </article>
 ```
 
@@ -98,8 +101,25 @@ Besides front matter values, `.Page` has fields Nida computes:
 | `.TOC` | Nested headings. See [Writing Content](@/guide/writing.md#table-of-contents). |
 | `.WordCount`, `.ReadingTime` | Word count and estimated minutes to read. |
 | `.URL` | Site-relative URL. Prefix with `.BasePath` in links. |
+| `.Slug`, `.SectionPath`, `.RelativePath` | The URL slug, the section directory (`posts/2026`), and the content path (`posts/2026/hello.md`). |
+| `.Date`, `.Updated` | Publication and update times. `.Updated` can come from git with `updated_from_git`. |
+| `.IsBundle`, `.BundleDir`, `.Resources` | For page bundles: the bundle directory and the file names copied next to the page. |
 | `.PrevURL`, `.PrevTitle`, `.NextURL`, `.NextTitle` | Neighbors within the section. |
 | `.Extra` | Custom front matter values. |
+
+## Taxonomy pages
+
+With `render = true`, each taxonomy gets a list page (`/tags/`) and a page per term (`/tags/go/`). Both receive `.Taxonomy`, the collection with `.Name`, `.URL`, and `.Terms`. The list page also gets `.Terms`; a term page gets `.Term` and its pages in `.Pages`. Each term has `.Name`, `.Slug`, `.URL`, `.CanonicalURL`, and `.Items` (all of its pages).
+
+```html
+{{ define "taxonomy_list" }}{{ template "base" . }}{{ end }}
+{{ define "content" }}
+<h1>{{ title .Taxonomy.Name }}</h1>
+<ul>
+  {{ range .Terms }}<li><a href="{{ $.BasePath }}{{ .URL }}">{{ .Name }}</a> ({{ len .Items }})</li>{{ end }}
+</ul>
+{{ end }}
+```
 
 ## Navigation for docs sites
 
@@ -186,6 +206,8 @@ See [Translations](@/reference/config.md#translations) for file layout and fallb
 
 ## Looking up content
 
+`.Index` holds the whole site: `.AllPages` (published pages, newest first), `.SectionLookup` (sections by path), `.Taxonomies`, and the helper methods below and in the next sections.
+
 `.Index` has two lookup methods. Both return nothing when the path doesn't exist, so wrap them in `with`:
 
 ```html
@@ -267,9 +289,16 @@ On top of Go's built-in template functions, Nida provides:
 | `lower`, `upper`, `title`, `trimSpace`, `replace`, `split`, `contains`, `hasPrefix`, `hasSuffix`, `join` | | String helpers. |
 | `slugify`, `urlize` | `slugify "Hello World"` | `hello-world`. |
 | `t` | `t "read_more"` | Translate a UI string. See [Translations](#translations). |
+| `documentDirection` | `documentDirection .Config.Language` | `rtl` or `ltr` for a language code. |
+| `now` | `(now).Year` | The build time. |
+| `sortDesc` | `range sortDesc $names` | Sort a list of strings in reverse. |
+| `syntaxCSS` | `<style>{{ syntaxCSS }}</style>` | Highlighting CSS for `syntax_theme`, or for a named [Chroma style](https://xyproto.github.io/splash/docs/) such as `syntaxCSS "github-dark"`. |
 | `add`, `sub` | `add .Paginator.CurrentIndex 1` | Integer math. |
-| `asset`, `imageSrcset`, `imagePresetSrcset`, `imagePresetSizes`, `imageVariant`, `resizeImage` | | Asset and image helpers, described above. |
-| `readFile` | `readFile "static/logo.svg"` | Read a file from the content, template, or static directories. |
+| `asset`, `assetURL` | `asset "style.css"` | URL for a static file, with the base path and fingerprint applied. |
+| `imageSrcset`, `imagePresetSrcset`, `imagePresetSizes` | | Responsive image attributes, described above. |
+| `imageVariant` | `imageVariant "images/hero.jpg" 768` | URL of one pipeline width variant, `images/hero.768w.jpg`. |
+| `resizeImage` | `resizeImage "images/hero.jpg" 400 300 "png"` | Resize to exact dimensions and return the URL. The file is cached in `static/processed_images/`; the format is `jpg`, `png`, or `gif` (anything else becomes `jpg`), or empty to keep the source format. |
+| `readFile` | `readFile "static/logo.svg"` | Read a file from the content, template, or static directories, or from a theme's `templates/` or `static/`. |
 | `unsafeHTML`, `unsafeCSS` | `unsafeHTML .Page.BodyHTML` | Mark trusted strings as HTML or CSS. `safeHTML` and `safeCSS` are older names. |
 
-Next: publish a site in [Deployment](../deployment/).
+Next: publish a site in [Deployment](@/guide/deployment.md).

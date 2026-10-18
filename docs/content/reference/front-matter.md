@@ -48,9 +48,9 @@ tags = ["docs"]
 
 `extra` stores custom metadata, including taxonomy values. A few `extra` keys have built-in meaning:
 
-- `image`: the social preview image used by the `nida-seo` partial. Relative paths resolve against the page URL, so a bundle can use `image = "cover.png"`.
-- `series`: groups posts into a series for `.Index.Series`.
-- `authors`: names, or tables with `name`, `email`, and `uri`, for feed entries.
+- `image`: the social preview image used by the [`nida-seo` partial](@/guide/templates.md#seo-metadata). Relative paths resolve against the page URL, so a bundle can use `image = "cover.png"`.
+- `series`: groups posts into a [series](@/guide/templates.md#related-posts-and-series).
+- `authors`: names, or tables with `name`, `email`, and `uri`, for [feed](@/reference/config.md#feed) entries.
 
 Keys Nida does not recognize at the top level are added to `extra`, so `tags = ["go"]` and `[extra] tags = ["go"]` mean the same thing. Zola's `[taxonomies]` table is supported as well: its entries are moved into `extra`, so this works unchanged:
 
@@ -73,13 +73,19 @@ paginate_by = 20
 +++
 ```
 
-Useful section fields include:
+| Field | Description |
+| --- | --- |
+| `title`, `description`, `extra` | As for pages. |
+| `template` | Template for the section page itself. |
+| `page_template` | Default template for pages in this section. |
+| `sort_by` | Page order: `date` (newest first, the default), `title`, `weight` (lowest first), or `none` (file order). |
+| `paginate_by` | Pages per list page. `0` uses `[sections] paginate_by`, then the top-level `paginate`. |
+| `paginate_path` | Path segment for later pages, such as `/posts/page/2/`. Defaults to `[sections] paginate_path`. |
+| `generate_feeds` | Write a feed for the section and its nested sections at `<section>/feed.xml`. See [Feed](@/reference/config.md#feed). |
+| `transparent` | Accepted for Zola compatibility. It lists the section in `.Index.Sections` alongside the root, but pages are not moved into the parent section as Zola does. |
+| `weight` | Order among sibling sections, lowest first, then by title. |
 
-`title`, `description`, `template`, `page_template`, `sort_by`, `paginate_by`, `paginate_path`, `transparent`, `generate_feeds`, and `extra`.
-
-`generate_feeds = true` writes a feed for the section and its nested sections at `<section>/feed.xml`.
-
-`weight` on a section orders it among its sibling sections in `.Sections`, lowest first, and then by title.
+`draft` applies to pages only; a section's own `draft` value does not hide it.
 
 ## Page bundles
 

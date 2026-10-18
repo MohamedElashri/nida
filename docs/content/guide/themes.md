@@ -175,15 +175,7 @@ A site using this theme can translate it by adding `i18n/ar.toml` with the same 
 
 ## Required templates
 
-Rendering needs `base.html` and the `index`, `post`, and `page` templates somewhere in the stack. A site with sections, such as `content/posts/`, also needs `section` (or `list`). Nida uses these when present:
-
-| Template | Renders |
-| --- | --- |
-| `section` (or `list`) | Section pages such as `/posts/`. Required once the site has sections. |
-| `taxonomy_list`, `taxonomy_single` (or `taxonomy`) | `/tags/` and `/tags/go/`. |
-| `404` | `404.html`. Nida writes a plain fallback without it. |
-
-Pages can choose another template with `template` front matter, and sections can set `page_template` for their pages.
+A theme must provide `base.html` and the `index`, `post`, `page`, and `section` templates, unless it expects sites to supply some of them. See [required templates](@/guide/templates.md#required-templates) for the full list. Pages can choose another template with `template` front matter, and sections can set `page_template` for their pages.
 
 ## Theme settings
 

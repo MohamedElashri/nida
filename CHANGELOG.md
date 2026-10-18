@@ -72,7 +72,7 @@ All notable changes to Nida are documented here.
 * `readFile` and `style.css.html` lookup ignored parent themes, and a theme's `style.css.html` overrode the site's.
 * A shortcode inside a heading, such as `## Callouts {{< since "0.7.0" >}}`, leaked its internal placeholder into the heading ID and the TOC title.
 * A site with sections but no `section` or `list` template failed with `missing template "list"`. The error now explains which template to add.
-* Theme inheritance now applies to templates, partials, static files, and SCSS. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
+* Theme inheritance now applies to templates, partials, shortcodes, static files, SCSS, data files, translations, and archetypes. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
 * A parent theme's `[extra]` values no longer override its child theme's values.
 * Site partials and `base.html` now override theme versions as documented. Before, the order depended on file paths.
 * Shortcode syntax inside code blocks and inline code is no longer processed, including the `details` shortcode.

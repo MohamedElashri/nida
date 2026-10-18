@@ -52,7 +52,8 @@ Zola and Nida share a lot: TOML front matter between `+++`, `_index.md` sections
 | `[taxonomies]` in front matter | Same; terms are read as taxonomy values. |
 | `[extra]` | Same. |
 | `@/posts/hello.md` links | Same. |
-| `sort_by`, `paginate_by`, `paginate_path`, `page_template`, `transparent`, `aliases`, `weight` | Same names. |
+| `sort_by`, `paginate_by`, `paginate_path`, `page_template`, `aliases`, `weight` | Same names. |
+| `transparent = true` | Accepted, but pages are not passed up to the parent section. List them from the parent template with `where .Index.AllPages "SectionPath" "..."` instead. |
 | `generate_feeds` on a section | Same; writes a feed for that section. |
 | `{% details(summary="...") %}` blocks and `{{< rawhtml >}}` markers | Supported. |
 | Other `{{ name(args) }}` shortcodes | Rewrite as `{{< name key="value" >}}` with a template in `templates/shortcodes/`. |
@@ -87,7 +88,7 @@ Hugo uses Go templates too, so its shortcode syntax and much of its template log
 | `{{< figure >}}` and `{{< youtube >}}` | Built in, with the common arguments: `src`, `alt`, `caption`, `link`, `width`, `height`, and `class` for `figure`; the video id and `start` for `youtube`. |
 | Other `{{< name >}}` shortcodes | Copy the template to `templates/shortcodes/name.html` and adjust it to Nida's [shortcode context](@/guide/writing.md#writing-a-shortcode). |
 | `{{% name %}}` shortcodes | Use `{{< name >}}`; the body is available as Markdown-rendered `.InnerHTML`. |
-| `data/`, `static/`, `archetypes/`, `i18n/` | Same directories. Translation files are flat `key = "value"` TOML. |
+| `data/`, `static/`, `archetypes/`, `i18n/` | Same directories. Translation files are TOML with `key = "value"` entries; tables such as `[callout]` become dotted keys. |
 | Page bundles, `_index.md` sections | Same. |
 | `layouts/` | Rename to `templates/`, and adapt the context. |
 

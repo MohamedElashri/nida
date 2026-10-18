@@ -6,7 +6,7 @@ It exists to show how a single-language Arabic blog can use the same simple work
 
 * `language = "ar"` for RTL output
 * Markdown content in Arabic
-* theme templates with Arabic labels
+* site templates with Arabic labels
 * the same `build` and `serve` commands as any other Nida site
 
 Typical local usage:

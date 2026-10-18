@@ -45,8 +45,10 @@
   function copyText(text, button) {
     var done = function () {
       button.classList.add("copied");
+      button.setAttribute("aria-label", copiedLabel);
       setTimeout(function () {
         button.classList.remove("copied");
+        button.setAttribute("aria-label", copyLabel);
       }, 1600);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -62,6 +64,8 @@
   });
 
   var copyIcon = document.querySelector("[data-copy] svg");
+  var copyLabel = document.body.dataset.copyLabel || "Copy";
+  var copiedLabel = document.body.dataset.copiedLabel || "Copied";
   document.querySelectorAll(".prose pre").forEach(function (pre) {
     if (pre.classList.contains("mermaid")) return;
     var wrap = document.createElement("div");
@@ -71,9 +75,9 @@
     var button = document.createElement("button");
     button.type = "button";
     button.className = "icon-button code-copy";
-    button.setAttribute("aria-label", "Copy code");
+    button.setAttribute("aria-label", copyLabel);
     if (copyIcon) button.appendChild(copyIcon.cloneNode(true));
-    else button.textContent = "Copy";
+    else button.textContent = copyLabel;
     button.addEventListener("click", function () {
       var lines = pre.querySelectorAll(".z-cl");
       var text = lines.length

@@ -86,7 +86,7 @@ Open `http://127.0.0.1:1702`. The server rebuilds when you save a file and reloa
 
 ### Write a post
 
-In another terminal, create a post from an archetype:
+In another terminal, create a post from an [archetype](@/reference/cli.md#new):
 
 ```bash
 nida new --site ./my-site posts/hello-world.md
@@ -125,8 +125,6 @@ my-site/
 
 Only `config.toml`, `content/`, and templates (from `templates/` or a theme) are required.
 
-> [!TIP]
-> Nida warns about config keys it does not recognize, so a typo like `paginte = 10` shows up as a warning instead of being silently ignored.
 
 ## Next steps
 

@@ -39,8 +39,7 @@ enabled = true
 
 Only `base_url` and `title` are required. Everything else has a default.
 
-> [!NOTE]
-> Nida warns about keys it does not recognize, for example `warning: unknown config key "paginte" is ignored`. Warnings never fail the build, and keys under `[extra]` are never reported.
+Nida warns about keys it does not recognize, so typos show up in the build output. See [Config Reference](@/reference/config.md) for every key.
 
 ## Site identity
 
@@ -101,7 +100,7 @@ feed = true
 name = "series"
 ```
 
-Pages assign terms in front matter with `tags = ["go", "web"]`. With `render = true`, Nida renders a list page at `/tags/` and a page per term. With `feed = true`, each term also gets a feed. Taxonomies power `.Index.Related` for related posts.
+Pages assign terms in front matter with `tags = ["go", "web"]`. Term URLs come from [permalinks](@/reference/config.md#permalinks). With `render = true`, Nida renders a list page at `/tags/` and a page per term. With `feed = true`, each term also gets a feed. Taxonomies power `.Index.Related` for related posts.
 
 ## Feeds
 
@@ -109,52 +108,37 @@ Nida writes an Atom feed by default. Add RSS if your readers need it:
 
 ```toml
 [feed]
-enabled = true
-filename = "feed.xml"
-limit = 20
 sections = ["posts"]
 
 [rss]
 enabled = true
-filename = "rss.xml"
 ```
 
-`sections` limits a feed to root sections; leave it empty to include everything. A section with `generate_feeds = true` in its `_index.md` gets its own feed at `<section>/feed.xml`.
+A section with `generate_feeds = true` in its `_index.md`, or a taxonomy with `feed = true`, gets its own feed. See [Feed](@/reference/config.md#feed) for filenames, limits, and summaries.
 
 ## Markdown
 
 ```toml
 [markdown]
 heading_anchors = true
-math = false
-hard_wraps = false
-unsafe_html = false
-external_links_target_blank = false
-external_links_no_follow = false
-external_links_no_referrer = false
+math = true
 ```
 
-`heading_anchors` adds `#` links to headings. `math` passes `$...$` TeX through for KaTeX or MathJax. `hard_wraps` turns single newlines into `<br>`; leave it off for CommonMark behavior.
+`heading_anchors` adds `#` links to headings and `math` passes TeX through for KaTeX or MathJax. See [Writing Content](@/guide/writing.md) for the syntax and [Markdown](@/reference/config.md#markdown) for every option, including external link attributes and hard wraps.
 
 > [!WARNING]
 > Raw HTML in Markdown is off by default. Turn on `unsafe_html` only when you trust everyone who writes content. Shortcodes are the safer way to add custom HTML.
 
 ## Search, sitemap, and robots
 
+A sitemap and `robots.txt` are written by default. Client-side search is opt-in:
+
 ```toml
 [search]
 enabled = true
-sections = ["guide", "reference"]
-body_limit = 2000
-
-[sitemap]
-enabled = true
-
-[robots]
-enabled = true
 ```
 
-`robots_meta` at the top level sets a `<meta name="robots">` value for every page, such as `"noai, noimageai"`.
+See [Search](@/reference/search.md) for the index format and a search UI, and `robots_meta` in the [Config Reference](@/reference/config.md#top-level-settings) for a site-wide robots meta tag.
 
 ## Asset pipeline
 
@@ -166,26 +150,13 @@ minify_js = true
 
 [pipeline.images]
 enabled = true
-widths = [480, 768, 1200]
-quality = 85
-
-[pipeline.scss]
-enabled = true
-entry_dir = "css"
 ```
 
-All of these are optional. Fingerprinting adds a content hash to file names and rewrites references so browsers can cache aggressively. Image processing writes resized variants used by Markdown images and the `imageSrcset` helpers. SCSS needs the `sass` command installed.
+Every step is optional. Fingerprinting adds a content hash to file names so browsers can cache aggressively, and image processing writes resized variants used by Markdown images and the [image helpers](@/guide/templates.md). See [Pipeline](@/reference/config.md#pipeline) for widths, presets, quality, and SCSS.
 
 ## Development server
 
-```toml
-[server]
-host = "127.0.0.1"
-port = 1702
-livereload = true
-```
-
-Override the port with `nida serve --port 4000`.
+`nida serve` listens on `127.0.0.1:1702`. Change it with `[server] port` or `nida serve --port 4000`; see [Server](@/reference/config.md#server).
 
 ## Custom values
 

@@ -390,7 +390,7 @@ func writeUsage(w io.Writer) {
   nida version
 
 Commands:
-  init    Create a minimal new site
+  init    Create an example site to start from
   new     Create a content file from an archetype, e.g. posts/my-post.md
   serve   Build, watch, and serve the local site
   build   Build the site into the configured output directory

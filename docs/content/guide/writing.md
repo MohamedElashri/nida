@@ -29,7 +29,7 @@ Everything above the marker is available as `.Page.Summary`. The marker itself i
 {{ range .Pages }}
   <article>
     <h2><a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a></h2>
-    {{ safeHTML .Summary }}
+    {{ unsafeHTML .Summary }}
   </article>
 {{ end }}
 ```
@@ -112,7 +112,7 @@ Default titles can be translated with `callout.<type>` keys in an [i18n file](@/
 
 ## Code blocks
 
-Fenced code blocks are highlighted with the configured `syntax_theme`. Options go in braces after the language:
+Fenced code blocks are highlighted with CSS classes prefixed `z-`; the theme supplies the colors, for example with `{{ syntaxCSS }}` and the `syntax_theme` setting. Options go in braces after the language:
 
 ````markdown
 ```go {title="main.go", hl_lines="3 5-6", linenos=true}
@@ -249,6 +249,7 @@ Create `templates/shortcodes/<name>.html` in the site or in a theme. Site shortc
 
 | Field | Description |
 | --- | --- |
+| `.Name` | The shortcode name. |
 | `.Get "key"`, `.Get 0` | A named or positional argument, or `""`. |
 | `.Args`, `.Pos` | All named arguments as a map, and positional arguments as a list. |
 | `.Inner` | The raw body of a paired shortcode. |

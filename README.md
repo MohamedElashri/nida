@@ -1,8 +1,8 @@
 # Nida
 
-Nida is a small Go static site generator for blogs and personal sites. It reads
-Markdown with TOML front matter, renders pages with Go HTML templates, and writes
-a static site you can serve anywhere.
+Nida is a small Go static site generator for blogs, personal sites, and
+documentation. It reads Markdown with TOML or YAML front matter, renders pages
+with Go HTML templates, and writes a static site you can serve anywhere.
 
 ## Features
 
@@ -23,211 +23,41 @@ a static site you can serve anywhere.
 
 ## Install
 
-### Install Script
-
-On Linux or macOS, install the latest prebuilt release:
-
 ```bash
-curl -fsSL https://melashri.net/nida/install.sh | sh
-nida version
-```
-
-By default this installs to `$HOME/.local/bin`. Set `NIDA_INSTALL_SYSTEM=1` for
-a system-wide install, `NIDA_INSTALL_DIR` for a custom directory, or
-`NIDA_VERSION` to install a specific release tag.
-
-### Homebrew
-
-```bash
-brew tap MohamedElashri/nida
-brew install nida
-```
-
-### Prebuilt Binary
-
-Download a release archive from
-[GitHub Releases](https://github.com/MohamedElashri/nida/releases).
-
-For shell installs, resolve the latest release tag first:
-
-```bash
-TAG=$(curl -fsSL https://api.github.com/repos/MohamedElashri/nida/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p')
-VERSION=${TAG#v}
-```
-
-or choose a specific release tag:
-
-```bash
-TAG=vX.Y.Z
-VERSION=${TAG#v}
-```
-
-Then download and install the appropriate archive for your platform. For example,
-
-Linux x86_64:
-
-```bash
-curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${TAG}/nida_${VERSION}_linux_x86_64.tar.gz"
-tar -xzf nida.tar.gz
-chmod +x nida
-sudo mv nida /usr/local/bin/nida
-nida version
-```
-
-macOS Apple Silicon:
-
-```bash
-curl -L -o nida.tar.gz "https://github.com/MohamedElashri/nida/releases/download/${TAG}/nida_${VERSION}_darwin_arm64.tar.gz"
-tar -xzf nida.tar.gz
-chmod +x nida
-sudo mv nida /usr/local/bin/nida
-nida version
-```
-
-Other archives are published for Linux arm64, macOS Intel, and Windows x86_64.
-
-Windows PowerShell:
-
-```powershell
-$TAG = (Invoke-RestMethod "https://api.github.com/repos/MohamedElashri/nida/releases/latest").tag_name
-$VERSION = $TAG.TrimStart("v")
-Invoke-WebRequest -Uri "https://github.com/MohamedElashri/nida/releases/download/${TAG}/nida_${VERSION}_windows_x86_64.zip" -OutFile "nida.zip"
-Expand-Archive -Path "nida.zip" -DestinationPath ".\nida"
-.\nida\nida.exe version
-```
-
-### Go
-
-```bash
+curl -fsSL https://melashri.net/nida/install.sh | sh   # Linux and macOS
+brew install MohamedElashri/nida/nida                   # Homebrew
 go install github.com/MohamedElashri/nida/cmd/nida@latest
 ```
 
-Or build from source:
+Prebuilt archives for Linux, macOS, and Windows are on
+[GitHub Releases](https://github.com/MohamedElashri/nida/releases). See
+[Getting Started](https://melashri.net/nida/guide/getting-started/) for all
+install options.
+
+## Quick start
 
 ```bash
-git clone https://github.com/MohamedElashri/nida.git
-cd nida
-go build ./cmd/nida
-./nida version
+nida init ./my-site                        # create an example site
+nida serve --site ./my-site                # preview at http://127.0.0.1:1702
+nida new --site ./my-site posts/hello.md   # add a post
+nida check --site ./my-site                # find broken links and errors
+nida build --site ./my-site                # write the site to my-site/public
 ```
-
-## Usage
-
-Build a site:
-
-```bash
-nida build --site ./example-site
-```
-
-Serve it locally:
-
-```bash
-nida serve --site ./example-site
-```
-
-The default local address is:
-
-```text
-http://127.0.0.1:1702
-```
-
-Commands:
-
-```bash
-nida init [PATH]
-nida new [-s PATH] CONTENT_PATH
-nida build [-s PATH] [-c PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR]
-nida check [-s PATH] [-c PATH] [-d] [-f] [--external]
-nida serve [-s PATH] [-c PATH] [-d] [-f] [--base-url URL] [-o DIR] [-p PORT]
-nida version
-```
-
-## Site Layout
-
-Create an example site:
-
-```bash
-nida init ./my-site
-nida serve --site ./my-site
-```
-
-`nida init` creates a buildable example site in a new or empty directory. The
-example includes sample posts, tags, feeds, a search page, search settings, a
-page bundle, and templates you can edit. It refuses to write into a non-empty
-directory.
-
-```text
-site/
-├── config.toml
-├── content/
-│   ├── posts/
-│   └── pages/
-├── templates/
-├── static/
-├── themes/
-│   └── ink/
-│       ├── config.toml
-│       ├── templates/
-│       ├── static/
-│       └── scss/
-└── public/
-```
-
-Themes are optional. Without a `theme` setting, the site uses templates and
-assets from `templates/` and `static/` directly.
-
-## Theme System
-
-Set `theme = "name"` in `config.toml` to use a theme from `themes/name/`. Themes
-support inheritance via `extends = "parent"` in their `config.toml`.
-
-Site templates override theme templates with the same name, and a theme overrides
-the theme it extends. The same order applies to partials, shortcodes, static files,
-and SCSS, so a site can customize a theme without copying it.
-
-```toml
-# site config.toml
-theme = "ink"
-
-[extra]
-footer = { text = "Custom footer text" }
-```
-
-```toml
-# themes/ink/config.toml
-name = "Ink"
-description = "A minimalist theme"
-extends = "base"
-
-[extra]
-main_menu = [{ name = "Home", url = "/" }]
-```
-
-## Config Security Notes
-
-Markdown raw HTML is disabled by default. Enable it only for trusted-author
-sites that intentionally need raw HTML in Markdown:
-
-```toml
-[markdown]
-unsafe_html = true
-```
-
-Template helpers named `safeHTML`/`safeCSS` are compatibility aliases for
-trusted template output. Prefer the clearer `unsafeHTML`/`unsafeCSS` names in new
-themes, and do not apply them to untrusted values.
-
-## Examples
-
-The repository includes two example sites:
-
-* [example-site](./example-site): English example blog
-* [example-site-ar](./example-site-ar): Arabic RTL example blog
 
 ## Documentation
 
-* [Nida documentation site](https://melashri.net/nida/)
+* [Getting Started](https://melashri.net/nida/guide/getting-started/)
+* [Writing Content](https://melashri.net/nida/guide/writing/)
+* [Templates](https://melashri.net/nida/guide/templates/) and [Themes](https://melashri.net/nida/guide/themes/)
+* [Migrating from Zola, Hugo, or Jekyll](https://melashri.net/nida/guide/migrating/)
+* [CLI Reference](https://melashri.net/nida/reference/cli/) and [Config Reference](https://melashri.net/nida/reference/config/)
 * [Changelog](./CHANGELOG.md)
+
+## Examples
+
+* [example-site](./example-site): English example blog
+* [example-site-ar](./example-site-ar): Arabic RTL example blog
+* [docs](./docs): the documentation site, built with its own theme in `docs/themes/nida-docs`
 
 ## License
 
