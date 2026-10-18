@@ -520,6 +520,7 @@ notes = "/{year}/{month}/{slug}.html"
 		"content/posts/bundle/pic.txt":  "resource",
 		"content/notes/_index.md":       "+++\ntitle = \"Notes\"\n+++\n",
 		"content/notes/dated.md":        "+++\ntitle = \"Dated\"\ndate = 2023-07-09\n+++\nbody\n",
+		"content/posts/dotted.md":       "+++\ntitle = \"Dotted\"\nslug = \"node.js\"\naliases = [\"/old/v2.0\"]\n+++\nbody\n",
 		"templates/base.html":           `{{ define "base" }}{{ end }}`,
 		"templates/index.html":          `{{ define "index" }}home{{ end }}`,
 		"templates/list.html":           `{{ define "list" }}list{{ end }}`,
@@ -550,6 +551,8 @@ notes = "/{year}/{month}/{slug}.html"
 		"2023/07/dated.html":          "post /2023/07/dated.html",
 		"old/folder.html":             "https://example.com/elsewhere/folder/",
 		"old/folder/index.html":       "https://example.com/elsewhere/folder/",
+		"posts/node.js/index.html":    "post /posts/node.js/",
+		"old/v2.0/index.html":         "https://example.com/posts/node.js/",
 	} {
 		data, err := os.ReadFile(filepath.Join(public, filepath.FromSlash(path)))
 		if err != nil {
