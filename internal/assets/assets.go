@@ -268,6 +268,10 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 		return fmt.Errorf("check content dir: %w", err)
 	}
 
+	// Pages written as files, such as /posts/a.html and /posts/b.html,
+	// share a directory for their resources; refuse to let one page's
+	// cover.png silently replace another's.
+	written := map[string]string{}
 	for _, page := range pages {
 		if len(page.Resources) == 0 {
 			continue
@@ -295,6 +299,10 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 			if err := safepath.EnsureNoSymlinkPath(outputRoot, dst); err != nil {
 				return fmt.Errorf("check page resource output %q: %w", res, err)
 			}
+			if other, ok := written[dst]; ok && other != page.URL {
+				return fmt.Errorf("page resource %q of %s would overwrite the one of %s; rename one of them", res, page.URL, other)
+			}
+			written[dst] = page.URL
 			if err := copyFile(src, dst); err != nil {
 				return fmt.Errorf("copy page resource %q: %w", res, err)
 			}

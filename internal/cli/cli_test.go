@@ -623,3 +623,34 @@ func TestMigrateRejectsBadArguments(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildRefusesBundleResourceClash(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"config.toml":               "base_url = \"https://example.com\"\ntitle = \"T\"\n",
+		"content/_index.md":         "+++\ntitle = \"Home\"\n+++\n",
+		"content/posts/_index.md":   "+++\ntitle = \"Posts\"\n+++\n",
+		"content/posts/a/index.md":  "+++\ntitle = \"A\"\npath = \"/posts/a.html\"\n+++\n",
+		"content/posts/a/cover.png": "a",
+		"content/posts/b/index.md":  "+++\ntitle = \"B\"\npath = \"/posts/b.html\"\n+++\n",
+		"content/posts/b/cover.png": "b",
+		"templates/base.html":       `{{ define "base" }}{{ end }}`,
+		"templates/index.html":      `{{ define "index" }}home{{ end }}`,
+		"templates/list.html":       `{{ define "list" }}list{{ end }}`,
+		"templates/page.html":       `{{ define "page" }}page{{ end }}`,
+		"templates/post.html":       `{{ define "post" }}post{{ end }}`,
+	}
+	for name, body := range files {
+		full := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stderr := &bytes.Buffer{}
+	if code := run(&bytes.Buffer{}, stderr, []string{"build", root}); code == 0 || !strings.Contains(stderr.String(), "would overwrite") {
+		t.Fatalf("expected a resource clash error, got code=%d stderr=%s", code, stderr.String())
+	}
+}

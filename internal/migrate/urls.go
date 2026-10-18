@@ -1,14 +1,17 @@
 package migrate
 
 import (
+	"io/fs"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/frontmatter"
 	"github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/site"
@@ -35,24 +38,19 @@ func fixURLs(p *Plan, target, mode string) error {
 		return nil
 	}
 	lookup := site.BuildPathLookup(pages, sections, cfg)
+	taken := servedURLs(target, cfg, pages, sections, lookup)
 
-	// taken maps every URL the new site serves to the content file that
-	// serves it, so a fix never steals another page's URL.
-	taken := map[string]string{}
-	for rel, u := range lookup {
-		if strings.HasSuffix(rel, ".md") {
-			taken[u] = rel
-		}
+	type move struct {
+		f              *planned
+		rel            string
+		oldURL, newURL string
 	}
-	for _, page := range pages {
-		for _, alias := range page.Aliases {
-			if a, err := route.Page("alias", alias); err == nil {
-				taken[a] = page.RelativePath
-			}
-		}
-	}
-
+	var moves []move
 	contentPrefix := strings.Trim(filepath.ToSlash(cfg.ContentDir), "/") + "/"
+	finalURL := map[string]string{} // content-relative path -> URL after fixes
+	for rel, u := range lookup {
+		finalURL[rel] = u
+	}
 	for _, dest := range p.order {
 		f := p.files[dest]
 		if f.doc == nil || f.oldURL == "" || !strings.HasPrefix(dest, contentPrefix) {
@@ -73,33 +71,142 @@ func fixURLs(p *Plan, target, mode string) error {
 			p.Report.URLsKept++
 			continue
 		}
-		if owner, clash := taken[oldURL]; clash && owner != rel {
-			p.Report.Add(Manual, f.origin, 0, "The old URL `%s` is now used by `%s`, so this page moved to `%s`. Decide which page keeps the URL.", oldURL, owner, newURL)
+		moves = append(moves, move{f, rel, oldURL, newURL})
+	}
+
+	// A page that moves back to its old URL frees the URL Nida gave it,
+	// so two pages can trade URLs. In redirect mode pages stay where Nida
+	// put them and only claim their old URL for a redirect.
+	if mode == KeepURLs {
+		for _, m := range moves {
+			if taken[m.newURL] == m.rel {
+				delete(taken, m.newURL)
+			}
+		}
+	}
+	for _, m := range moves {
+		if owner, clash := taken[m.oldURL]; clash && owner != m.rel {
+			p.Report.Add(Manual, m.f.origin, 0, "The old URL `%s` is now used by %s, so this page moved to `%s`. Decide which one keeps the URL.", m.oldURL, owner, m.newURL)
+			if mode == KeepURLs {
+				if other, clash := taken[m.newURL]; clash && other != m.rel {
+					p.Report.Add(Manual, m.f.origin, 0, "This page's new URL `%s` was also claimed by %s; `nida check` will report the conflict until one of them moves.", m.newURL, other)
+				}
+				taken[m.newURL] = m.rel
+			}
 			continue
 		}
 		if mode == RedirectURLs {
-			aliases := frontmatter.StringList(f.doc.Values()["aliases"])
-			if !slices.Contains(aliases, oldURL) {
-				aliases = append(aliases, oldURL)
+			aliases := frontmatter.StringList(m.f.doc.Values()["aliases"])
+			if !slices.Contains(aliases, m.oldURL) {
+				aliases = append(aliases, m.oldURL)
 			}
-			if err := f.doc.Set("aliases", aliases); err != nil {
+			if err := m.f.doc.Set("aliases", aliases); err != nil {
 				return err
 			}
-			p.Report.Add(Changed, f.origin, 0, "Page moved to its Nida URL; the old URL redirects there through `aliases`.")
+			p.Report.Add(Changed, m.f.origin, 0, "Page moved to its Nida URL; the old URL redirects there through `aliases`.")
 		} else {
-			if err := f.doc.Set("path", oldURL); err != nil {
+			if err := m.f.doc.Set("path", m.oldURL); err != nil {
 				return err
 			}
-			p.Report.Add(Changed, f.origin, 0, "Set `path` so the page keeps its old URL.")
+			finalURL[m.rel] = m.oldURL
+			p.Report.Add(Changed, m.f.origin, 0, "Set `path` so the page keeps its old URL.")
 		}
-		taken[oldURL] = rel
+		taken[m.oldURL] = "`" + m.rel + "`"
 		p.Report.URLsMoved++
-		full := filepath.Join(target, filepath.FromSlash(dest))
-		if err := os.WriteFile(full, f.doc.Bytes(), 0o644); err != nil {
+		full := filepath.Join(target, filepath.FromSlash(contentPrefix+m.rel))
+		if err := os.WriteFile(full, m.f.doc.Bytes(), 0o644); err != nil {
 			return err
 		}
 	}
+	checkBundleResources(p, pages, finalURL, contentPrefix)
 	return nil
+}
+
+// servedURLs maps every URL the new site will serve, other than redirects
+// a fix may add, to a description of what serves it: pages, sections,
+// taxonomy pages, feeds and other generated files, and static files.
+func servedURLs(target string, cfg config.SiteConfig, pages []content.Page, sections []content.Section, lookup map[string]string) map[string]string {
+	taken := map[string]string{}
+	for rel, u := range lookup {
+		if strings.HasSuffix(rel, ".md") {
+			taken[u] = rel
+		}
+	}
+	for _, page := range pages {
+		for _, alias := range page.Aliases {
+			if a, err := route.Page("alias", alias); err == nil {
+				taken[a] = "an alias of `" + page.RelativePath + "`"
+			}
+		}
+	}
+	if index, _, err := site.BuildIndex(pages, sections, cfg); err == nil {
+		for _, tax := range index.Taxonomies {
+			if !tax.Render {
+				continue
+			}
+			taken[tax.URL] = "the `" + tax.Name + "` taxonomy page"
+			for _, term := range tax.Terms {
+				taken[term.URL] = "the `" + tax.Name + "` term page"
+			}
+		}
+		for _, name := range feeds.Filenames(cfg, index) {
+			taken["/"+strings.TrimPrefix(name, "/")] = "Nida's generated `" + name + "`"
+		}
+	}
+	for _, generated := range []struct {
+		on   bool
+		name string
+	}{{cfg.Sitemap.Enabled, cfg.Sitemap.Filename}, {cfg.Robots.Enabled, cfg.Robots.Filename}, {cfg.Search.Enabled, cfg.Search.Filename}} {
+		if generated.on {
+			taken["/"+generated.name] = "Nida's generated `" + generated.name + "`"
+		}
+	}
+	static := filepath.Join(target, filepath.FromSlash(cfg.StaticDir))
+	_ = filepath.WalkDir(static, func(full string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		rel, _ := filepath.Rel(static, full)
+		u := "/" + filepath.ToSlash(rel)
+		taken[u] = "the static file `" + u + "`"
+		if path.Base(u) == "index.html" {
+			taken[path.Dir(u)+"/"] = "the static file `" + u + "`"
+		}
+		return nil
+	})
+	return taken
+}
+
+// checkBundleResources reports page bundles whose resources would land on
+// the same output path. Pages written as files, such as /posts/a.html and
+// /posts/b.html, share their directory, so two bundles with a cover.png
+// would overwrite each other; Nida's build refuses that.
+func checkBundleResources(p *Plan, pages []content.Page, finalURL map[string]string, contentPrefix string) {
+	owner := map[string]string{}
+	for _, page := range pages {
+		if !page.IsBundle || len(page.Resources) == 0 {
+			continue
+		}
+		u, ok := finalURL[page.RelativePath]
+		if !ok {
+			continue
+		}
+		origin := contentPrefix + page.RelativePath
+		if f, ok := p.files[origin]; ok && f.origin != "" {
+			origin = f.origin
+		}
+		if route.IsFile(u) {
+			p.Report.Add(Review, origin, 0, "The page is written as the file `%s`, so its bundle files are served from `%s`, next to it.", u, route.Dir(u))
+		}
+		for _, res := range page.Resources {
+			out := route.Dir(u) + res
+			if other, clash := owner[out]; clash {
+				p.Report.Add(Manual, origin, 0, "Bundle file `%s` would be written to `%s`, which `%s` also writes. Rename one of them; `nida build` refuses the clash.", res, out, other)
+				continue
+			}
+			owner[out] = origin
+		}
+	}
 }
 
 // cleanOldURL turns an old site URL into a Nida route: it drops any

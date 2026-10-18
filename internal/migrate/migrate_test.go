@@ -429,3 +429,56 @@ func TestPlanRefusesPathsOutsideBothSites(t *testing.T) {
 		t.Error("a file escaped the destination")
 	}
 }
+
+func TestFixURLsRespectsGeneratedFiles(t *testing.T) {
+	files, report := urlPlan(t, KeepURLs, map[string]string{"map": "/sitemap.xml", "feed": "/feed.xml"})
+	for _, name := range []string{"content/posts/map.md", "content/posts/feed.md"} {
+		if strings.Contains(files[name], "path") {
+			t.Errorf("%s must not take a generated file's URL:\n%s", name, files[name])
+		}
+	}
+	if report.Count(Manual) != 2 {
+		t.Errorf("expected two clash notes, got %v", report.Notes)
+	}
+}
+
+func TestFixURLsLetsPagesSwapURLs(t *testing.T) {
+	files, report := urlPlan(t, KeepURLs, map[string]string{"a": "/posts/b/", "b": "/posts/a/"})
+	if !strings.Contains(files["content/posts/a.md"], `path = "/posts/b/"`) || !strings.Contains(files["content/posts/b.md"], `path = "/posts/a/"`) {
+		t.Errorf("pages should trade URLs:\n%s\n%s\n%v", files["content/posts/a.md"], files["content/posts/b.md"], report.Notes)
+	}
+}
+
+func TestBundleResourceClashIsReported(t *testing.T) {
+	root := t.TempDir()
+	report := &Report{}
+	p := newPlan(root, report)
+	p.Config.Set("base_url", "https://x")
+	p.Config.Set("title", "T")
+	p.Page("content/_index.md", NewDocument(TOML, ""), "", "")
+	for _, name := range []string{"a", "b"} {
+		doc := NewDocument(TOML, "![c](cover.png)\n")
+		_ = doc.Set("title", name)
+		p.Page("content/posts/"+name+"/index.md", doc, name+"/index.md", "/posts/"+name+".html")
+		p.Write("content/posts/"+name+"/cover.png", []byte(name), name+"/cover.png")
+	}
+	if err := finishPlan(p); err != nil {
+		t.Fatal(err)
+	}
+	dest := t.TempDir()
+	if err := p.apply(dest); err != nil {
+		t.Fatal(err)
+	}
+	if err := fixURLs(p, dest, KeepURLs); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, note := range report.Notes {
+		if note.Severity == Manual && strings.Contains(note.Message, "cover.png") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a resource clash note, got %v", report.Notes)
+	}
+}

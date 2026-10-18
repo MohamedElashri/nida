@@ -12,7 +12,7 @@ Migrated from Hugo by `nida migrate`.
 | --- | --- |
 | Needs manual work | 4 |
 | Not supported by Nida | 8 |
-| Needs review | 20 |
+| Needs review | 21 |
 | Changed automatically | 26 |
 
 Work through the sections from the top. When `nida check` passes, compare the old and new `sitemap.xml` files to confirm every URL still exists.
@@ -55,6 +55,7 @@ These were converted, but the result may not match the old site exactly.
 - Hugo served this section at `/notes/`, but Nida serves it at `/Notes/`. Rename the directory to keep the old URL. (`content/Notes`)
 - The file had no front matter, which Nida requires; its title was set from the file name. (`content/Notes/plain.markdown`)
 - Headless bundle (or `build.render: never`) became a draft, since Nida renders every published page. Templates that read its content need rewriting. (`content/headless-bundle/index.md`)
+- The page is written as the file `/custom/bundle.html`, so its bundle files are served from `/custom/`, next to it. (`content/posts/bundle/index.md`)
 - `figure` title was merged into the caption; Nida's figure has no separate title. (`content/posts/first-post.md:12`)
 - `figure` option `target` has no Nida equivalent and was dropped. (`content/posts/first-post.md:12`)
 - `youtube` option `autoplay` has no Nida equivalent and was dropped. (`content/posts/first-post.md:14`)
