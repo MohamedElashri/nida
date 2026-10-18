@@ -292,6 +292,7 @@ On top of Go's built-in template functions, Nida provides:
 | `documentDirection` | `documentDirection .Config.Language` | `rtl` or `ltr` for a language code. |
 | `now` | `(now).Year` | The build time. |
 | `sortDesc` | `range sortDesc $names` | Sort a list of strings in reverse. |
+| `bundledScripts` | `bundledScripts .Page` | Tags for the bundled KaTeX and Mermaid when the page needs them. See [Bundled scripts](@/guide/writing.md#bundled-scripts). |
 | `syntaxCSS` | `<style>{{ syntaxCSS }}</style>` | Highlighting CSS for `syntax_theme`, or for a named [Chroma style](https://xyproto.github.io/splash/docs/) such as `syntaxCSS "github-dark"`. |
 | `add`, `sub` | `add .Paginator.CurrentIndex 1` | Integer math. |
 | `asset`, `assetURL` | `asset "style.css"` | URL for a static file, with the base path and fingerprint applied. |

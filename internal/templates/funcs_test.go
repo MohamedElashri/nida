@@ -176,3 +176,30 @@ func TestSyntaxCSS(t *testing.T) {
 		t.Fatalf("expected monokai CSS with z- classes, got %.200s", got)
 	}
 }
+
+func TestBundledScriptsOnlyWhenNeeded(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com/docs/"
+	math := content.Page{BodyHTML: `<span class="math math-inline">\(x\)</span>`}
+	diagram := content.Page{BodyHTML: "<pre class=\"mermaid\">graph LR</pre>"}
+	plain := content.Page{BodyHTML: "<p>text</p>"}
+
+	if got := execute(t, cfg, `{{ bundledScripts . }}`, plain); got != "" {
+		t.Fatalf("plain pages need no scripts, got %s", got)
+	}
+	if got := execute(t, cfg, `{{ bundledScripts . }}`, math); got != "" {
+		t.Fatalf("KaTeX must stay off while markdown.math is off, got %s", got)
+	}
+	cfg.Markdown.Math = true
+	got := execute(t, cfg, `{{ bundledScripts . }}`, math)
+	if !strings.Contains(got, `/docs/vendor/katex-`) || strings.Contains(got, "mermaid") {
+		t.Fatalf("expected only KaTeX tags, got %s", got)
+	}
+	got = execute(t, cfg, `{{ bundledScripts . "katex" }}`, diagram)
+	if !strings.Contains(got, "mermaid.min.js") || !strings.Contains(got, "katex.min.js") {
+		t.Fatalf("expected mermaid detected and katex forced, got %s", got)
+	}
+	if got := execute(t, cfg, `{{ bundledScripts . }}`, []content.Page{{Summary: "<p>x</p>", BodyHTML: "<pre class=\"mermaid\">a</pre>"}}); got != "" {
+		t.Fatalf("lists should only look at summaries, got %s", got)
+	}
+}

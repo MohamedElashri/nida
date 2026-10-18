@@ -20,6 +20,8 @@ All notable changes to Nida are documented here.
 * GitHub-style callouts (`> [!NOTE]`, `> [!WARNING] Custom title`).
 * Code block options in the info string: `title`, `hl_lines`, `linenos`, and `linenostart`.
 * `markdown.math` passes `$...$` and `$$...$$` TeX through for KaTeX or MathJax.
+* KaTeX and Mermaid are bundled in the binary. The built-in `nida-scripts` partial loads them only on pages with math or diagrams, and their files are written only when a page uses them, so sites work offline with no CDN.
+* Shortcode templates can call partials from `templates/partials/` in the site and its themes.
 * ```` ```mermaid ```` blocks render as `<pre class="mermaid">` for Mermaid.
 * `.Page.WordCount`.
 * Template functions: `dict`, `slice`, `seq`, `first`, `last`, `where`, `truncate`, `plainify`, `markdownify`, `absURL`, `relURL`, `jsonify`, `upper`, `title`, `split`, and `urlize`.

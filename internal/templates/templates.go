@@ -226,6 +226,7 @@ func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) t
 		"relURL":            relURLFunc(cfg),
 		"jsonify":           jsonify,
 		"syntaxCSS":         syntaxCSSFunc(cfg),
+		"bundledScripts":    bundledScriptsFunc(cfg),
 		"upper":             strings.ToUpper,
 		"title":             content.TitleCase,
 		"split":             strings.Split,

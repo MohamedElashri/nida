@@ -277,6 +277,7 @@ Nida copies page bundle resources next to the rendered page.
   <footer class="site-footer">
     <p>{{ .Config.Description }}</p>
   </footer>
+  {{- template "nida-scripts" . }}
 </body>
 </html>
 {{- end }}

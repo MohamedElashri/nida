@@ -36,35 +36,36 @@ url = "/reference/"
 [[features]]
 icon = "pen"
 title = "Writing that scales"
-text = "Summaries, tables of contents, callouts, code titles and line highlights, math, Mermaid, and shortcodes."
-url = "/guide/writing/"
+text = "Markdown with the extras technical writing needs, rendered without a CDN."
+items = ["Callouts", "Math", "Mermaid", "Code titles", "Shortcodes"]
 
 [[features]]
 icon = "layers"
 title = "Themes you can extend"
-text = "Go templates with inheritance. Override any template, partial, shortcode, asset, or translation from your site."
-url = "/guide/themes/"
+text = "Override any template, shortcode, asset, or string without forking the theme."
+items = ["Inheritance", "Partials", "Data files", "i18n"]
 
 [[features]]
 icon = "rss"
 title = "Blog essentials"
-text = "Tags, series, related posts, archives, Atom and RSS feeds, and SEO metadata built in."
-url = "/guide/features/"
+text = "Everything a blog expects, built in and configured in a few lines."
+items = ["Tags", "Series", "Related posts", "Atom & RSS", "SEO"]
 
 [[features]]
 icon = "bolt"
 title = "Fast and dependency-free"
-text = "A single Go binary that renders in parallel, with live reload and incremental rebuilds while you write."
-url = "/reference/cli/"
+text = "A single Go binary that renders in parallel and rebuilds as you type."
+items = ["One binary", "Parallel builds", "Live reload", "Offline"]
 
 [[features]]
 icon = "check"
 title = "Catches mistakes early"
-text = "nida check finds broken links, missing images, template errors, and config typos before you deploy."
-url = "/reference/cli/#check"
+text = "nida check runs the whole build and reports problems before you deploy."
+items = ["Broken links", "Missing images", "Config typos", "External links"]
 
 [[features]]
 icon = "globe"
 title = "Made for every language"
-text = "Right-to-left layouts, Unicode slugs, and translatable theme strings, used by sites written in Arabic."
-url = "/reference/config/#translations"
+text = "Right-to-left layouts and translatable theme text, used by Arabic sites."
+items = ["RTL", "Unicode slugs", "Translations"]
+

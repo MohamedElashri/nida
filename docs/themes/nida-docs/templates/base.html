@@ -17,11 +17,6 @@
   <link rel="icon" href="{{ asset "favicon.svg" }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ asset "css/theme.css" }}">
   <link rel="stylesheet" href="{{ asset "css/syntax.css" }}">
-  {{- if dig .Page.Extra "math" }}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.prose'))"></script>
-  {{- end }}
 </head>
 <body data-copy-label="{{ t "copy" }}" data-copied-label="{{ t "copied" }}">
   <a class="skip-link" href="#main">{{ t "skip_to_content" }}</a>
@@ -32,13 +27,7 @@
   {{ template "site-footer" . }}
   {{ template "search-dialog" . }}
   <script src="{{ asset "js/theme.js" }}" defer></script>
-  {{- if dig .Page.Extra "mermaid" }}
-  <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-    var dark = document.documentElement.getAttribute("data-theme") === "dark";
-    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "neutral" });
-  </script>
-  {{- end }}
+  {{- template "nida-scripts" . }}
 </body>
 </html>
 {{- end }}

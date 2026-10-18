@@ -3,10 +3,6 @@ title = "Writing Content"
 description = "Summaries, tables of contents, callouts, code blocks, math, and diagrams in Nida Markdown."
 weight = 27
 template = "page"
-
-[extra]
-math = true
-mermaid = true
 +++
 
 Nida renders GitHub-flavored Markdown with footnotes. This page covers the extra syntax for long posts, technical writing, and documentation.
@@ -166,14 +162,7 @@ $$
 $$
 ```
 
-Inline math becomes `<span class="math math-inline">\(...\)</span>` and display math becomes `<div class="math math-display">\[...\]</div>`. Nida does not bundle a math renderer, so load one in your template. With KaTeX's auto-render extension:
-
-```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js"
-  onload="renderMathInElement(document.body)"></script>
-```
+Inline math becomes `<span class="math math-inline">\(...\)</span>` and display math becomes `<div class="math math-display">\[...\]</div>`. Nida ships [KaTeX](https://katex.org) and renders these in the browser with no CDN; see [Bundled scripts](#bundled-scripts).
 
 Prices stay as plain text: in `$5 and $10`, a `$` followed by a digit does not close a formula.
 
@@ -204,14 +193,31 @@ graph LR
   B --> D[Feeds and sitemap]
 ```
 
-To load Mermaid yourself:
+## Bundled scripts {{< since "0.7.0" >}}
+
+Nida ships KaTeX and Mermaid inside its binary, so math and diagrams work offline and without third-party requests. Add the built-in partial once, before `</body>` in your base template:
 
 ```html
-<script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-  mermaid.initialize({ startOnLoad: true });
-</script>
+{{ template "nida-scripts" . }}
+</body>
 ```
+
+It adds script tags only on pages that need them:
+
+| Library | Loaded when | Written to |
+| --- | --- | --- |
+| KaTeX | `markdown.math` is on and the page has math | `vendor/katex-<version>/` |
+| Mermaid | the page has a `mermaid` code block | `vendor/mermaid-<version>/` |
+
+A library's files are written to the output only if at least one page loads it, so a site without diagrams carries no Mermaid files. Mermaid follows the page's `data-theme="dark"` attribute, or the reader's color scheme. List pages check page summaries, not full bodies.
+
+To load a library on a page where Nida can't detect it, call the function directly with its name:
+
+```html
+{{ bundledScripts .Page "mermaid" }}
+```
+
+To use your own copy or a CDN instead, leave out the partial and add your own tags.
 
 ## Shortcodes {{< since "0.7.0" >}}
 
@@ -258,7 +264,7 @@ Create `templates/shortcodes/<name>.html` in the site or in a theme. Site shortc
 | `.Config`, `.BasePath` | Site config and the `base_url` path prefix. |
 | `.ResolveURL "..."` | Resolve an `@/` content path the way Markdown links do. |
 
-All site template functions are available. For example, `templates/shortcodes/kbd.html`:
+All site template functions are available, and so are the partials in `templates/partials/` of the site and its themes. For example, `templates/shortcodes/kbd.html`:
 
 ```html
 <kbd>{{ .Get 0 }}</kbd>

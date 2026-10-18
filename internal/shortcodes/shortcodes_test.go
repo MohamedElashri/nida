@@ -119,3 +119,13 @@ func TestShortcodesInHeadingsKeepCleanIDsAndTOC(t *testing.T) {
 		t.Fatalf("unexpected TOC %+v", result.TOC)
 	}
 }
+
+func TestShortcodesCanUsePartials(t *testing.T) {
+	cfg, env := setup(t, map[string]string{
+		"templates/partials/icons.html": `{{ define "icon" }}<i>{{ . }}</i>{{ end }}`,
+		"templates/shortcodes/tip.html": `<p>{{ template "icon" "star" }} {{ .Get 0 }}</p>`,
+	})
+	if got := render(t, cfg, env, "{{< tip \"hi\" >}}\n"); !strings.Contains(got, "<p><i>star</i> hi</p>") {
+		t.Fatalf("expected partial output, got %s", got)
+	}
+}

@@ -1,0 +1,5 @@
+{{- /* {{< path title="Start a blog" icon="pen" >}}1. [Step](@/page.md){{< /path >}} */ -}}
+<div class="card card-path">
+  <span class="card-title">{{ with .Get "icon" }}<span class="card-icon">{{ template "icon" . }}</span>{{ end }}{{ .Get "title" }}</span>
+  {{ .InnerHTML }}
+</div>

@@ -61,12 +61,42 @@ func Load(siteRoot string, cfg config.SiteConfig) (*Set, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve template dir: %w", err)
 	}
-	for _, root := range append(themeTemplates, siteTemplates) {
+	roots := append(themeTemplates, siteTemplates)
+	for _, root := range roots {
 		if err := set.loadDir(filepath.Join(root, dirName), funcs); err != nil {
 			return nil, err
 		}
 	}
+	if err := set.addPartials(roots); err != nil {
+		return nil, err
+	}
 	return set, nil
+}
+
+// addPartials parses templates/partials/*.html from each root into every
+// shortcode, so shortcodes can call the same partials as page templates.
+func (s *Set) addPartials(roots []string) error {
+	for _, root := range roots {
+		matches, err := filepath.Glob(filepath.Join(root, "partials", "*.html"))
+		if err != nil {
+			return err
+		}
+		for _, file := range matches {
+			if err := safepath.RejectSymlink(file); err != nil {
+				return fmt.Errorf("check partial %q: %w", file, err)
+			}
+			data, err := os.ReadFile(file)
+			if err != nil {
+				return fmt.Errorf("read partial %q: %w", file, err)
+			}
+			for name, tmpl := range s.templates {
+				if _, err := tmpl.Parse(string(data)); err != nil {
+					return fmt.Errorf("parse partial %q for shortcode %q: %w", file, name, err)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Set) loadDir(dir string, funcs template.FuncMap) error {

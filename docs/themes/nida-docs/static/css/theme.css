@@ -1238,6 +1238,53 @@ kbd {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.home .card-grid:has(.card-path) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+div.card:hover {
+  border-color: var(--border);
+  box-shadow: none;
+  transform: none;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0 !important;
+  padding: 0 !important;
+  list-style: none;
+}
+
+.chips li {
+  margin: 0 !important;
+  padding: 1px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--text-2);
+  font-size: 0.78rem;
+}
+
+.card-path ol {
+  margin: 4px 0 0;
+  padding-inline-start: 1.2em;
+  font-size: 0.92rem;
+}
+
+.card-path li + li {
+  margin-top: 2px;
+}
+
+.card-path p {
+  margin: 8px 0 0;
+}
+
+.card-path p code {
+  font-size: 0.8rem;
+}
+
 .card-icon {
   display: inline-grid;
   place-items: center;

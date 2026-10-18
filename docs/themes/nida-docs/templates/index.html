@@ -38,10 +38,13 @@
     <h2 id="features">{{ t "features" }}</h2>
     <div class="card-grid">
       {{- range . }}
-      <a class="card" href="{{ $.BasePath }}{{ .url }}">
+      <div class="card">
         <span class="card-title"><span class="card-icon">{{ template "icon" .icon }}</span>{{ .title }}</span>
         <span class="card-text">{{ .text }}</span>
-      </a>
+        {{- with .items }}
+        <ul class="chips">{{ range . }}<li>{{ . }}</li>{{ end }}</ul>
+        {{- end }}
+      </div>
       {{- end }}
     </div>
   </section>

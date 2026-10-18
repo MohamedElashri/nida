@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/assets"
+	"github.com/MohamedElashri/nida/internal/bundled"
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/diagnostics"
@@ -291,12 +292,36 @@ func writeGenerated(siteRoot string, result buildResult) error {
 	if searchOutput != nil {
 		files = append(files, feeds.Output{Filename: searchOutput.Filename, Content: searchOutput.Content})
 	}
+	libFiles, err := bundledFiles(result.pages)
+	if err != nil {
+		return err
+	}
+	files = append(files, libFiles...)
 	for _, file := range files {
 		if err := output.WriteFile(siteRoot, cfg, file.Filename, file.Content); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// bundledFiles returns the files of each bundled library a page links to.
+func bundledFiles(pages []render.Page) ([]feeds.Output, error) {
+	contents := make([]string, len(pages))
+	for i, page := range pages {
+		contents[i] = page.Content
+	}
+	var out []feeds.Output
+	for _, lib := range bundled.Used(contents) {
+		files, err := lib.Files()
+		if err != nil {
+			return nil, err
+		}
+		for _, file := range files {
+			out = append(out, feeds.Output{Filename: file.Path, Content: file.Content})
+		}
+	}
+	return out, nil
 }
 
 func rebuildMode(cfg config.SiteConfig, changedPaths []string) string {

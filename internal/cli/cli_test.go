@@ -342,3 +342,39 @@ func TestLoadCommandConfigAppliesBuildOverrides(t *testing.T) {
 		t.Fatal("expected invalid base URL override to fail")
 	}
 }
+
+func TestBuildWritesBundledLibrariesOnlyWhenUsed(t *testing.T) {
+	dir := t.TempDir()
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	if code := run(stdout, stderr, []string{"init", dir}); code != 0 {
+		t.Fatalf("init failed: %s", stderr.String())
+	}
+	if code := run(stdout, stderr, []string{"build", "--site", dir}); code != 0 {
+		t.Fatalf("build failed: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "public", "vendor")); !os.IsNotExist(err) {
+		t.Fatalf("a site without math or diagrams must not get bundled files, stat err=%v", err)
+	}
+
+	post := filepath.Join(dir, "content", "posts", "diagram.md")
+	if err := os.WriteFile(post, []byte("+++\ntitle = \"Diagram\"\ndate = 2025-01-01\n+++\n\n```mermaid\ngraph LR\n  A --> B\n```\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code := run(stdout, stderr, []string{"build", "--site", dir}); code != 0 {
+		t.Fatalf("build failed: %s", stderr.String())
+	}
+	matches, _ := filepath.Glob(filepath.Join(dir, "public", "vendor", "mermaid-*", "mermaid.min.js"))
+	if len(matches) != 1 {
+		t.Fatalf("expected mermaid to be written, got %v", matches)
+	}
+	if katex, _ := filepath.Glob(filepath.Join(dir, "public", "vendor", "katex-*")); len(katex) != 0 {
+		t.Fatalf("KaTeX is unused and must not be written, got %v", katex)
+	}
+	html, err := os.ReadFile(filepath.Join(dir, "public", "posts", "diagram", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), "/vendor/mermaid-") {
+		t.Fatal("expected the diagram page to load the bundled script")
+	}
+}

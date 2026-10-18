@@ -4,13 +4,35 @@ description = "A small, fast Go static site generator for blogs, personal sites,
 sort_by = "weight"
 +++
 
-## Where to start
+## Choose your path
 
 {{< cards >}}
-{{< card title="Getting started" href="@/guide/getting-started.md" >}}Install Nida and publish a first site in a few minutes.{{< /card >}}
-{{< card title="Writing content" href="@/guide/writing.md" >}}Everything you can do in Markdown, with live examples.{{< /card >}}
-{{< card title="Themes" href="@/guide/themes.md" >}}Use, override, and build themes, starting from a minimal one.{{< /card >}}
-{{< card title="Migrating" href="@/guide/migrating.md" >}}Move a Zola, Hugo, or Jekyll site and keep your URLs.{{< /card >}}
-{{< card title="Configuration reference" href="@/reference/config.md" >}}Every `config.toml` key with its default.{{< /card >}}
-{{< card title="CLI reference" href="@/reference/cli.md" >}}`init`, `new`, `serve`, `check`, and `build`.{{< /card >}}
+{{< path title="Start a blog" icon="pen" >}}
+1. [Install and create a site](@/guide/getting-started.md)
+2. [Write posts](@/guide/writing.md) with summaries and tags
+3. [Publish it](@/guide/deployment.md)
+
+`nida init ./blog`
+{{< /path >}}
+{{< path title="Build a docs site" icon="layers" >}}
+1. [Organize sections](@/reference/front-matter.md#section-fields) with weights
+2. [Generate navigation](@/guide/templates.md#navigation-for-docs-sites)
+3. [Add search](@/reference/search.md)
+
+`nida check --external`
+{{< /path >}}
+{{< path title="Move an existing site" icon="arrow-right" >}}
+1. [Map your old generator](@/guide/migrating.md)
+2. [Keep your URLs](@/reference/config.md#permalinks)
+3. [Fix what check reports](@/reference/cli.md#check)
+
+`nida check --site .`
+{{< /path >}}
+{{< path title="Make a theme" icon="edit" >}}
+1. [Learn the override order](@/guide/themes.md#override-order)
+2. [Start from a minimal theme](@/guide/themes.md#a-minimal-theme)
+3. [Use the template functions](@/guide/templates.md#template-functions)
+
+`theme = "my-theme"`
+{{< /path >}}
 {{< /cards >}}

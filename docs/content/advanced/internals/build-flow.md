@@ -3,9 +3,6 @@ title = "Build Flow"
 description = "The command path from CLI flags to generated files."
 weight = 10
 template = "page"
-
-[extra]
-mermaid = true
 +++
 
 The build flow starts in `internal/cli`. `nida build`, `nida check`, and the first pass of `nida serve` share the same core path, so build changes usually affect all three.
@@ -48,7 +45,7 @@ Flags shared by commands are registered by `addSiteFlags` (`--site`, `--config`)
 4. `output.ValidateWritePlan` checks pages and generated artifacts for path conflicts.
 5. `output.WriteSite` clears the output directory and writes rendered pages in parallel.
 6. `pipeline.Process` runs when any pipeline step is enabled (`PipelineConfig.Active`): SCSS, minification, image variants, and fingerprinting for site and theme static files, then `RewriteOutputFiles` swaps in fingerprinted names.
-7. `feeds.GenerateAll`, `sitemap.Generate`, `robots.Generate`, and `searchindex.Generate` write generated files.
+7. `writeGenerated` writes feeds, the sitemap, `robots.txt`, the search index, and the files of each bundled library (`internal/bundled`) that a rendered page links to.
 8. `assets.Copy` copies site and theme static files that the pipeline did not already write.
 9. `assets.CopyPageBundles` copies bundle resources next to their pages, resizing images when the image pipeline is on.
 

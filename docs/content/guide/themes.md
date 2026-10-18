@@ -115,6 +115,7 @@ These five files make a complete theme for a small blog.
 <body>
   <header><a href="{{ .BasePath }}/">{{ .Config.Title }}</a></header>
   <main>{{ template "content" . }}</main>
+  {{ template "nida-scripts" . }}
 </body>
 </html>
 {{ end }}

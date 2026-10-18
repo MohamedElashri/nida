@@ -13,7 +13,7 @@ Rendering is split between `internal/templates` and `internal/render`. Theme res
 
 Templates are loaded from, in order:
 
-1. built-in partials embedded in `internal/templates/builtin`, currently `nida-seo`
+1. built-in partials embedded in `internal/templates/builtin`: `nida-seo` and `nida-scripts`
 2. templates of each parent theme the selected theme `extends`, root ancestor first
 3. selected theme templates, when `theme` is set
 4. site templates
