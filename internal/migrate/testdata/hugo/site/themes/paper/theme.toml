@@ -1,0 +1,4 @@
+baseURL = "x"
+[params]
+color = "blue"
+description = "theme desc"
