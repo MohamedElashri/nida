@@ -1,0 +1,18 @@
+base_url = "https://example.org/blog/"
+title = "Hugo Theme Fixture"
+paginate = 2
+
+[[taxonomies]]
+name = "tags"
+render = true
+
+[markdown]
+unsafe_html = true
+
+[extra]
+description = "A site description."
+tagline = "Notes *and* things"
+copyright = "Some <em>rights</em>"
+author = { name = "Ada" }
+social = { github = "https://github.com/ada", "mastodon-home" = "https://example.social/@ada" }
+menu = { main = [ { name = "Posts", url = "/posts/", weight = 1 }, { name = "About", url = "/about/", weight = 2 } ] }

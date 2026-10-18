@@ -1,0 +1,7 @@
+{{ define "main" }}
+<article class="post posts-layout">
+  <h1>{{ .Title }}</h1>
+  <div class="body">{{ .Content }}</div>
+  {{ if isset .Params "series" }}<p class="series">Part of {{ index .Params "series" }}</p>{{ end }}
+</article>
+{{ end }}

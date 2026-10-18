@@ -1,0 +1,4 @@
+<ul class="social">
+  {{ range $name, $url := .links }}<li><a href="{{ $url }}">{{ $name | humanize }}</a></li>{{ end }}
+</ul>
+{{ if .ctx.IsHome }}<p class="home-only">Welcome home.</p>{{ end }}

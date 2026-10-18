@@ -1,0 +1,17 @@
+{{ define "main" }}
+<article class="post">
+  <h1>{{ .Title }}</h1>
+  {{ if not .Date.IsZero }}<p class="meta">{{ .Date.Format "January 2, 2006" }} · {{ .ReadingTime }} min · {{ .WordCount }} words</p>{{ end }}
+  {{ .TableOfContents }}
+  <div class="body">{{ .Content }}</div>
+  {{ with .GetTerms "tags" }}
+  <ul class="terms">{{ range . }}<li><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></li>{{ end }}</ul>
+  {{ end }}
+  <nav class="pager">
+    {{ with .PrevInSection }}<a class="prev" href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end }}
+    {{ with .NextInSection }}<a class="next" href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end }}
+  </nav>
+  {{ $related := .Site.RegularPages.Related . | first 3 }}
+  {{ .Scratch.Set "seen" true }}
+</article>
+{{ end }}
