@@ -10,6 +10,8 @@ type Metadata struct {
 	Draft         bool
 	Weight        int
 	Slug          string
+	// Path sets the page URL exactly, overriding slug and permalinks.
+	Path          string
 	Template      string
 	PageTemplate  string
 	SortBy        string

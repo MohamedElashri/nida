@@ -10,6 +10,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/pipeline"
+	"github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/themes"
 )
@@ -276,7 +277,7 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 		if err != nil {
 			return fmt.Errorf("resolve bundle dir %q: %w", page.BundleDir, err)
 		}
-		outputURL := strings.TrimSuffix(page.URL, "/")
+		outputURL := strings.TrimSuffix(route.Dir(page.URL), "/")
 		outputDir, err := safepath.Join(outputRoot, strings.TrimPrefix(outputURL, "/"))
 		if err != nil {
 			return fmt.Errorf("resolve bundle output dir %q: %w", page.URL, err)

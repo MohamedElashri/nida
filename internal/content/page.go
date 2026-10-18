@@ -17,6 +17,8 @@ type Page struct {
 	WordCount      int
 	Title          string
 	Slug           string
+	// Path is the exact URL from front matter, if any.
+	Path           string
 	URL            string
 	Description    string
 	Date           time.Time

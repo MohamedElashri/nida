@@ -289,14 +289,7 @@ func renderPage(set templates.Set, cfg config.SiteConfig, theme Theme, index sit
 
 	// Generate alias redirect pages
 	for _, alias := range page.Aliases {
-		aliasURL := alias
-		if !strings.HasPrefix(aliasURL, "/") {
-			aliasURL = "/" + aliasURL
-		}
-		if !strings.HasSuffix(aliasURL, "/") {
-			aliasURL += "/"
-		}
-		aliasURL, err = route.Normalize("alias", aliasURL)
+		aliasURL, err := route.Page("alias", alias)
 		if err != nil {
 			return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
 		}

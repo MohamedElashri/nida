@@ -65,6 +65,46 @@ func Normalize(field, route string) (string, error) {
 	return route, nil
 }
 
+// Page normalizes a page or alias route. A route whose last segment has a
+// file extension, such as /2024/05/01/post.html, names that exact file and
+// keeps no trailing slash; any other route gets one and is written as
+// index.html inside it.
+func Page(field, raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", fmt.Errorf("%s must not be empty", field)
+	}
+	if !strings.HasPrefix(raw, "/") {
+		raw = "/" + raw
+	}
+	if !IsFile(raw) && !strings.HasSuffix(raw, "/") {
+		raw += "/"
+	}
+	return Normalize(field, raw)
+}
+
+// IsFile reports whether a route names a file, like /feed.xml or
+// /post.html, rather than a directory.
+func IsFile(route string) bool {
+	if strings.HasSuffix(route, "/") {
+		return false
+	}
+	return path.Ext(path.Base(route)) != ""
+}
+
+// Dir returns the directory a route's relative links resolve against:
+// the route itself for /post/, and the parent for /post.html.
+func Dir(route string) string {
+	if !IsFile(route) {
+		return route
+	}
+	dir := path.Dir(route)
+	if dir == "/" {
+		return dir
+	}
+	return dir + "/"
+}
+
 func containsUnsafeRouteRune(value string) bool {
 	for _, r := range value {
 		if r < 0x20 || r == 0x7f {

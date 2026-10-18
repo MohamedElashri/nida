@@ -502,3 +502,69 @@ func TestServeLoadsPositionalSitePath(t *testing.T) {
 		t.Fatalf("expected serve to load %s, got stderr=%q", missing, stderr.String())
 	}
 }
+
+func TestBuildWritesFileRoutesForPathsPermalinksAndAliases(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"config.toml": `base_url = "https://example.com"
+title = "Routes"
+
+[permalinks]
+notes = "/{year}/{month}/{slug}.html"
+`,
+		"content/_index.md":             "+++\ntitle = \"Home\"\n+++\n",
+		"content/posts/_index.md":       "+++\ntitle = \"Posts\"\n+++\n",
+		"content/posts/exact.md":        "+++\ntitle = \"Exact\"\npath = \"/legacy/exact.html\"\n+++\nbody\n",
+		"content/posts/folder.md":       "+++\ntitle = \"Folder\"\npath = \"elsewhere/folder\"\naliases = [\"/old/folder.html\", \"/old/folder/\"]\n+++\nbody\n",
+		"content/posts/bundle/index.md": "+++\ntitle = \"Bundle\"\npath = \"/2024/01/02/bundle.html\"\n+++\n![pic](pic.txt)\n",
+		"content/posts/bundle/pic.txt":  "resource",
+		"content/notes/_index.md":       "+++\ntitle = \"Notes\"\n+++\n",
+		"content/notes/dated.md":        "+++\ntitle = \"Dated\"\ndate = 2023-07-09\n+++\nbody\n",
+		"templates/base.html":           `{{ define "base" }}{{ end }}`,
+		"templates/index.html":          `{{ define "index" }}home{{ end }}`,
+		"templates/list.html":           `{{ define "list" }}list{{ end }}`,
+		"templates/page.html":           `{{ define "page" }}page {{ .Page.URL }}{{ end }}`,
+		"templates/post.html":           `{{ define "post" }}post {{ .Page.URL }}{{ end }}`,
+	}
+	for name, body := range files {
+		full := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	stderr := &bytes.Buffer{}
+	if code := run(&bytes.Buffer{}, stderr, []string{"build", root}); code != 0 {
+		t.Fatalf("build failed: %s", stderr.String())
+	}
+
+	public := filepath.Join(root, "public")
+	for path, want := range map[string]string{
+		"legacy/exact.html":           "post /legacy/exact.html",
+		"elsewhere/folder/index.html": "post /elsewhere/folder/",
+		"2024/01/02/bundle.html":      "post /2024/01/02/bundle.html",
+		"2024/01/02/pic.txt":          "resource",
+		"2023/07/dated.html":          "post /2023/07/dated.html",
+		"old/folder.html":             "https://example.com/elsewhere/folder/",
+		"old/folder/index.html":       "https://example.com/elsewhere/folder/",
+	} {
+		data, err := os.ReadFile(filepath.Join(public, filepath.FromSlash(path)))
+		if err != nil {
+			t.Errorf("expected %s: %v", path, err)
+			continue
+		}
+		if !strings.Contains(string(data), want) {
+			t.Errorf("%s: expected %q in %q", path, want, data)
+		}
+	}
+	sitemap, err := os.ReadFile(filepath.Join(public, "sitemap.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(sitemap), "https://example.com/legacy/exact.html<") {
+		t.Errorf("expected file route in sitemap, got %s", sitemap)
+	}
+}
