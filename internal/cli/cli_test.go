@@ -573,10 +573,28 @@ notes = "/{year}/{month}/{slug}.html"
 }
 
 func TestMigrateWritesBuildableSite(t *testing.T) {
+	// A small Zola site of its own: the migrate fixtures use SCSS, and a
+	// full build of those would need the external sass command.
+	src := t.TempDir()
+	for name, body := range map[string]string{
+		"config.toml":                      "base_url = \"https://example.org\"\ntitle = \"Zola\"\ngenerate_feeds = true\ntaxonomies = [{ name = \"tags\" }]\n",
+		"content/_index.md":                "+++\ntitle = \"Home\"\n+++\n",
+		"content/blog/_index.md":           "+++\ntitle = \"Blog\"\nsort_by = \"date\"\n+++\n",
+		"content/blog/2024-03-05-hello.md": "+++\ntitle = \"Hello\"\n[taxonomies]\ntags = [\"intro\"]\n+++\nSee {{ note(text=\"hi\") }} and <em>raw</em>.\n",
+		"static/logo.txt":                  "logo",
+		"templates/index.html":             "{% block content %}{% endblock %}",
+	} {
+		full := filepath.Join(src, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 	dest := filepath.Join(t.TempDir(), "migrated")
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	src := filepath.Join("..", "migrate", "testdata", "zola", "site")
 	if code := run(stdout, stderr, []string{"migrate", src, dest}); code != 0 {
 		t.Fatalf("migrate failed: %s", stderr.String())
 	}
@@ -591,6 +609,9 @@ func TestMigrateWritesBuildableSite(t *testing.T) {
 	stderr.Reset()
 	if code := run(&bytes.Buffer{}, stderr, []string{"build", dest}); code != 0 {
 		t.Fatalf("migrated site does not build: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(dest, "public", "blog", "hello", "index.html")); err != nil {
+		t.Errorf("expected the migrated post at its Zola URL: %v", err)
 	}
 }
 
