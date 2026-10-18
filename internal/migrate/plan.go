@@ -35,8 +35,8 @@ type Plan struct {
 	Root string
 	// realRoot is Root with symlinks resolved, for containment checks.
 	realRoot string
-	Config *Config
-	Report *Report
+	Config   *Config
+	Report   *Report
 
 	files map[string]*planned
 	order []string

@@ -49,13 +49,13 @@ type Document struct {
 }
 
 var (
-	bomPrefix   = []byte("\xef\xbb\xbf")
-	tomlHeader  = regexp.MustCompile(`^\s*\[`)
+	bomPrefix  = []byte("\xef\xbb\xbf")
+	tomlHeader = regexp.MustCompile(`^\s*\[`)
 	// jsonFrontMatter requires a key or an empty object after the brace,
 	// so a body that starts with a Liquid tag such as {% include %} is not
 	// mistaken for Hugo's JSON front matter.
 	jsonFrontMatter = regexp.MustCompile(`^\{\s*("|\})`)
-	tomlKeyLine = regexp.MustCompile(`^\s*("[^"]*"|'[^']*'|[A-Za-z0-9_-]+)\s*=`)
+	tomlKeyLine     = regexp.MustCompile(`^\s*("[^"]*"|'[^']*'|[A-Za-z0-9_-]+)\s*=`)
 )
 
 // ParseDocument splits a content file into front matter and body. It
