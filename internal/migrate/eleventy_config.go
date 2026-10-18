@@ -497,8 +497,10 @@ func (l *jsLexer) value() (any, error) {
 			l.pos++
 		}
 		text := strings.ReplaceAll(l.src[start:l.pos], "_", "")
-		if n, err := strconv.ParseInt(text, 10, 64); err == nil {
-			return int(n), nil
+		// Atoi checks the range of int, so a number too large for it falls
+		// through to the float path instead of wrapping on 32-bit builds.
+		if n, err := strconv.Atoi(text); err == nil {
+			return n, nil
 		}
 		f, err := strconv.ParseFloat(text, 64)
 		if err != nil {
