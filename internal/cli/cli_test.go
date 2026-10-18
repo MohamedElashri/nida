@@ -378,3 +378,127 @@ func TestBuildWritesBundledLibrariesOnlyWhenUsed(t *testing.T) {
 		t.Fatal("expected the diagram page to load the bundled script")
 	}
 }
+
+func TestSiteCommandsAcceptPositionalSitePath(t *testing.T) {
+	parsers := map[string]func([]string) (commandOptions, error){
+		"build": parseBuildFlags,
+		"serve": parseServeFlags,
+		"check": parseCheckFlags,
+	}
+	cases := []struct {
+		name   string
+		args   []string
+		site   string
+		drafts bool
+	}{
+		{name: "default", args: nil, site: "."},
+		{name: "positional", args: []string{"my-site"}, site: "my-site"},
+		{name: "flags before path", args: []string{"--drafts", "my-site"}, site: "my-site", drafts: true},
+		{name: "flags after path", args: []string{"my-site", "-d"}, site: "my-site", drafts: true},
+		{name: "long site flag", args: []string{"--site", "my-site"}, site: "my-site"},
+		{name: "short site flag", args: []string{"-s", "my-site", "--drafts"}, site: "my-site", drafts: true},
+		{name: "after double dash", args: []string{"-d", "--", "-my-site"}, site: "-my-site", drafts: true},
+	}
+	for command, parse := range parsers {
+		for _, tc := range cases {
+			t.Run(command+"/"+tc.name, func(t *testing.T) {
+				opts, err := parse(tc.args)
+				if err != nil {
+					t.Fatalf("parse %v: %v", tc.args, err)
+				}
+				if opts.siteRoot != tc.site {
+					t.Fatalf("expected site root %q, got %q", tc.site, opts.siteRoot)
+				}
+				if opts.drafts != tc.drafts {
+					t.Fatalf("expected drafts=%t, got %t", tc.drafts, opts.drafts)
+				}
+			})
+		}
+	}
+}
+
+func TestSiteCommandsRejectAmbiguousSitePaths(t *testing.T) {
+	parsers := map[string]func([]string) (commandOptions, error){
+		"build": parseBuildFlags,
+		"serve": parseServeFlags,
+		"check": parseCheckFlags,
+	}
+	for command, parse := range parsers {
+		for _, args := range [][]string{
+			{"one", "two"},
+			{"one", "--site", "two"},
+			{"-s", "two", "one"},
+		} {
+			if _, err := parse(args); err == nil {
+				t.Fatalf("%s %v: expected an error, got none", command, args)
+			}
+		}
+	}
+}
+
+func TestServeParsesPortAfterPositionalSitePath(t *testing.T) {
+	opts, err := parseServeFlags([]string{"my-site", "--port", "4000"})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if opts.siteRoot != "my-site" || opts.port != 4000 {
+		t.Fatalf("expected site=my-site port=4000, got site=%q port=%d", opts.siteRoot, opts.port)
+	}
+}
+
+func TestNewAcceptsFlagsAfterContentPath(t *testing.T) {
+	opts, target, err := parseNewFlags([]string{"posts/hello.md", "--site", "my-site"})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if target != "posts/hello.md" || opts.siteRoot != "my-site" {
+		t.Fatalf("expected target=posts/hello.md site=my-site, got target=%q site=%q", target, opts.siteRoot)
+	}
+}
+
+func TestSiteCommandsUsePositionalSitePath(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "my-site")
+	if code := run(&bytes.Buffer{}, &bytes.Buffer{}, []string{"init", target}); code != 0 {
+		t.Fatalf("init failed with code %d", code)
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	if code := run(stdout, stderr, []string{"check", target}); code != 0 {
+		t.Fatalf("check %s: expected exit code 0, got %d stderr=%s", target, code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), filepath.Join(target, "config.toml")) {
+		t.Fatalf("expected check to load the site's config, got %q", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run(stdout, stderr, []string{"build", target, "--output", "out"}); code != 0 {
+		t.Fatalf("build %s: expected exit code 0, got %d stderr=%s", target, code, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(target, "out", "index.html")); err != nil {
+		t.Fatalf("expected output written inside the site root: %v", err)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run(stdout, stderr, []string{"new", "posts/hello.md", "-s", target}); code != 0 {
+		t.Fatalf("new: expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(target, "content", "posts", "hello.md")); err != nil {
+		t.Fatalf("expected new content inside the site root: %v", err)
+	}
+}
+
+func TestServeLoadsPositionalSitePath(t *testing.T) {
+	// A missing site fails before the server starts, so the error shows
+	// which root serve tried to load without blocking the test.
+	missing := filepath.Join(t.TempDir(), "missing-site")
+	stderr := &bytes.Buffer{}
+	if code := run(&bytes.Buffer{}, stderr, []string{"serve", missing}); code == 0 {
+		t.Fatalf("expected serve of a missing site to fail")
+	}
+	if !strings.Contains(stderr.String(), missing) {
+		t.Fatalf("expected serve to load %s, got stderr=%q", missing, stderr.String())
+	}
+}
