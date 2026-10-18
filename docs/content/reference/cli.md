@@ -7,6 +7,11 @@ template = "page"
 
 Nida intentionally keeps the command surface small.
 
+`build`, `serve`, and `check` work on the current directory unless you name a
+site. Pass the site root as an argument or with `--site`; `nida serve ./my-site`
+and `nida serve --site ./my-site` are the same. Giving both is an error. Flags
+can come before or after the path.
+
 ## Init
 
 ```bash
@@ -48,12 +53,13 @@ Flags:
 ## Build
 
 ```bash
+nida build ./my-site
 nida build --site ./my-site
 ```
 
 Flags:
 
-- `--site`, `-s`: site root directory
+- `--site`, `-s`: site root directory, also accepted as the first argument
 - `--config`, `-c`: config file path relative to the site root or absolute
 - `--drafts`, `-d`: include draft content
 - `--future`, `-f`: include pages dated in the future
@@ -63,12 +69,13 @@ Flags:
 ## Serve
 
 ```bash
+nida serve ./my-site --port 1702
 nida serve --site ./my-site --port 1702
 ```
 
 Flags:
 
-- `--site`, `-s`: site root directory
+- `--site`, `-s`: site root directory, also accepted as the first argument
 - `--config`, `-c`: config file path relative to the site root or absolute
 - `--drafts`, `-d`: include draft content
 - `--future`, `-f`: include pages dated in the future
@@ -79,7 +86,7 @@ Flags:
 ## Check
 
 ```bash
-nida check --site ./my-site
+nida check ./my-site
 nida check --site ./my-site --external
 ```
 

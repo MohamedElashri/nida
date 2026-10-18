@@ -2,6 +2,13 @@
 
 All notable changes to Nida are documented here.
 
+## [0.7.1] - 2026-10-18
+
+### Fixed
+* `nida serve`, `nida build`, and `nida check` now accept the site root as a positional argument (`nida serve ./my-site`). Before, the path was silently ignored and the command used the current directory.
+* Flags given after a positional argument are no longer dropped. `nida serve ./my-site --drafts` and `nida new posts/hello.md --site ./my-site` now work as written.
+* Passing a site path both as an argument and with `--site`, or passing more than one site path, is now an error instead of being ignored.
+
 ## [0.7.0] - 2026-10-18
 
 ### Added

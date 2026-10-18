@@ -1,25 +1,16 @@
 # Nida
 
-Nida is a small Go static site generator for blogs, personal sites, and
-documentation. It reads Markdown with TOML or YAML front matter, renders pages
-with Go HTML templates, and writes a static site you can serve anywhere.
+[![CI](https://github.com/MohamedElashri/nida/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MohamedElashri/nida/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/MohamedElashri/nida)](https://github.com/MohamedElashri/nida/releases/latest)
+[![Go Reference](https://pkg.go.dev/badge/github.com/MohamedElashri/nida.svg)](https://pkg.go.dev/github.com/MohamedElashri/nida)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/MohamedElashri/nida)](./go.mod)
+[![Docs](https://img.shields.io/badge/docs-melashri.net%2Fnida-blue)](https://melashri.net/nida/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
-## Features
-
-* posts, standalone pages, nested sections, and page bundles
-* Markdown with summaries, tables of contents, heading anchors, callouts,
-  code block titles and line highlighting, math, and Mermaid diagrams
-* shortcodes from templates, with built-in `figure`, `youtube`, and `callout`
-* Go template themes with inheritance, partials, shortcodes, and data files
-* taxonomies, related posts, series, and archive helpers
-* Atom and RSS feeds, including per-section and per-tag feeds
-* SEO partial with Open Graph, Twitter cards, and JSON-LD
-* sitemap, robots.txt, and a client-side search index
-* image dimensions and responsive `srcset` for Markdown images
-* `nida check` for broken links, template errors, and config typos
-* `nida new` with archetypes
-* local development server with watch mode and livereload
-* translations for theme UI strings and RTL support for languages such as Arabic and Persian
+Nida (نداء, Arabic for "call") is a small static site generator written in Go
+for blogs, personal sites, and documentation. It reads Markdown with TOML or
+YAML front matter, renders it with Go HTML templates, and writes a static site
+you can host anywhere.
 
 ## Install
 
@@ -30,38 +21,45 @@ go install github.com/MohamedElashri/nida/cmd/nida@latest
 ```
 
 Prebuilt archives for Linux, macOS, and Windows are on
-[GitHub Releases](https://github.com/MohamedElashri/nida/releases). See
-[Getting Started](https://melashri.net/nida/guide/getting-started/) for all
-install options.
+[GitHub Releases](https://github.com/MohamedElashri/nida/releases).
 
 ## Quick start
 
 ```bash
-nida init ./my-site                        # create an example site
-nida serve --site ./my-site                # preview at http://127.0.0.1:1702
-nida new --site ./my-site posts/hello.md   # add a post
-nida check --site ./my-site                # find broken links and errors
-nida build --site ./my-site                # write the site to my-site/public
+nida init ./my-site                       # create an example site
+nida serve ./my-site                      # preview at http://127.0.0.1:1702
+nida new -s ./my-site posts/hello.md      # add a post
+nida check ./my-site                      # find broken links and errors
+nida build ./my-site                      # write the site to my-site/public
 ```
 
 ## Documentation
 
-* [Getting Started](https://melashri.net/nida/guide/getting-started/)
-* [Writing Content](https://melashri.net/nida/guide/writing/)
-* [Templates](https://melashri.net/nida/guide/templates/) and [Themes](https://melashri.net/nida/guide/themes/)
-* [Migrating from Zola, Hugo, or Jekyll](https://melashri.net/nida/guide/migrating/)
-* [CLI Reference](https://melashri.net/nida/reference/cli/) and [Config Reference](https://melashri.net/nida/reference/config/)
-* [Changelog](./CHANGELOG.md)
+The full documentation lives at [melashri.net/nida](https://melashri.net/nida/).
+
+| Guide | What it covers |
+| --- | --- |
+| [Getting Started](https://melashri.net/nida/guide/getting-started/) | Installing Nida and building your first site |
+| [Features](https://melashri.net/nida/guide/features/) | Everything Nida supports, at a glance |
+| [Writing Content](https://melashri.net/nida/guide/writing/) | Front matter, sections, shortcodes, math, and diagrams |
+| [Templates](https://melashri.net/nida/guide/templates/) | Layouts, partials, and template functions |
+| [Themes](https://melashri.net/nida/guide/themes/) | Using and writing themes |
+| [CLI Reference](https://melashri.net/nida/reference/cli/) | Every command and flag |
+| [Config Reference](https://melashri.net/nida/reference/config/) | Every `config.toml` option |
+| [Migrating](https://melashri.net/nida/guide/migrating/) | Moving a site from Zola, Hugo, or Jekyll |
+
+Release history is in the [Changelog](./CHANGELOG.md).
 
 ## Examples
 
-* [example-site](./example-site): English example blog
-* [example-site-ar](./example-site-ar): Arabic RTL example blog
-* [docs](./docs): the documentation site, built with its own theme in `docs/themes/nida-docs`
+| Site | Description |
+| --- | --- |
+| [`example-site`](./example-site) | English blog |
+| [`example-site-ar`](./example-site-ar) | Arabic blog with right-to-left layout |
+| [`docs`](./docs) | The Nida documentation site, with its own theme |
+
+Preview any of them with `nida serve ./example-site`.
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
-
-## Name Meaning
-Nida (نداء) is Arabic for "call" or "summons". It reflects the idea of a blog as a call to share thoughts and ideas with the world. The name also has a nice ring to it and is easy to remember.
+[MIT](./LICENSE)

@@ -108,16 +108,17 @@ func parseInitFlags(args []string) (initOptions, error) {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
-	if err := fs.Parse(args); err != nil {
+	positional, err := parseArgs(fs, args)
+	if err != nil {
 		return initOptions{}, err
 	}
-	if fs.NArg() > 1 {
+	if len(positional) > 1 {
 		return initOptions{}, fmt.Errorf("init accepts at most one path argument")
 	}
 
 	opts := initOptions{targetDir: "."}
-	if fs.NArg() == 1 {
-		opts.targetDir = fs.Arg(0)
+	if len(positional) == 1 {
+		opts.targetDir = positional[0]
 	}
 	return opts, nil
 }
@@ -129,13 +130,14 @@ func parseNewFlags(args []string) (commandOptions, string, error) {
 	opts := commandOptions{}
 	addSiteFlags(fs, &opts)
 
-	if err := fs.Parse(args); err != nil {
+	positional, err := parseArgs(fs, args)
+	if err != nil {
 		return commandOptions{}, "", err
 	}
-	if fs.NArg() != 1 {
+	if len(positional) != 1 {
 		return commandOptions{}, "", fmt.Errorf("new expects one content path, such as posts/my-post.md")
 	}
-	return opts, fs.Arg(0), nil
+	return opts, positional[0], nil
 }
 
 func runNew(stdout, stderr io.Writer, opts commandOptions, target string) int {
@@ -171,6 +173,54 @@ func addContentFlags(fs *flag.FlagSet, opts *commandOptions) {
 	fs.StringVar(&opts.outputDir, "o", "", "override output_dir")
 }
 
+// parseArgs parses flags wherever they appear in args, not only before the
+// first positional argument as flag.FlagSet.Parse does, and returns the
+// positional arguments in order. Everything after "--" is positional.
+func parseArgs(fs *flag.FlagSet, args []string) ([]string, error) {
+	var positional []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			return positional, nil
+		}
+		if consumed := len(args) - len(rest); consumed > 0 && args[consumed-1] == "--" {
+			return append(positional, rest...), nil
+		}
+		positional = append(positional, rest[0])
+		args = rest[1:]
+	}
+}
+
+// parseSiteArgs parses flags for commands that load a site and accepts the
+// site root as an optional positional argument, so "nida serve PATH" works
+// like "nida serve --site PATH".
+func parseSiteArgs(fs *flag.FlagSet, opts *commandOptions, args []string) error {
+	positional, err := parseArgs(fs, args)
+	if err != nil {
+		return err
+	}
+	switch {
+	case len(positional) == 0:
+		return nil
+	case len(positional) > 1:
+		return fmt.Errorf("%s accepts at most one site path argument, got %q", fs.Name(), positional)
+	}
+	siteFlagSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "site" || f.Name == "s" {
+			siteFlagSet = true
+		}
+	})
+	if siteFlagSet {
+		return fmt.Errorf("%s: pass the site path as an argument or with --site, not both", fs.Name())
+	}
+	opts.siteRoot = positional[0]
+	return nil
+}
+
 func parseBuildFlags(args []string) (commandOptions, error) {
 	fs := flag.NewFlagSet("build", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -179,7 +229,7 @@ func parseBuildFlags(args []string) (commandOptions, error) {
 	addSiteFlags(fs, &opts)
 	addContentFlags(fs, &opts)
 
-	if err := fs.Parse(args); err != nil {
+	if err := parseSiteArgs(fs, &opts, args); err != nil {
 		return commandOptions{}, err
 	}
 	return opts, nil
@@ -195,7 +245,7 @@ func parseServeFlags(args []string) (commandOptions, error) {
 	fs.IntVar(&opts.port, "port", 0, "override server port")
 	fs.IntVar(&opts.port, "p", 0, "override server port")
 
-	if err := fs.Parse(args); err != nil {
+	if err := parseSiteArgs(fs, &opts, args); err != nil {
 		return commandOptions{}, err
 	}
 	return opts, nil
@@ -213,7 +263,7 @@ func parseCheckFlags(args []string) (commandOptions, error) {
 	fs.BoolVar(&opts.future, "f", false, "include future-dated content")
 	fs.BoolVar(&opts.external, "external", false, "also check external links over the network")
 
-	if err := fs.Parse(args); err != nil {
+	if err := parseSiteArgs(fs, &opts, args); err != nil {
 		return commandOptions{}, err
 	}
 	return opts, nil
@@ -384,9 +434,9 @@ func writeUsage(w io.Writer) {
 	_, _ = io.WriteString(w, `Usage:
   nida init [PATH]
   nida new [-s PATH] [--site PATH] [-c PATH] [--config PATH] CONTENT_PATH
-  nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR] [-p PORT] [--port PORT]
-  nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR]
-  nida check [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--external]
+  nida serve [PATH] [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR] [-p PORT] [--port PORT]
+  nida build [PATH] [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR]
+  nida check [PATH] [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--external]
   nida version
 
 Commands:
@@ -396,6 +446,9 @@ Commands:
   build   Build the site into the configured output directory
   check   Validate config, content, links, and templates without writing output
   version Show nida build and version information
+
+serve, build, and check use the current directory as the site root unless
+a PATH argument or --site is given. Flags may come before or after PATH.
 `)
 }
 
