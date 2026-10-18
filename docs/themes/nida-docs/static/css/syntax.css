@@ -151,3 +151,6 @@
 :root[data-theme="dark"] .z-chroma .z-gt { color: #ff7b72 }
 :root[data-theme="dark"] .z-chroma .z-gl { text-decoration: underline }
 :root[data-theme="dark"] .z-chroma .z-w { color: #6e7681 }
+/* github-dark leaves these to the base text color; reset the light values
+   above so punctuation, names, and emphasis stay readable in dark mode. */
+:root[data-theme="dark"] .z-chroma :is(.z-na, .z-nx, .z-nb, .z-bp, .z-p, .z-ge) { color: inherit }

@@ -1112,7 +1112,7 @@ kbd {
 .home {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px 96px;
+  padding: 0 24px 72px;
 }
 
 .hero {
@@ -1120,7 +1120,7 @@ kbd {
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   align-items: center;
   gap: 56px;
-  padding: 88px 0 72px;
+  padding: 64px 0 48px;
 }
 
 .eyebrow {
@@ -1178,6 +1178,7 @@ kbd {
 
 .install-command {
   flex: 1;
+  min-width: 0;
   overflow-x: auto;
   white-space: nowrap;
 }
@@ -1226,8 +1227,77 @@ kbd {
 }
 
 .home-section {
-  max-width: 1040px;
-  margin: 56px auto 0;
+  margin: 64px 0 0;
+}
+
+.home .card-grid {
+  margin-bottom: 0;
+}
+
+/* Migration band */
+
+.migrate-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 34rem);
+  align-items: center;
+  gap: 32px;
+  padding: 24px 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+}
+
+.migrate-band h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.migrate-text p {
+  margin: 6px 0 10px;
+  color: var(--text-2);
+}
+
+.migrate-text code {
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: var(--code-inline-bg);
+  color: var(--text);
+  font-size: 0.88em;
+}
+
+.migrate-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.migrate-actions .install {
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  background: var(--surface);
+}
+
+.migrate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.migrate-link .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.home-note {
+  margin: 48px 0 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 0.9rem;
 }
 
 .home-section h2 {
@@ -1238,9 +1308,7 @@ kbd {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.home .card-grid:has(.card-path) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+
 
 div.card:hover {
   border-color: var(--border);
@@ -1557,6 +1625,16 @@ div.card:hover {
   body.nav-open .sidebar {
     transform: none;
     box-shadow: var(--shadow-lg);
+  }
+
+  .migrate-band {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .migrate-link {
+    justify-self: start;
   }
 
   .hero {
