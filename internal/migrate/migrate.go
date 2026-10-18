@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -163,6 +164,9 @@ func pickSource(root, name string) (Source, error) {
 		}
 		return nil, fmt.Errorf("unknown source %q; use one of %s", name, strings.Join(sourceNames(), ", "))
 	}
+	if isNidaSite(root) {
+		return nil, fmt.Errorf("%s is already a Nida site; pass --from to migrate it anyway", root)
+	}
 	type scored struct {
 		src   Source
 		score int
@@ -181,6 +185,32 @@ func pickSource(root, name string) (Source, error) {
 		return nil, fmt.Errorf("%s looks like both a %s and a %s site; pass --from to choose", root, found[0].src.Title(), found[1].src.Title())
 	}
 	return found[0].src, nil
+}
+
+// goTemplateAction matches Go template actions that Nida templates use and
+// Zola's Tera templates never do.
+var goTemplateAction = regexp.MustCompile(`\{\{-?\s*(?:define|template|block)\s+"`)
+
+// isNidaSite reports whether root looks like a Nida site: a config.toml
+// with base_url and Go templates under templates/, its own or a theme's.
+// Zola sites share the config file but use Tera templates, and Hugo keeps
+// its Go templates in layouts/.
+func isNidaSite(root string) bool {
+	data, err := os.ReadFile(filepath.Join(root, "config.toml"))
+	if err != nil || !strings.Contains(string(data), "base_url") {
+		return false
+	}
+	dirs, _ := filepath.Glob(filepath.Join(root, "themes", "*", "templates"))
+	dirs = append([]string{filepath.Join(root, "templates")}, dirs...)
+	for _, dir := range dirs {
+		files, _ := filepath.Glob(filepath.Join(dir, "*.html"))
+		for _, file := range files {
+			if data, err := os.ReadFile(file); err == nil && goTemplateAction.Match(data) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func sourceNames() []string {

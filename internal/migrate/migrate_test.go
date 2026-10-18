@@ -356,3 +356,37 @@ func TestConfigBytesLoadInNida(t *testing.T) {
 		t.Errorf("nested values must stay inline:\n%s", data)
 	}
 }
+
+func TestDetectEveryFixture(t *testing.T) {
+	for _, src := range Sources {
+		root := filepath.Join("testdata", src.Name(), "site")
+		if _, err := os.Stat(root); err != nil {
+			continue
+		}
+		got, err := pickSource(root, "auto")
+		if err != nil {
+			t.Errorf("%s fixture: %v", src.Name(), err)
+			continue
+		}
+		if got.Name() != src.Name() {
+			t.Errorf("%s fixture detected as %s", src.Name(), got.Name())
+		}
+		for _, other := range Sources {
+			if other.Name() != src.Name() && other.Detect(root) >= src.Detect(root) {
+				t.Errorf("%s fixture: %s scores %d, not below %d", src.Name(), other.Name(), other.Detect(root), src.Detect(root))
+			}
+		}
+	}
+}
+
+func TestDetectRefusesNidaSites(t *testing.T) {
+	for _, site := range []string{"example-site", "example-site-ar", "docs"} {
+		root := filepath.Join("..", "..", site)
+		if _, err := pickSource(root, "auto"); err == nil || !strings.Contains(err.Error(), "already a Nida site") {
+			t.Errorf("%s: expected it to be recognized as a Nida site, got %v", site, err)
+		}
+		if s, err := pickSource(root, "zola"); err != nil || s.Name() != "zola" {
+			t.Errorf("%s: an explicit --from must still work: %v", site, err)
+		}
+	}
+}
