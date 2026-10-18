@@ -96,6 +96,24 @@ Runs a full build without writing any files. It reports unknown config keys, bro
 
 Flags: `--site`/`-s`, `--config`/`-c`, `--drafts`/`-d`, `--future`/`-f`, and `--external`.
 
+## Migrate
+
+```bash
+nida migrate ./old-site ./new-site
+nida migrate --from jekyll --dry-run ./old-site ./new-site
+```
+
+Converts a Hugo, Jekyll, Zola, Eleventy, or Pelican site into a new Nida site in `DEST`. The source is only read, never changed, and `DEST` must not exist or be empty. When it finishes, the new site has a `config.toml`, converted content, copied static files, templates that build, and a `MIGRATION.md` report listing every change and everything left to do. See [Migrating to Nida](@/guide/migrating.md) for what each generator converts.
+
+Flags:
+
+- `--from`: the source generator, one of `hugo`, `jekyll`, `zola`, `eleventy`, or `pelican`. The default, `auto`, detects it from files such as `hugo.toml`, `_config.yml`, or `pelicanconf.py`, and asks you to choose when it cannot tell.
+- `--urls`: how to handle pages whose Nida URL would differ from the old one. `keep`, the default, sets `path` in the page's front matter so it stays at its old URL. `redirect` lets the page move and adds the old URL to `aliases`, which writes a redirect page.
+- `--dry-run`, `-n`: migrate into a temporary directory, print the report, and delete it. Nothing is written to `DEST`.
+- `--no-check`: skip building the new site at the end. By default `migrate` builds it in memory the way `nida check` does and records the result in the report.
+
+`nida migrate` exits with status 0 when the new site was written, even if the site does not build yet; the summary line and the report say so. It exits with status 1 when it cannot read the source or write `DEST`.
+
 ## Version
 
 ```bash

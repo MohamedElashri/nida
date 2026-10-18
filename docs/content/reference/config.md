@@ -145,6 +145,8 @@ pages = "/{slug}/"
 
 Permalink routes must stay site-relative and safe. Nida validates generated routes before writing output.
 
+A route normally ends in `/` and is written as `index.html` inside that directory. When the pattern's last segment has a file extension, as in `/{year}/{slug}.html`, the page is written as that file instead. A page's `path` front matter overrides its section's pattern.
+
 A key named after a taxonomy sets that taxonomy's term URLs instead. The defaults are:
 
 ```toml

@@ -568,3 +568,55 @@ notes = "/{year}/{month}/{slug}.html"
 		t.Errorf("expected file route in sitemap, got %s", sitemap)
 	}
 }
+
+func TestMigrateWritesBuildableSite(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "migrated")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	src := filepath.Join("..", "migrate", "testdata", "zola", "site")
+	if code := run(stdout, stderr, []string{"migrate", src, dest}); code != 0 {
+		t.Fatalf("migrate failed: %s", stderr.String())
+	}
+	for _, want := range []string{"nida migrate: complete", "from=zola", "check=passed", "Report: "} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("expected %q in %q", want, stdout.String())
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dest, "MIGRATION.md")); err != nil {
+		t.Fatalf("expected report: %v", err)
+	}
+	stderr.Reset()
+	if code := run(&bytes.Buffer{}, stderr, []string{"build", dest}); code != 0 {
+		t.Fatalf("migrated site does not build: %s", stderr.String())
+	}
+}
+
+func TestMigrateDryRunPrintsReport(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "migrated")
+	stdout := &bytes.Buffer{}
+	src := filepath.Join("..", "migrate", "testdata", "zola", "site")
+	if code := run(stdout, &bytes.Buffer{}, []string{"migrate", "-n", src, dest}); code != 0 {
+		t.Fatal("dry run failed")
+	}
+	if !strings.Contains(stdout.String(), "# Migration report") || !strings.Contains(stdout.String(), "dry run") {
+		t.Errorf("expected the report on stdout, got %q", stdout.String())
+	}
+	if _, err := os.Stat(dest); !os.IsNotExist(err) {
+		t.Error("dry run must not create the destination")
+	}
+}
+
+func TestMigrateRejectsBadArguments(t *testing.T) {
+	for _, args := range [][]string{
+		{"migrate"},
+		{"migrate", "only-one"},
+		{"migrate", "a", "b", "c"},
+		{"migrate", "--urls", "sideways", filepath.Join("..", "migrate", "testdata", "zola", "site"), filepath.Join(t.TempDir(), "y")},
+		{"migrate", "--from", "wordpress", ".", filepath.Join(t.TempDir(), "x")},
+	} {
+		stderr := &bytes.Buffer{}
+		if code := run(&bytes.Buffer{}, stderr, args); code == 0 {
+			t.Errorf("%v: expected failure", args)
+		}
+	}
+}

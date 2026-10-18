@@ -42,6 +42,9 @@ func parseMigrateFlags(args []string) (migrateOptions, error) {
 	if len(positional) != 2 {
 		return migrateOptions{}, fmt.Errorf("migrate expects a source site and a new directory, such as: nida migrate ./old-site ./new-site")
 	}
+	if opts.urls != migrate.KeepURLs && opts.urls != migrate.RedirectURLs {
+		return migrateOptions{}, fmt.Errorf("--urls must be %q or %q, got %q", migrate.KeepURLs, migrate.RedirectURLs, opts.urls)
+	}
 	opts.source, opts.dest = positional[0], positional[1]
 	opts.check = !*noCheck
 	return opts, nil
