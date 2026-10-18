@@ -8,11 +8,11 @@ plan.md
 /dist/
 /example-site/public/*
 !/example-site/public/.gitkeep
-blog*
+/blog*
 */public/*
 bin
 *.github.*
-ar
+/ar
 *plan.md
 *.log
 *.out
