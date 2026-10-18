@@ -16,6 +16,10 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	// Jekyll and Pelican sites name a timezone for naive dates. Embedding
+	// the zone database keeps migrations the same on systems without one.
+	_ "time/tzdata"
 )
 
 //go:embed starter
