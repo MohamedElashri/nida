@@ -316,3 +316,27 @@ func TestCutLang(t *testing.T) {
 		}
 	}
 }
+
+func TestHugoReportsUnreadableShortcodes(t *testing.T) {
+	src := t.TempDir()
+	writeTree(t, src, map[string]string{
+		"hugo.toml":          "baseURL = \"https://x/\"\ntitle = \"T\"\n",
+		"content/posts/a.md": "---\ntitle: A\n---\nbefore {{< ../../../evil >}} after\n\n`{{< also-fine-in-code >}}`\n",
+	})
+	result, err := Run(Options{Source: src, Dest: filepath.Join(t.TempDir(), "out"), From: "hugo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := 0
+	for _, note := range result.Report.Notes {
+		if strings.Contains(note.Message, "could not be read") {
+			found++
+			if note.Line != 4 {
+				t.Errorf("line %d, want 4", note.Line)
+			}
+		}
+	}
+	if found != 1 {
+		t.Errorf("expected one note, got %d: %v", found, result.Report.Notes)
+	}
+}

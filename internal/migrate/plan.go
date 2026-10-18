@@ -32,7 +32,9 @@ type Source interface {
 // Plan is everything a migration will write, built before anything is.
 type Plan struct {
 	// Root is the absolute source site directory.
-	Root   string
+	Root string
+	// realRoot is Root with symlinks resolved, for containment checks.
+	realRoot string
 	Config *Config
 	Report *Report
 
@@ -61,8 +63,13 @@ type planned struct {
 }
 
 func newPlan(root string, report *Report) *Plan {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		realRoot = root
+	}
 	return &Plan{
 		Root:       root,
+		realRoot:   realRoot,
 		Config:     &Config{},
 		Report:     report,
 		files:      map[string]*planned{},
@@ -99,7 +106,24 @@ func (p *Plan) sourcePath(rel string) (string, bool) {
 	if clean == ".." || strings.HasPrefix(clean, "../") {
 		return "", false
 	}
-	return filepath.Join(p.Root, filepath.FromSlash(clean)), true
+	full := filepath.Join(p.Root, filepath.FromSlash(clean))
+	return full, p.insideSource(full)
+}
+
+// insideSource reports whether full, with every symlink in it resolved,
+// stays inside the source site. A symlinked parent directory such as
+// themes -> ../elsewhere would otherwise pull outside files in. Paths that
+// do not exist pass; reading them fails on its own.
+func (p *Plan) insideSource(full string) bool {
+	if p.realRoot == "" {
+		// Plans built only for detection skip newPlan.
+		p.realRoot = realPath(p.Root)
+	}
+	real, err := filepath.EvalSymlinks(full)
+	if err != nil {
+		return true
+	}
+	return real == p.realRoot || within(p.realRoot, real)
 }
 
 // Page plans a content document. dest must be under content/. oldURL is
@@ -188,13 +212,20 @@ func (p *Plan) ReadFile(rel string) ([]byte, error) {
 	return os.ReadFile(full)
 }
 
-// skippedDirs are never walked: version control, dependencies, caches,
-// and build output of the supported generators.
+// vcsDirs are never walked and never reported.
+var vcsDirs = map[string]bool{".git": true, ".hg": true, ".svn": true}
+
+// skippedDirs are dependency, cache, and build directories of the
+// supported generators. They are skipped anywhere, and reported when they
+// sit inside a directory being migrated, in case the site needs them.
 var skippedDirs = map[string]bool{
-	".git": true, ".hg": true, ".svn": true, "node_modules": true,
-	".jekyll-cache": true, ".sass-cache": true, ".bundle": true, "vendor": true,
-	"__pycache__": true, ".cache": true, ".hugo_build.lock": true,
+	"node_modules": true, ".jekyll-cache": true, ".sass-cache": true,
+	"__pycache__": true, ".hugo_build.lock": true,
 }
+
+// rootOnlyDirs are skipped only at the top of the source site, where they
+// hold dependencies; inside static/, for example, vendor/ is site content.
+var rootOnlyDirs = map[string]bool{"vendor": true, ".bundle": true, ".cache": true}
 
 // Walk visits the regular files under the source-relative directory dir,
 // passing each file's source-relative path. It skips version control,
@@ -202,7 +233,11 @@ var skippedDirs = map[string]bool{
 // and .htaccess, and the destination. Symlinks are not followed; each one
 // is reported.
 func (p *Plan) Walk(dir string, fn func(rel string) error) error {
-	start := filepath.Join(p.Root, filepath.FromSlash(dir))
+	start, ok := p.sourcePath(dir)
+	if !ok {
+		p.Report.Add(Manual, dir, 0, "Not migrated: `%s` leads outside the source site through a symlink.", dir)
+		return nil
+	}
 	if _, err := os.Stat(start); os.IsNotExist(err) {
 		return nil
 	}
@@ -216,7 +251,17 @@ func (p *Plan) Walk(dir string, fn func(rel string) error) error {
 			return nil
 		}
 		if d.IsDir() {
-			if abs != start && (skippedDirs[name] || slices.Contains(p.skip, abs) || hiddenName(name)) {
+			if abs == start {
+				return nil
+			}
+			switch {
+			case vcsDirs[name] || slices.Contains(p.skip, abs):
+				return fs.SkipDir
+			case filepath.Dir(abs) == p.Root && (rootOnlyDirs[name] || skippedDirs[name] || hiddenName(name)):
+				// Tooling at the top of the site: .github/, node_modules/.
+				return fs.SkipDir
+			case skippedDirs[name] || hiddenName(name):
+				p.Report.Add(Review, p.Rel(abs), 0, "Skipped `%s/` as a dependency, cache, or hidden directory. Copy it into the migrated site by hand if the site needs it.", p.Rel(abs))
 				return fs.SkipDir
 			}
 			return nil

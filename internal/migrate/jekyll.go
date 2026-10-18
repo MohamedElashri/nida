@@ -402,6 +402,9 @@ func (s *jekyllSite) parse(rel string) (*Document, []byte, error) {
 		data = append([]byte("---\n---\n"), data...)
 	}
 	doc, err := ParseDocument(data)
+	if err == nil {
+		MoveCustomPath(doc, s.p.Report, rel)
+	}
 	return doc, data, err
 }
 

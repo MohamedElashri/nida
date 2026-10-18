@@ -713,6 +713,7 @@ func (r *eleventyRun) planPage(rel, inner, ext string) error {
 		rep.Add(sev, rel, 1, "Front matter could not be read (%v), so the page was not migrated. The original is in `%s/`.", err, preservedDir)
 		return nil
 	}
+	MoveCustomPath(doc, rep, rel)
 	if variant == "json" || variant == "toml" {
 		rep.Add(Changed, rel, 1, "`---%s` front matter was rewritten in a form Nida reads.", variant)
 	}

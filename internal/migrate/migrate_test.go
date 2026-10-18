@@ -482,3 +482,119 @@ func TestBundleResourceClashIsReported(t *testing.T) {
 		t.Errorf("expected a resource clash note, got %v", report.Notes)
 	}
 }
+
+func TestSymlinkedDirectoriesStayOut(t *testing.T) {
+	outside := t.TempDir()
+	writeTree(t, outside, map[string]string{"foo/static/secret.txt": "secret", "foo/templates/x.html": "x"})
+	src := filepath.Join(t.TempDir(), "src")
+	writeTree(t, src, map[string]string{
+		"config.toml":       "base_url = \"https://x\"\ntitle = \"T\"\ntheme = \"foo\"\n",
+		"content/_index.md": "+++\ntitle = \"Home\"\n+++\n",
+	})
+	if err := os.Symlink(outside, filepath.Join(src, "themes")); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	dest := filepath.Join(t.TempDir(), "out")
+	if _, err := Run(Options{Source: src, Dest: dest, From: "zola"}); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range readTree(t, dest) {
+		if strings.Contains(body, "secret") || strings.Contains(name, "secret") {
+			t.Errorf("a file from outside the source was migrated: %s", name)
+		}
+	}
+
+	// A destination that is a symlink to the source, or to a directory
+	// containing it, must be refused like the source itself.
+	empty := filepath.Join(t.TempDir(), "empty-src")
+	writeTree(t, empty, map[string]string{"config.toml": "base_url = \"https://x\"\n"})
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(empty, link); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(Options{Source: empty, Dest: link, From: "zola", DryRun: true}); err == nil {
+		t.Error("a destination linked to the source must be refused")
+	}
+	parentLink := filepath.Join(t.TempDir(), "parent")
+	if err := os.Symlink(filepath.Dir(empty), parentLink); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(Options{Source: empty, Dest: parentLink, From: "zola", DryRun: true}); err == nil {
+		t.Error("a destination linked to the source's parent must be refused")
+	}
+}
+
+func TestWalkKeepsNestedVendorAndReportsSkips(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"static/vendor/lib.js":       "js",
+		"static/.hidden/x.txt":       "x",
+		"static/node_modules/m/i.js": "m",
+		"vendor/bundle/gem.rb":       "gem",
+		".github/workflows/ci.yml":   "ci",
+		"static/.git/HEAD":           "ref",
+	})
+	report := &Report{}
+	p := newPlan(root, report)
+	var seen []string
+	if err := p.Walk(".", func(rel string) error { seen = append(seen, rel); return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(seen, []string{"static/vendor/lib.js"}) {
+		t.Errorf("walked %v", seen)
+	}
+	if report.Count(Review) != 2 {
+		t.Errorf("expected notes for static/.hidden and static/node_modules only, got %v", report.Notes)
+	}
+}
+
+func TestFailedWriteLeavesDestinationEmpty(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can read unreadable files")
+	}
+	src := t.TempDir()
+	writeTree(t, src, map[string]string{
+		"config.toml":       "base_url = \"https://x\"\ntitle = \"T\"\n",
+		"content/_index.md": "+++\ntitle = \"Home\"\n+++\n",
+		"static/a.txt":      "a",
+		"static/locked.txt": "x",
+	})
+	locked := filepath.Join(src, "static", "locked.txt")
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(locked, 0o644) }()
+	dest := t.TempDir()
+	if _, err := Run(Options{Source: src, Dest: dest, From: "zola"}); err == nil {
+		t.Fatal("expected the unreadable file to fail the migration")
+	}
+	if entries, _ := os.ReadDir(dest); len(entries) != 0 {
+		t.Errorf("destination left half-written: %v", entries)
+	}
+}
+
+func TestCustomPathFieldIsNotAURL(t *testing.T) {
+	src := t.TempDir()
+	writeTree(t, src, map[string]string{
+		"hugo.toml":          "baseURL = \"https://x/\"\ntitle = \"T\"\n",
+		"content/posts/a.md": "---\ntitle: A\npath: img/x.png\n---\nbody\n",
+		"content/posts/b.md": "---\ntitle: B\nurl: /legacy/b/\n---\nbody\n",
+		"static/img/x.png":   "png",
+	})
+	dest := filepath.Join(t.TempDir(), "out")
+	result, err := Run(Options{Source: src, Dest: dest, From: "hugo", Check: checkSite})
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := readTree(t, dest)
+	a := files["content/posts/a.md"]
+	if strings.Contains(a, "\npath:") || !strings.Contains(a, "path: img/x.png") {
+		t.Errorf("custom path must move under extra:\n%s", a)
+	}
+	if !strings.Contains(files["content/posts/b.md"], "path: /legacy/b/") {
+		t.Errorf("Hugo url must still become path:\n%s", files["content/posts/b.md"])
+	}
+	if result.Report.Check != "passed" {
+		t.Errorf("check: %s", result.Report.Check)
+	}
+}

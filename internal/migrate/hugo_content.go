@@ -203,6 +203,7 @@ func (h *hugoSite) convertFile(f hugoContentFile, index map[string]string, templ
 		p.Copy(f.dest, f.src)
 		return nil
 	}
+	MoveCustomPath(doc, p.Report, f.src)
 	if f.dest != path.Join("content", f.rel) {
 		p.Report.Add(Changed, f.src, 0, "Renamed to `%s`: Nida reads Markdown from `.md` files and has one language.", f.dest)
 	}
@@ -687,6 +688,41 @@ type hugoShortcode struct {
 
 // scanHugoShortcodes finds every shortcode tag in s, including escaped
 // ones. Hugo processes shortcodes everywhere, code blocks included.
+// reportUnreadableShortcodes reports {{< and {{% openings outside code
+// that are not part of a shortcode the migration could read, such as one
+// with an invalid name. They stay in the page as text.
+func (h *hugoSite) reportUnreadableShortcodes(body string, tags []hugoShortcode, code [][2]int, file string, line func(int) int) {
+	for i := 0; i < len(body); {
+		j := strings.Index(body[i:], "{{")
+		if j < 0 {
+			return
+		}
+		at := i + j
+		i = at + 2
+		if at+2 >= len(body) || (body[at+2] != '<' && body[at+2] != '%') {
+			continue
+		}
+		inTag := false
+		for _, t := range tags {
+			if at >= t.start && at < t.end {
+				inTag = true
+				break
+			}
+		}
+		inCode := false
+		for _, c := range code {
+			if at >= c[0] && at < c[1] {
+				inCode = true
+				break
+			}
+		}
+		if !inTag && !inCode {
+			end := min(len(body), at+40)
+			h.p.Report.Add(Review, file, line(at), "`%s` looks like a shortcode but could not be read, so it is shown as text.", truncate(body[at:end], 40))
+		}
+	}
+}
+
 func scanHugoShortcodes(s string) []hugoShortcode {
 	var out []hugoShortcode
 	for i := 0; i < len(s); {
@@ -895,12 +931,13 @@ func inRegions(regions [][2]int, at int) bool {
 func (h *hugoSite) convertBody(doc *Document, f hugoContentFile, index map[string]string) {
 	body := doc.Body
 	tags := scanHugoShortcodes(body)
-	if len(tags) == 0 {
-		return
-	}
 	code := codeRegions(body)
 	r := h.p.Report
 	line := func(at int) int { return doc.BodyLine + LineOf(body, at) - 1 }
+	h.reportUnreadableShortcodes(body, tags, code, f.src, line)
+	if len(tags) == 0 {
+		return
+	}
 
 	var out strings.Builder
 	last := 0

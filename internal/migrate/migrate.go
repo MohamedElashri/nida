@@ -92,10 +92,13 @@ func Run(opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if dest == root {
+	// Compare real paths, so a destination reached through a symlink into
+	// the source is caught too.
+	realRoot, realDest := realPath(root), realPath(dest)
+	if realDest == realRoot {
 		return nil, errors.New("destination must differ from the source; migrate writes a new site and never changes the old one")
 	}
-	if within(dest, root) {
+	if within(realDest, realRoot) {
 		return nil, errors.New("destination must not contain the source site")
 	}
 	if !opts.DryRun {
@@ -117,8 +120,8 @@ func Run(opts Options) (*Result, error) {
 	}
 	report := &Report{Source: opts.Source, From: src.Title(), Dest: opts.Dest}
 	plan := newPlan(root, report)
-	if within(root, dest) {
-		plan.skip = append(plan.skip, dest)
+	if within(realRoot, realDest) {
+		plan.skip = append(plan.skip, dest, realDest)
 	}
 	if err := src.Plan(plan); err != nil {
 		return nil, fmt.Errorf("read %s site: %w", src.Title(), err)
@@ -137,6 +140,26 @@ func Run(opts Options) (*Result, error) {
 		return nil, err
 	}
 
+	result, err := write(plan, target, opts, src)
+	if err != nil {
+		// Leave DEST as empty as it was, so the migration can be rerun.
+		if !opts.DryRun {
+			removeContents(dest)
+		}
+		return nil, err
+	}
+	if !opts.DryRun {
+		result.ReportPath = filepath.Join(dest, reportName)
+		if err := os.WriteFile(result.ReportPath, []byte(result.Markdown), 0o644); err != nil {
+			removeContents(dest)
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// write applies a finished plan to target and settles URLs and templates.
+func write(plan *Plan, target string, opts Options, src Source) (*Result, error) {
 	if err := plan.apply(target); err != nil {
 		return nil, err
 	}
@@ -147,15 +170,16 @@ func Run(opts Options) (*Result, error) {
 		return nil, err
 	}
 	countStats(plan)
+	return &Result{Report: plan.Report, Markdown: plan.Report.Markdown()}, nil
+}
 
-	result := &Result{Report: report, Markdown: report.Markdown()}
-	if !opts.DryRun {
-		result.ReportPath = filepath.Join(dest, reportName)
-		if err := os.WriteFile(result.ReportPath, []byte(result.Markdown), 0o644); err != nil {
-			return nil, err
-		}
+// removeContents empties a directory that migrate checked was empty
+// before writing to it.
+func removeContents(dir string) {
+	entries, _ := os.ReadDir(dir)
+	for _, entry := range entries {
+		_ = os.RemoveAll(filepath.Join(dir, entry.Name()))
 	}
-	return result, nil
 }
 
 // pickSource returns the named source, or detects one.
@@ -417,6 +441,22 @@ func ensureEmpty(dir string) error {
 		return fmt.Errorf("destination %q is not empty; migrate writes a new site and will not overwrite files", dir)
 	}
 	return nil
+}
+
+// realPath resolves symlinks in p as far as it exists, keeping the rest,
+// so a destination that does not exist yet is still checked through its
+// parents.
+func realPath(p string) string {
+	rest := ""
+	for dir := p; ; dir = filepath.Dir(dir) {
+		if real, err := filepath.EvalSymlinks(dir); err == nil {
+			return filepath.Join(real, rest)
+		}
+		if parent := filepath.Dir(dir); parent == dir {
+			return p
+		}
+		rest = filepath.Join(filepath.Base(dir), rest)
+	}
 }
 
 // within reports whether path is inside dir.

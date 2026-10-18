@@ -1321,6 +1321,7 @@ func (s *pelicanSite) document(it *pelicanItem) *Document {
 		}
 		set(k, tomlSafe(it.meta[k]))
 	}
+	MoveCustomPath(doc, s.p.Report, it.rel)
 	return doc
 }
 

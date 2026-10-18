@@ -596,3 +596,28 @@ func (d *Document) Bytes() []byte {
 	}
 	return []byte(out)
 }
+
+// MoveCustomPath moves a source's own `path` front matter field into
+// `extra.path`. In Hugo, Jekyll, Eleventy, and Pelican, `path` is ordinary
+// page data, but Nida reads it as the page URL, so leaving it would move
+// the page (or write it over a static file of that name). Sources call it
+// right after parsing, before they set a `path` of their own.
+func MoveCustomPath(doc *Document, report *Report, file string) {
+	value, ok := doc.Get("path")
+	if !ok {
+		return
+	}
+	extra, _ := doc.Get("extra")
+	merged, ok := extra.(map[string]any)
+	if !ok {
+		merged = map[string]any{}
+	} else {
+		merged = maps.Clone(merged)
+	}
+	if _, taken := merged["path"]; !taken {
+		merged["path"] = value
+		_ = doc.Set("extra", merged)
+	}
+	doc.Delete("path")
+	report.Add(Review, file, 0, "The custom `path` field moved to `extra.path`, because `path` sets the page URL in Nida. Templates read it as `.Page.Extra.path`.")
+}
