@@ -7,17 +7,16 @@ All notable changes to Nida are documented here.
 ### Added
 * `nida migrate SOURCE DEST` converts a Hugo, Jekyll, Zola, Eleventy, or Pelican site into a new Nida site. It converts config, content, front matter, shortcodes, static files, and data. It keeps every page's old URL, picks templates that build, and writes a `MIGRATION.md` report listing every change and everything left to do. The source is never modified. See [Migrating to Nida](https://melashri.net/nida/guide/migrating/).
 * `path` front matter sets a page's URL exactly, as in Zola.
-* Permalink patterns, `path`, and aliases that end in a file name, such as `/{year}/{slug}.html`, write that file instead of a directory with an `index.html`. Sites moving from generators with `.html` URLs can keep them.
-
-### Changed
-* `path` is now a recognized front matter field. Sites that used a top-level `path` key as custom data should read it from `.Page.Path` or move it under `[extra]`.
-
-## [0.7.1] - 2026-10-18
+* Permalink patterns, `path`, and aliases that end in a page or feed extension, such as `/{year}/{slug}.html`, write that file instead of a directory with an `index.html`. Sites moving from generators with `.html` URLs can keep them. Other dots do not count, so a slug like `node.js` still gets a directory.
 
 ### Fixed
 * `nida serve`, `nida build`, and `nida check` now accept the site root as a positional argument (`nida serve ./my-site`). Before, the path was silently ignored and the command used the current directory.
 * Flags given after a positional argument are no longer dropped. `nida serve ./my-site --drafts` and `nida new posts/hello.md --site ./my-site` now work as written.
 * Passing a site path both as an argument and with `--site`, or passing more than one site path, is now an error instead of being ignored.
+
+### Changed
+* `path` is now a recognized front matter field. Sites that used a top-level `path` key as custom data should read it from `.Page.Path` or move it under `[extra]`.
+* `nida build` fails when two pages' bundle files would be written to the same path, instead of letting the last one silently replace the other.
 
 ## [0.7.0] - 2026-10-18
 

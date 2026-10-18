@@ -1,6 +1,6 @@
 # Project facts shown by the docs theme (header badge, footer, home page).
 name = "Nida"
-version = "0.7.1"
+version = "0.8.0"
 license = "MIT License"
 repo = "https://github.com/MohamedElashri/nida"
 install = "curl -fsSL https://melashri.net/nida/install.sh | sh"
