@@ -390,3 +390,42 @@ func TestDetectRefusesNidaSites(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanRefusesPathsOutsideBothSites(t *testing.T) {
+	outside := t.TempDir()
+	writeTree(t, outside, map[string]string{"secret.txt": "secret"})
+	root := filepath.Join(t.TempDir(), "src")
+	writeTree(t, root, map[string]string{"ok.txt": "ok"})
+	if err := os.Symlink(filepath.Join(outside, "secret.txt"), filepath.Join(root, "link.txt")); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+
+	report := &Report{}
+	p := newPlan(root, report)
+	p.Write("content/../../escape.txt", []byte("x"), "a.md")
+	p.Write("../escape.txt", []byte("x"), "b.md")
+	p.Copy("static/secret.txt", "../"+filepath.Base(outside)+"/secret.txt")
+	p.Copy("static/link.txt", "link.txt")
+	p.Copy("static/ok.txt", "ok.txt")
+	if _, err := p.ReadFile("../x"); err == nil {
+		t.Error("ReadFile must refuse paths outside the source")
+	}
+	if _, err := p.ReadFile("link.txt"); err == nil {
+		t.Error("ReadFile must refuse symlinks")
+	}
+	if report.Count(Manual) != 4 {
+		t.Errorf("expected 4 refusals, got %v", report.Notes)
+	}
+
+	dest := filepath.Join(t.TempDir(), "dest")
+	if err := p.apply(dest); err != nil {
+		t.Fatal(err)
+	}
+	files := readTree(t, dest)
+	if len(files) != 1 || files["static/ok.txt"] != "ok" {
+		t.Errorf("only the safe file may be written, got %v", files)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(dest), "escape.txt")); err == nil {
+		t.Error("a file escaped the destination")
+	}
+}

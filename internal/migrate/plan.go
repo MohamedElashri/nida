@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 // Source converts one kind of site. Each generator lives in its own file.
@@ -77,7 +79,27 @@ func (p *Plan) Write(dest string, data []byte, origin string) {
 
 // Copy plans copying a source file unchanged.
 func (p *Plan) Copy(dest, origin string) {
-	p.add(&planned{dest: dest, origin: origin, from: filepath.Join(p.Root, filepath.FromSlash(origin))})
+	from, ok := p.sourcePath(origin)
+	if !ok {
+		p.Report.Add(Manual, origin, 0, "Not migrated: `%s` is outside the source site.", origin)
+		return
+	}
+	if info, err := os.Lstat(from); err == nil && info.Mode()&fs.ModeSymlink != 0 {
+		p.Report.Add(Manual, origin, 0, "Symlink not followed. Copy what it points to into the migrated site if it is needed.")
+		return
+	}
+	p.add(&planned{dest: dest, origin: origin, from: from})
+}
+
+// sourcePath resolves a source-relative path, refusing paths that leave
+// the source site, so a config value such as "../../secret" cannot pull
+// outside files into the migrated site.
+func (p *Plan) sourcePath(rel string) (string, bool) {
+	clean := path.Clean(strings.TrimPrefix(filepath.ToSlash(rel), "/"))
+	if clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", false
+	}
+	return filepath.Join(p.Root, filepath.FromSlash(clean)), true
 }
 
 // Page plans a content document. dest must be under content/. oldURL is
@@ -123,6 +145,10 @@ func (p *Plan) Doc(dest string) *Document {
 
 func (p *Plan) add(f *planned) {
 	f.dest = path.Clean(strings.TrimPrefix(filepath.ToSlash(f.dest), "/"))
+	if f.dest == "." || f.dest == ".." || strings.HasPrefix(f.dest, "../") {
+		p.Report.Add(Manual, f.origin, 0, "Not migrated: it maps to `%s`, which is outside the new site. Rename it.", f.dest)
+		return
+	}
 	if existing, ok := p.files[f.dest]; ok {
 		p.Report.Add(Manual, f.origin, 0, "Not migrated: it maps to `%s`, which `%s` already uses. Rename one of them.", f.dest, existing.origin)
 		return
@@ -142,13 +168,24 @@ func (p *Plan) Rel(abs string) string {
 
 // Exists reports whether a source-relative path exists.
 func (p *Plan) Exists(rel string) bool {
-	_, err := os.Stat(filepath.Join(p.Root, filepath.FromSlash(rel)))
+	full, ok := p.sourcePath(rel)
+	if !ok {
+		return false
+	}
+	_, err := os.Stat(full)
 	return err == nil
 }
 
 // ReadFile reads a source-relative file.
 func (p *Plan) ReadFile(rel string) ([]byte, error) {
-	return os.ReadFile(filepath.Join(p.Root, filepath.FromSlash(rel)))
+	full, ok := p.sourcePath(rel)
+	if !ok {
+		return nil, fmt.Errorf("%s is outside the source site", rel)
+	}
+	if info, err := os.Lstat(full); err == nil && info.Mode()&fs.ModeSymlink != 0 {
+		return nil, fmt.Errorf("%s is a symlink, which migrate does not follow", rel)
+	}
+	return os.ReadFile(full)
 }
 
 // skippedDirs are never walked: version control, dependencies, caches,
@@ -199,11 +236,13 @@ func hiddenName(name string) bool {
 func (p *Plan) apply(dest string) error {
 	for _, rel := range p.order {
 		f := p.files[rel]
-		target := filepath.Join(dest, filepath.FromSlash(rel))
+		target, err := safepath.Join(dest, filepath.FromSlash(rel))
+		if err != nil {
+			return fmt.Errorf("write %s: %w", rel, err)
+		}
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
-		var err error
 		switch {
 		case f.doc != nil:
 			err = os.WriteFile(target, f.doc.Bytes(), 0o644)
@@ -220,6 +259,11 @@ func (p *Plan) apply(dest string) error {
 }
 
 func copyFile(from, to string) error {
+	if info, err := os.Lstat(from); err != nil {
+		return err
+	} else if info.Mode()&fs.ModeSymlink != 0 {
+		return fmt.Errorf("%s is a symlink, which migrate does not follow", from)
+	}
 	in, err := os.Open(from)
 	if err != nil {
 		return err

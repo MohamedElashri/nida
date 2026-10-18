@@ -18,6 +18,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/MohamedElashri/nida/internal/safepath"
+
 	// Jekyll and Pelican sites name a timezone for naive dates. Embedding
 	// the zone database keeps migrations the same on systems without one.
 	_ "time/tzdata"
@@ -372,7 +374,10 @@ func starterTemplates() (map[string][]byte, error) {
 
 func writeTemplates(target string, files map[string][]byte) error {
 	for name, data := range files {
-		full := filepath.Join(target, filepath.FromSlash(name))
+		full, err := safepath.Join(target, filepath.FromSlash(name))
+		if err != nil {
+			return fmt.Errorf("write template %s: %w", name, err)
+		}
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			return err
 		}
