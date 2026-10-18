@@ -1,0 +1,286 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+  color: #1f2933;
+  background: #ffffff;
+}
+
+body {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+a {
+  color: #0969da;
+}
+
+.site-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #d9e2ec;
+}
+
+.site-title {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.site-nav a,
+.tag-list a {
+  text-decoration: none;
+}
+
+.prose {
+  font-size: 1.05rem;
+}
+
+.lede {
+  color: #52606d;
+  font-size: 1.1rem;
+}
+
+.post-meta,
+.eyebrow,
+.post-list span {
+  color: #627d98;
+  font-size: 0.9rem;
+}
+
+.post-list,
+.tag-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.post-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.post-list li {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #d9e2ec;
+}
+
+.post-list p {
+  margin: 0.25rem 0 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.tag-list a {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid #bcccdc;
+  border-radius: 999px;
+  color: #334e68;
+  background: #ffffff;
+}
+
+.tag-list-large a {
+  font-size: 1.05rem;
+}
+
+.search-form {
+  display: grid;
+  gap: 0.35rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.search-form label {
+  color: #627d98;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.search-form input {
+  border: 1px solid #bcccdc;
+  border-radius: 4px;
+  color: #1f2933;
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+}
+
+.search-form input:focus {
+  border-color: #0969da;
+  outline: 3px solid #dbeafe;
+}
+
+.search-status {
+  color: #627d98;
+  min-height: 1.5rem;
+}
+
+.search-results {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  padding-left: 0;
+}
+
+.search-results li {
+  border-bottom: 1px solid #d9e2ec;
+  padding-bottom: 0.75rem;
+}
+
+.search-results a {
+  font-weight: 700;
+}
+
+.search-results p {
+  color: #52606d;
+  margin: 0.25rem 0 0;
+}
+
+.site-footer {
+  margin-top: 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d9e2ec;
+  color: #627d98;
+}
+
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  background: #f6f8fa;
+  color: #24292f;
+}
+
+code {
+  font-size: 0.95em;
+}
+
+.z-c,
+.z-c1 {
+  color: #6e7781;
+}
+
+.z-k,
+.z-kc,
+.z-kd,
+.z-kn,
+.z-kp,
+.z-kr,
+.z-kt {
+  color: #cf222e;
+}
+
+.z-s,
+.z-s1,
+.z-s2,
+.z-sa {
+  color: #0a3069;
+}
+
+.z-m,
+.z-mi {
+  color: #0550ae;
+}
+
+.z-nf {
+  color: #8250df;
+}
+
+.z-nx,
+.z-na {
+  color: #953800;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.4rem;
+  border: 1px solid #bcccdc;
+  text-align: left;
+}
+
+details {
+  padding: 0.75rem 1rem;
+  border: 1px solid #bcccdc;
+  background: #ffffff;
+}
+
+/* Callouts: > [!NOTE], > [!WARNING], ... */
+.callout {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid #0969da;
+  border-radius: 4px;
+  background: #f6f8fa;
+}
+
+.callout > :last-child {
+  margin-bottom: 0;
+}
+
+.callout-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+.callout-tip { border-inline-start-color: #1a7f37; }
+.callout-important { border-inline-start-color: #8250df; }
+.callout-warning { border-inline-start-color: #9a6700; }
+.callout-caution { border-inline-start-color: #cf222e; }
+
+/* Code block titles and highlighted lines */
+.code-block {
+  margin: 1.25rem 0;
+}
+
+.code-block pre {
+  margin-top: 0;
+}
+
+.code-title {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
+.z-hl {
+  display: block;
+  background: rgba(255, 213, 79, 0.25);
+}
+
+.z-ln {
+  margin-inline-end: 0.75rem;
+  color: #8c959f;
+  user-select: none;
+}
+
+/* Heading self-links from markdown.heading_anchors */
+.heading-anchor {
+  margin-inline-start: 0.4rem;
+  text-decoration: none;
+  opacity: 0;
+}
+
+:is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 0.6;
+}

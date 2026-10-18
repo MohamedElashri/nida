@@ -91,6 +91,12 @@ func run(stdout, stderr io.Writer, args []string) int {
 			return writeCommandError(stderr, err)
 		}
 		return runServe(stdout, stderr, opts)
+	case "migrate":
+		opts, err := parseMigrateFlags(args[1:])
+		if err != nil {
+			return writeCommandError(stderr, err)
+		}
+		return runMigrate(stdout, stderr, opts)
 	case "version", "--version":
 		writeVersion(stdout)
 		return 0
@@ -437,6 +443,7 @@ func writeUsage(w io.Writer) {
   nida serve [PATH] [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR] [-p PORT] [--port PORT]
   nida build [PATH] [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR]
   nida check [PATH] [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--external]
+  nida migrate [--from NAME] [--urls keep|redirect] [-n] [--dry-run] [--no-check] SOURCE DEST
   nida version
 
 Commands:
@@ -445,6 +452,7 @@ Commands:
   serve   Build, watch, and serve the local site
   build   Build the site into the configured output directory
   check   Validate config, content, links, and templates without writing output
+  migrate Convert a Hugo, Jekyll, Zola, Eleventy, or Pelican site into a new Nida site
   version Show nida build and version information
 
 serve, build, and check use the current directory as the site root unless
