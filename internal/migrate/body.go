@@ -45,10 +45,11 @@ func RewriteProse(body string, fn func(prose string, offset int) string) string 
 			if next >= 0 {
 				end = pos + next + 1
 			}
-			line := strings.TrimRight(body[pos:end], "\n")
-			trimmed := strings.TrimLeft(line, " ")
-			if len(line)-len(trimmed) <= 3 && strings.HasPrefix(trimmed, fence[:1]) &&
-				strings.TrimRight(trimmed, fence[:1]) == "" && len(strings.TrimSpace(trimmed)) >= len(fence) {
+			// Match Nida's own scanner: a run of the fence character at
+			// least as long as the opening, with only spaces after it.
+			trimmed := strings.TrimLeft(strings.TrimRight(body[pos:end], "\r\n"), " ")
+			run := len(trimmed) - len(strings.TrimLeft(trimmed, fence[:1]))
+			if run >= len(fence) && strings.TrimSpace(trimmed[run:]) == "" {
 				closeEnd = end
 				break
 			}

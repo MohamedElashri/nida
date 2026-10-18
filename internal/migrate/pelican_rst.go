@@ -365,7 +365,7 @@ func (c *rstConverter) blocks(lines []rstLine) []string {
 		}
 
 		switch {
-		case strings.HasPrefix(t, ".."):
+		case t == ".." || strings.HasPrefix(t, ".. "):
 			i = c.explicit(lines, i, emit)
 		case rstAnonTargetRe.MatchString(t):
 			i++
@@ -631,6 +631,13 @@ func (c *rstConverter) explicit(lines []rstLine, i int, emit func(...string)) in
 	}
 
 	m := rstDirectiveRe.FindStringSubmatch(t)
+	if m == nil {
+		// An explicit markup start that is not a directive, footnote,
+		// target, or comment; keep it as reStructuredText for review.
+		c.note(Manual, line.num, "Explicit markup `%s` is not converted; it is kept as reStructuredText.", truncate(t, 40))
+		emit(fenceRST(block)...)
+		return next
+	}
 	name := strings.ToLower(m[1])
 	arg := strings.TrimSpace(m[2])
 	opts, body := directiveParts(block[1:])

@@ -296,3 +296,94 @@ func TestEmptyFrontMatterParsesInNida(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewRegressions(t *testing.T) {
+	t.Run("toml edit never lands inside a multi-line string", func(t *testing.T) {
+		in := "+++\ntitle = \"x\"\nsummary = \"\"\"\nSee\n[1]: http://a\n\"\"\"\n+++\nbody\n"
+		doc, err := ParseDocument([]byte(in))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := doc.Set("path", "/old/"); err != nil {
+			t.Fatal(err)
+		}
+		re, err := ParseDocument(doc.Bytes())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if re.String("path") != "/old/" || re.String("summary") != "See\n[1]: http://a\n" {
+			t.Errorf("got path=%q summary=%q\n%s", re.String("path"), re.String("summary"), doc.Bytes())
+		}
+
+		in = "+++\ndescription = \"\"\"\ntitle = \"fake\"\n\"\"\"\ntitle = \"real\"\n+++\n"
+		for _, edit := range []func(*Document){
+			func(d *Document) { _ = d.Set("title", "new") },
+			func(d *Document) { d.Rename("title", "name") },
+			func(d *Document) { d.Delete("title") },
+		} {
+			doc, _ := ParseDocument([]byte(in))
+			edit(doc)
+			re, err := ParseDocument(doc.Bytes())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if re.String("description") != "title = \"fake\"\n" {
+				t.Errorf("multi-line string changed:\n%s", doc.Bytes())
+			}
+		}
+	})
+	t.Run("yaml merge keys", func(t *testing.T) {
+		doc, err := ParseDocument([]byte("---\ndefaults: &d {lastmod: 2024-01-02}\n<<: *d\ntitle: x\n---\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !doc.Rename("lastmod", "updated") || !doc.Has("updated") {
+			t.Error("rename of a merged key must set the new key")
+		}
+		if doc.Delete("lastmod") {
+			t.Error("delete cannot remove a merged key and must say so")
+		}
+	})
+	t.Run("liquid body is not json front matter", func(t *testing.T) {
+		doc, err := ParseDocument([]byte("{% include \"note.md\" %}\ntext\n"))
+		if err != nil || doc.Format != NoFrontMatter {
+			t.Errorf("format=%v err=%v", doc.Format, err)
+		}
+		if doc, err := ParseDocument([]byte("{}\nbody\n")); err != nil || doc.Format != JSON {
+			t.Errorf("empty JSON front matter: format=%v err=%v", doc.Format, err)
+		}
+	})
+	t.Run("named zones are refused", func(t *testing.T) {
+		if _, _, err := ParseDate("2024-05-01 10:00:00 PST"); err == nil {
+			t.Error("PST must not be read as UTC")
+		}
+		if _, _, err := ParseDate("Mon, 02 Jan 2006 15:04:05 GMT"); err != nil {
+			t.Errorf("GMT is fine: %v", err)
+		}
+	})
+	t.Run("non-ascii section titles", func(t *testing.T) {
+		if got := titleFromSlug("étude-über"); got != "Étude Über" {
+			t.Errorf("got %q", got)
+		}
+	})
+	t.Run("closing fence with trailing spaces", func(t *testing.T) {
+		got := RewriteProse("```\ncode\n```   \nafter\n", upper)
+		if got != "```\ncode\n```   \nAFTER\n" {
+			t.Errorf("got %q", got)
+		}
+	})
+	t.Run("empty and odd config values", func(t *testing.T) {
+		c := &Config{}
+		c.Set("title", "t")
+		c.Set("empty", nil)
+		c.Table("extra").Set("sizes", map[any]any{1: "small"})
+		c.Table("extra").Set("list", []any{"a", nil})
+		data, err := c.Bytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(data), "empty") || !strings.Contains(string(data), `sizes = { 1 = "small" }`) || !strings.Contains(string(data), `list = ["a"]`) {
+			t.Errorf("got:\n%s", data)
+		}
+	})
+}

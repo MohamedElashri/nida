@@ -17,6 +17,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/MohamedElashri/nida/internal/safepath"
 
@@ -297,7 +299,8 @@ func addMissingSections(p *Plan) {
 func titleFromSlug(slug string) string {
 	words := strings.FieldsFunc(slug, func(r rune) bool { return r == '-' || r == '_' || r == ' ' })
 	for i, w := range words {
-		words[i] = strings.ToUpper(w[:1]) + w[1:]
+		r, size := utf8.DecodeRuneInString(w)
+		words[i] = string(unicode.ToTitle(r)) + w[size:]
 	}
 	return strings.Join(words, " ")
 }

@@ -290,3 +290,10 @@ func TestConvertRSTMultipleTopSectionsAreHeadings(t *testing.T) {
 		t.Errorf("body = %q", doc.body)
 	}
 }
+
+func TestRSTEllipsisIsNotExplicitMarkup(t *testing.T) {
+	doc := convertRST("Title\n=====\n\n...and then it worked.\n\n..\n\n.. not-a-directive\n")
+	if doc == nil {
+		t.Fatal("no document")
+	}
+}

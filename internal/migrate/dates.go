@@ -51,6 +51,13 @@ func ParseDate(value any) (t time.Time, dateOnly bool, err error) {
 		s := strings.TrimSpace(v)
 		for _, layout := range dateLayouts {
 			if parsed, err := time.Parse(layout, s); err == nil {
+				// time.Parse invents a zero offset for an abbreviation it
+				// does not know, such as PST, which would shift the time.
+				if strings.Contains(layout, "MST") {
+					if name, offset := parsed.Zone(); offset == 0 && name != "UTC" && name != "GMT" && name != "Z" {
+						return time.Time{}, false, fmt.Errorf("date %q names time zone %s; write it with a numeric offset such as -0800", v, name)
+					}
+				}
 				return parsed, !strings.Contains(layout, "15:"), nil
 			}
 		}

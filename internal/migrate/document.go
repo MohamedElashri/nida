@@ -3,6 +3,8 @@ package migrate
 import (
 	"bytes"
 	"fmt"
+	"maps"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -49,6 +51,10 @@ type Document struct {
 var (
 	bomPrefix   = []byte("\xef\xbb\xbf")
 	tomlHeader  = regexp.MustCompile(`^\s*\[`)
+	// jsonFrontMatter requires a key or an empty object after the brace,
+	// so a body that starts with a Liquid tag such as {% include %} is not
+	// mistaken for Hugo's JSON front matter.
+	jsonFrontMatter = regexp.MustCompile(`^\{\s*("|\})`)
 	tomlKeyLine = regexp.MustCompile(`^\s*("[^"]*"|'[^']*'|[A-Za-z0-9_-]+)\s*=`)
 )
 
@@ -87,7 +93,7 @@ func ParseDocument(data []byte) (*Document, error) {
 			return doc, doc.initTOML(raw)
 		}
 		return doc, doc.initYAML(raw)
-	case strings.HasPrefix(s, "{"):
+	case jsonFrontMatter.MatchString(s):
 		raw, body, lines, err := cutJSON(s)
 		if err != nil {
 			return nil, err
@@ -301,25 +307,30 @@ func (d *Document) Delete(key string) bool {
 	if !d.Has(key) {
 		return false
 	}
-	d.changed = true
 	switch d.Format {
 	case YAML, JSON:
-		if i := d.yamlIndex(key); i >= 0 {
-			d.yamlNode.Content = slices.Delete(d.yamlNode.Content, i, i+2)
+		i := d.yamlIndex(key)
+		if i < 0 {
+			return false // the key comes from a merge (<<: *anchor)
 		}
+		d.changed = true
+		d.yamlNode.Content = slices.Delete(d.yamlNode.Content, i, i+2)
 		_ = d.decodeYAML()
 	case TOML:
-		before := d.tomlText
+		d.changed = true
+		before, beforeValues := d.tomlText, maps.Clone(d.values)
+		want := maps.Clone(d.values)
+		delete(want, key)
 		if start, end, ok := d.tomlExtent(key); ok {
 			lines := strings.Split(d.tomlText, "\n")
 			d.tomlText = strings.Join(slices.Delete(lines, start, end), "\n")
 		} else {
 			d.tomlText = deleteTOMLTable(d.tomlText, key)
 		}
-		if d.tomlText != before && d.decodeTOML() == nil && !d.Has(key) {
+		if d.tomlEditKept(want) {
 			return true
 		}
-		d.tomlText = before
+		d.tomlText, d.values = before, beforeValues
 		// Re-encoding values that were just decoded cannot fail.
 		_ = d.reencodeTOML(func(values map[string]any) { delete(values, key) })
 	}
@@ -361,22 +372,34 @@ func (d *Document) Rename(from, to string) bool {
 	if !d.Has(from) || d.Has(to) {
 		return false
 	}
-	d.changed = true
 	switch d.Format {
 	case YAML, JSON:
-		d.yamlNode.Content[d.yamlIndex(from)].Value = to
+		i := d.yamlIndex(from)
+		if i < 0 {
+			// The key comes from a merge (<<: *anchor), so there is no node
+			// to rename; set the new key alongside it instead.
+			return d.Set(to, d.values[from]) == nil
+		}
+		d.changed = true
+		d.yamlNode.Content[i].Value = to
 		_ = d.decodeYAML()
 		return true
 	case TOML:
+		d.changed = true
+		before, beforeValues := d.tomlText, maps.Clone(d.values)
+		want := maps.Clone(d.values)
+		want[to] = want[from]
+		delete(want, from)
 		if start, _, ok := d.tomlExtent(from); ok {
 			lines := strings.Split(d.tomlText, "\n")
 			loc := tomlKeyLine.FindStringSubmatchIndex(lines[start])
 			lines[start] = lines[start][:loc[2]] + tomlKey(to) + lines[start][loc[3]:]
 			d.tomlText = strings.Join(lines, "\n")
-			if d.decodeTOML() == nil {
+			if d.tomlEditKept(want) {
 				return true
 			}
 		}
+		d.tomlText, d.values = before, beforeValues
 		value := d.values[from]
 		_ = d.reencodeTOML(func(values map[string]any) {
 			delete(values, from)
@@ -416,6 +439,9 @@ func (d *Document) setTOML(key string, value any) error {
 	// A table value marshals as "[key]" with its own lines; it has to go
 	// after every plain key, so append it to the end of the document.
 	isTable := strings.HasPrefix(text, "[")
+	before, beforeValues := d.tomlText, maps.Clone(d.values)
+	want := maps.Clone(d.values)
+	want[key] = roundTripTOML(key, value)
 
 	lines := strings.Split(d.tomlText, "\n")
 	if start, end, ok := d.tomlExtent(key); ok && !isTable {
@@ -444,11 +470,35 @@ func (d *Document) setTOML(key string, value any) error {
 		}
 	}
 	d.tomlText = strings.Trim(strings.Join(lines, "\n"), "\n")
-	if err := d.decodeTOML(); err != nil {
-		// The line edit broke the document; fall back to re-encoding.
+	if !d.tomlEditKept(want) {
+		// The line edit broke the document or changed more than the key,
+		// such as a line inside a multi-line string that looked like a
+		// key or table header. Fall back to re-encoding.
+		d.tomlText, d.values = before, beforeValues
 		return d.reencodeTOML(func(values map[string]any) { values[key] = value })
 	}
 	return nil
+}
+
+// tomlEditKept decodes the edited TOML and reports whether it holds
+// exactly the wanted values. Parsing alone is not enough: a regex-located
+// edit can land inside a multi-line string and still parse.
+func (d *Document) tomlEditKept(want map[string]any) bool {
+	return d.decodeTOML() == nil && reflect.DeepEqual(d.values, want)
+}
+
+// roundTripTOML returns value as TOML decodes it, so it can be compared
+// with decoded front matter.
+func roundTripTOML(key string, value any) any {
+	encoded, err := toml.Marshal(map[string]any{key: value})
+	if err != nil {
+		return value
+	}
+	var decoded map[string]any
+	if toml.Unmarshal(encoded, &decoded) != nil {
+		return value
+	}
+	return decoded[key]
 }
 
 // tomlExtent finds the lines [start, end) holding a top-level key and its

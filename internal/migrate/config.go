@@ -125,6 +125,9 @@ func (c *Config) Bytes() ([]byte, error) {
 
 func writeKeys(b *strings.Builder, t *Table) error {
 	for _, key := range t.keys {
+		if t.values[key] == nil {
+			continue // an empty YAML value such as `twitter_username:`; TOML has no null
+		}
 		value, err := inlineValue(t.values[key])
 		if err != nil {
 			return fmt.Errorf("encode config key %q: %w", key, err)
@@ -138,9 +141,19 @@ func writeKeys(b *strings.Builder, t *Table) error {
 // nested values stay inside the table they belong to.
 func inlineValue(value any) (string, error) {
 	switch v := value.(type) {
+	case map[any]any:
+		// YAML maps with non-string keys, such as `sizes: {1: small}`.
+		m := make(map[string]any, len(v))
+		for k, item := range v {
+			m[fmt.Sprint(k)] = item
+		}
+		return inlineValue(m)
 	case map[string]any:
 		parts := make([]string, 0, len(v))
 		for _, k := range sortedKeys(v) {
+			if v[k] == nil {
+				continue
+			}
 			item, err := inlineValue(v[k])
 			if err != nil {
 				return "", err
@@ -154,6 +167,9 @@ func inlineValue(value any) (string, error) {
 	case []any:
 		parts := make([]string, 0, len(v))
 		for _, item := range v {
+			if item == nil {
+				continue
+			}
 			encoded, err := inlineValue(item)
 			if err != nil {
 				return "", err
