@@ -9,6 +9,7 @@ func DefaultSiteConfig() SiteConfig {
 		StaticDir:   "static",
 		OutputDir:   "public",
 		ThemesDir:   "themes",
+		DataDir:     "data",
 		Paginate:    10,
 		Drafts:      false,
 		MinifyHTML:  false,
@@ -18,6 +19,14 @@ func DefaultSiteConfig() SiteConfig {
 			Enabled:  true,
 			Filename: "feed.xml",
 			Limit:    20,
+		},
+		RSS: FeedConfig{
+			Enabled:  false,
+			Filename: "rss.xml",
+			Limit:    20,
+		},
+		Home: HomeConfig{
+			Limit: 5,
 		},
 		Sitemap: SitemapConfig{
 			Enabled:  true,

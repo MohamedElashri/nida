@@ -32,9 +32,9 @@ template = "page"
 
 The route registry is used to detect duplicate page routes. It maps generated route to source relative path.
 
-## Page Sorting And Drafts
+## Page Sorting, Drafts, And Future Pages
 
-Pages are sorted by date descending and then slug. Draft pages are removed unless `cfg.Drafts` is true.
+Pages are sorted by date descending and then slug. Draft pages are removed unless `cfg.Drafts` is true, and pages dated after the build time are removed unless `cfg.Future` is true.
 
 This happens before sections and taxonomies are built, so downstream packages normally see only pages that should be published.
 
@@ -58,13 +58,11 @@ After placeholder expansion, routes must start and end with `/`. Unsupported pla
 
 ## Section Routes
 
-Sections use `/{section}/` by default. The root section uses `/`.
-
-A permalink entry matching the section path can override the section route. Section routes are normalized with the same route-safety expectations as page routes.
+Sections always render at `/{section}/`, and the root section at `/`. `[permalinks]` patterns apply to the pages in a section, not the section itself; `ResolveSectionURL` returns the same route the renderer writes, which `@/section/_index.md` links and `.Section.URL` both use.
 
 ## Section Tree
 
-`BuildIndex` builds section relationships and attaches pages to their sections. It also computes previous and next page links within each section after section pages are ordered.
+`BuildIndex` assigns section URLs, builds section relationships, and attaches pages to their sections. Child sections are ordered by `weight`, then title. It also computes previous and next page links within each section after section pages are ordered.
 
 The root section is the section with an empty section path. If the root has no `_index.md`, behavior depends on what content discovery synthesized or found.
 
@@ -75,6 +73,25 @@ The root section is the section with an empty section path. If the root has no `
 For each page, taxonomy values are read from `page.Extra`. Values must be string lists. Each configured taxonomy receives a collection with terms, term URLs, canonical URLs, pagination settings, feed flag, render flag, and sorted items.
 
 Taxonomy term slugs use `content.DeriveSlug`. Empty term slugs fail the build.
+
+## Index Helpers
+
+`SiteIndex` has methods that templates call directly:
+
+| Method | Returns |
+| --- | --- |
+| `GetPage(path)`, `GetSection(path)` | A page or section by content path, or nil. |
+| `Ancestors(sectionPath)` | Sections from the root down to a section, for breadcrumbs. |
+| `Nav(sectionPath)` | Pages and child sections interleaved by weight, recursively (`nav.go`). |
+| `Neighbors(sectionPath, url)` | Previous and next entries when reading `Nav` top to bottom. |
+| `Related(page, limit)` | Pages ranked by shared taxonomy terms (`related.go`). |
+| `Series(page)` | The page's series, ordered by weight then date, with position, previous, and next. |
+
+They work on value receivers and copy nothing large, so they are cheap to call from every page.
+
+## Images
+
+`site.NewImages` returns the `markdown.Images` implementation (`images.go`). It finds the file behind a Markdown image (static roots in override order, or the page bundle), reads its dimensions once, and, when the image pipeline is enabled, builds a `srcset` from the variant widths that the pipeline actually writes.
 
 ## Route Conflicts
 

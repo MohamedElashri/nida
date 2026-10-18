@@ -46,8 +46,9 @@ contains:
 | `description` | Page or section description, omitted when empty. |
 | `body` | Rendered HTML converted to plain text with whitespace collapsed. |
 
-Pages and sections are included. Draft pages are excluded unless the build uses
-`drafts = true` or `--drafts`.
+Pages and sections, including nested sections, are included. Draft pages are excluded unless the build uses
+`drafts = true` or `--drafts`. Set `search.sections` to index only some root
+sections and `search.body_limit` to cap the body text per document.
 
 ## Template Pattern
 
@@ -102,5 +103,26 @@ Useful habits:
 - keep generated search enabled for small and medium sites
 - disable search for sites where a full-text body index would be too large
 - avoid putting large generated text dumps into Markdown pages
-- use a custom search template if you want fewer fields, section-only search, or
-  a hosted search service
+- set `search.sections` and `search.body_limit` to index less
+- use a hosted search service or Pagefind for large sites
+
+## Larger sites: Pagefind
+
+The built-in index downloads in full on first search. For a large blog or documentation set, [Pagefind](https://pagefind.app) is a better fit: it indexes the generated HTML after the build and loads only the index fragments a query needs. It works with any Nida site without configuration:
+
+```bash
+nida build --site ./my-site
+npx pagefind --site ./my-site/public
+```
+
+Then add its UI to a template:
+
+```html
+<link href="{{ .BasePath }}/pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="{{ .BasePath }}/pagefind/pagefind-ui.js"></script>
+<div id="search"></div>
+<script>new PagefindUI({ element: "#search", baseUrl: "{{ .BasePath }}/" });</script>
+```
+
+Add `data-pagefind-body` to the element that wraps page content so navigation and footers stay out of the index. Disable Nida's `[search]` when you switch.
+

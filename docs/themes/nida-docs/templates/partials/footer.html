@@ -1,0 +1,26 @@
+{{- define "site-footer" -}}
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a class="brand" href="{{ .BasePath }}/">
+        <img class="brand-mark" src="{{ asset "favicon.svg" }}" alt="" width="24" height="24">
+        <span class="brand-name">{{ with (dig .Data "project.name") }}{{ . }}{{ else }}{{ $.Config.Title }}{{ end }}</span>
+      </a>
+      <p>{{ .Config.Description }}</p>
+    </div>
+    {{- range dig .Data "nav.footer" }}
+    <div class="footer-column">
+      <p class="footer-heading">{{ .title }}</p>
+      <ul>
+        {{- range .links }}
+        <li><a href="{{ if hasPrefix .url "/" }}{{ $.BasePath }}{{ end }}{{ .url }}">{{ .name }}</a></li>
+        {{- end }}
+      </ul>
+    </div>
+    {{- end }}
+  </div>
+  <div class="footer-bottom">
+    <p>{{ with (dig .Data "project.license") }}{{ . }} · {{ end }}{{ t "built_with" }} <a href="{{ .BasePath }}/">Nida</a>{{ with (dig .Data "project.version") }} {{ . }}{{ end }}.</p>
+  </div>
+</footer>
+{{- end -}}

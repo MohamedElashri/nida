@@ -44,11 +44,23 @@ func decodeMetadata(values map[string]any) (Metadata, error) {
 		GenerateFeeds: boolValue(values["generate_feeds"]),
 		PaginateBy:    intValue(values["paginate_by"]),
 		PaginatePath:  stringValue(values["paginate_path"]),
-		Aliases:       stringSliceValue(values["aliases"]),
+		Aliases:       StringList(values["aliases"]),
 	}
 
 	if extra, ok := mapValue(values["extra"]); ok {
 		meta.Extra = extra
+	}
+
+	// Zola keeps taxonomy terms under a [taxonomies] table. Flatten it so
+	// those sites work unchanged; Nida reads terms from top-level extra keys.
+	if taxonomies, ok := mapValue(values["taxonomies"]); ok {
+		values = maps.Clone(values)
+		delete(values, "taxonomies")
+		for name, terms := range taxonomies {
+			if _, exists := values[name]; !exists {
+				values[name] = terms
+			}
+		}
 	}
 
 	for key, value := range values {
@@ -73,22 +85,6 @@ func stringValue(value any) string {
 		return strings.TrimSpace(s)
 	}
 	return ""
-}
-
-func stringSliceValue(value any) []string {
-	switch v := value.(type) {
-	case []string:
-		return v
-	case []any:
-		var out []string
-		for _, item := range v {
-			if s, ok := item.(string); ok && s != "" {
-				out = append(out, strings.TrimSpace(s))
-			}
-		}
-		return out
-	}
-	return nil
 }
 
 func boolValue(value any) bool {

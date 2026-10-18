@@ -1,0 +1,60 @@
+{{- define "nida-seo" -}}
+{{- $title := .Title -}}
+{{- if and $title (ne .CurrentURL "/") }}{{ $title = printf "%s | %s" .Title .Config.Title }}{{ else }}{{ $title = .Config.Title }}{{ end -}}
+{{- $desc := default .Description .Config.Description -}}
+{{- $isPage := ne .Page.RelativePath "" -}}
+{{- $image := "" -}}
+{{- with dig .Page.Extra "image" }}{{ $image = . }}{{ else }}{{ with dig .Config.Extra "image" }}{{ $image = . }}{{ end }}{{ end -}}
+{{- if and $image (not (hasPrefix $image "http")) -}}
+  {{- if hasPrefix $image "/" }}{{ $image = absURL $image }}{{ else }}{{ $image = absURL (printf "%s%s" .Page.URL $image) }}{{ end -}}
+{{- end -}}
+<title>{{ $title }}</title>
+{{- with $desc }}
+<meta name="description" content="{{ . }}">
+{{- end }}
+<link rel="canonical" href="{{ .CanonicalURL }}">
+{{- with .Robots }}
+<meta name="robots" content="{{ . }}">
+{{- end }}
+<meta property="og:site_name" content="{{ .Config.Title }}">
+<meta property="og:title" content="{{ default .Title .Config.Title }}">
+{{- with $desc }}
+<meta property="og:description" content="{{ . }}">
+{{- end }}
+<meta property="og:url" content="{{ .CanonicalURL }}">
+<meta property="og:type" content="{{ if $isPage }}article{{ else }}website{{ end }}">
+{{- with .Config.Language }}
+<meta property="og:locale" content="{{ replace . "-" "_" }}">
+{{- end }}
+{{- if $isPage }}
+{{- if not .Page.Date.IsZero }}
+<meta property="article:published_time" content="{{ .Page.Date.Format "2006-01-02T15:04:05Z07:00" }}">
+{{- end }}
+{{- if not .Page.Updated.IsZero }}
+<meta property="article:modified_time" content="{{ .Page.Updated.Format "2006-01-02T15:04:05Z07:00" }}">
+{{- end }}
+{{- end }}
+{{- with $image }}
+<meta property="og:image" content="{{ . }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ . }}">
+{{- else }}
+<meta name="twitter:card" content="summary">
+{{- end }}
+<meta name="twitter:title" content="{{ default .Title .Config.Title }}">
+{{- with $desc }}
+<meta name="twitter:description" content="{{ . }}">
+{{- end }}
+{{- with dig .Config.Extra "twitter" }}
+<meta name="twitter:site" content="{{ . }}">
+{{- end }}
+{{- if $isPage }}
+{{- $ld := dict "@context" "https://schema.org" "@type" "BlogPosting" "headline" .Page.Title "url" .CanonicalURL "mainEntityOfPage" .CanonicalURL -}}
+{{- with $desc }}{{ $ld = merge $ld (dict "description" .) }}{{ end -}}
+{{- if not .Page.Date.IsZero }}{{ $ld = merge $ld (dict "datePublished" (.Page.Date.Format "2006-01-02T15:04:05Z07:00")) }}{{ end -}}
+{{- if not .Page.Updated.IsZero }}{{ $ld = merge $ld (dict "dateModified" (.Page.Updated.Format "2006-01-02T15:04:05Z07:00")) }}{{ end -}}
+{{- with .Config.Author }}{{ $ld = merge $ld (dict "author" (dict "@type" "Person" "name" .)) }}{{ end -}}
+{{- with $image }}{{ $ld = merge $ld (dict "image" .) }}{{ end }}
+<script type="application/ld+json">{{ jsonify $ld }}</script>
+{{- end }}
+{{- end -}}

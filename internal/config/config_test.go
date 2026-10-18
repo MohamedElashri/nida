@@ -15,8 +15,14 @@ func TestDefaultSiteConfig(t *testing.T) {
 	if cfg.Server.Port != 1702 {
 		t.Fatalf("expected default server port 1702, got %d", cfg.Server.Port)
 	}
-	if !cfg.Feed.Enabled {
-		t.Fatal("expected Feed to be enabled by default")
+	if !cfg.Feed.Enabled || cfg.Feed.Filename != "feed.xml" {
+		t.Fatalf("expected the Atom feed to be enabled by default, got %+v", cfg.Feed)
+	}
+	if cfg.RSS.Enabled {
+		t.Fatal("expected RSS to be disabled by default")
+	}
+	if cfg.Markdown.HardWraps {
+		t.Fatal("expected hard wraps to be disabled by default")
 	}
 	if _, ok := cfg.Pipeline.Images.Presets["content"]; !ok {
 		t.Fatal("expected default content image preset")
@@ -82,7 +88,7 @@ func TestLoadFeedSections(t *testing.T) {
 base_url = "https://example.com"
 title = "Feed Sections"
 
-[feed]
+[rss]
 sections = ["post"]
 `)
 
@@ -91,8 +97,8 @@ sections = ["post"]
 		t.Fatalf("Load returned error: %v", err)
 	}
 
-	if len(cfg.Feed.Sections) != 1 || cfg.Feed.Sections[0] != "post" {
-		t.Fatalf("expected Feed sections [post], got %#v", cfg.Feed.Sections)
+	if len(cfg.RSS.Sections) != 1 || cfg.RSS.Sections[0] != "post" {
+		t.Fatalf("expected RSS sections [post], got %#v", cfg.RSS.Sections)
 	}
 }
 
@@ -220,5 +226,48 @@ func TestDocumentDirection(t *testing.T) {
 		if got := DocumentDirection(test.language); got != test.want {
 			t.Fatalf("DocumentDirection(%q) = %q, want %q", test.language, got, test.want)
 		}
+	}
+}
+
+func TestLoadWarnsAboutUnknownKeys(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, `
+base_url = "https://example.com/"
+title = "Site"
+paginte = 5
+
+[markdown]
+hardwraps = true
+
+[extra]
+anything = "is allowed here"
+`)
+
+	cfg, _, err := Load(Options{SiteRoot: dir})
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	joined := strings.Join(cfg.Warnings, "\n")
+	if !strings.Contains(joined, `"paginte"`) || !strings.Contains(joined, `"markdown.hardwraps"`) {
+		t.Fatalf("expected unknown key warnings, got %q", cfg.Warnings)
+	}
+	if strings.Contains(joined, "anything") {
+		t.Fatalf("extra keys must not warn, got %q", cfg.Warnings)
+	}
+}
+
+func TestLoadRejectsSameFeedFilenames(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, `
+base_url = "https://example.com/"
+title = "Site"
+
+[rss]
+enabled = true
+filename = "feed.xml"
+`)
+
+	if _, _, err := Load(Options{SiteRoot: dir}); err == nil || !strings.Contains(err.Error(), "must differ") {
+		t.Fatalf("expected filename conflict error, got %v", err)
 	}
 }

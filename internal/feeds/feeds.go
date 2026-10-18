@@ -3,16 +3,17 @@ package feeds
 import (
 	"encoding/xml"
 	"fmt"
-	"html"
 	"net/url"
-	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/MohamedElashri/nida/internal/buildinfo"
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/frontmatter"
+	"github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/site"
 )
 
@@ -72,36 +73,167 @@ type atomContent struct {
 	Value string `xml:",chardata"`
 }
 
+// spec describes one feed document. Site feeds, section feeds, and taxonomy
+// term feeds all share the same item selection and rendering code.
+type spec struct {
+	Title    string
+	Filename string
+	AltURL   string
+	Items    []content.Page
+}
+
 func GenerateAll(cfg config.SiteConfig, index site.SiteIndex) ([]Output, error) {
-	outputs := make([]Output, 0, 1)
-
-	feedOutput, err := Generate(cfg, index)
-	if err != nil {
-		return nil, err
+	outputs := make([]Output, 0, 2)
+	for _, generate := range []func(config.SiteConfig, site.SiteIndex) (*Output, error){Generate, GenerateRSS} {
+		out, err := generate(cfg, index)
+		if err != nil {
+			return nil, err
+		}
+		if out != nil {
+			outputs = append(outputs, *out)
+		}
 	}
-	if feedOutput != nil {
-		outputs = append(outputs, *feedOutput)
-	}
 
+	for _, feed := range scopedSpecs(cfg, index) {
+		if cfg.Feed.Enabled {
+			out, err := renderAtom(cfg, withFilename(feed, cfg.Feed))
+			if err != nil {
+				return nil, err
+			}
+			outputs = append(outputs, *out)
+		}
+		if cfg.RSS.Enabled {
+			out, err := renderRSS(cfg, withFilename(feed, cfg.RSS))
+			if err != nil {
+				return nil, err
+			}
+			outputs = append(outputs, *out)
+		}
+	}
 	return outputs, nil
 }
 
+// Filenames lists every feed file GenerateAll writes, so the build can
+// check them for route conflicts and clean them up when they go away.
+func Filenames(cfg config.SiteConfig, index site.SiteIndex) []string {
+	var names []string
+	if cfg.Feed.Enabled {
+		names = append(names, cfg.Feed.Filename)
+	}
+	if cfg.RSS.Enabled {
+		names = append(names, cfg.RSS.Filename)
+	}
+	for _, feed := range scopedSpecs(cfg, index) {
+		if cfg.Feed.Enabled {
+			names = append(names, withFilename(feed, cfg.Feed).Filename)
+		}
+		if cfg.RSS.Enabled {
+			names = append(names, withFilename(feed, cfg.RSS).Filename)
+		}
+	}
+	return names
+}
+
+// scopedSpecs returns section and taxonomy term feeds. Filename holds only
+// the directory prefix until withFilename adds the file name.
+func scopedSpecs(cfg config.SiteConfig, index site.SiteIndex) []spec {
+	var specs []spec
+
+	paths := make([]string, 0, len(index.SectionLookup))
+	for path, section := range index.SectionLookup {
+		if section.GenerateFeeds && path != "" {
+			paths = append(paths, path)
+		}
+	}
+	slices.Sort(paths)
+	for _, path := range paths {
+		section := index.SectionLookup[path]
+		var items []content.Page
+		for _, page := range index.AllPages {
+			if page.SectionPath == path || strings.HasPrefix(page.SectionPath, path+"/") {
+				items = append(items, page)
+			}
+		}
+		specs = append(specs, spec{
+			Title:    scopedTitle(cfg.Title, section.Title),
+			Filename: path + "/",
+			AltURL:   route.CanonicalURL(cfg.BaseURL, "/"+path+"/"),
+			Items:    items,
+		})
+	}
+
+	for _, collection := range index.Taxonomies {
+		if !collection.Feed {
+			continue
+		}
+		for _, term := range collection.Terms {
+			items := append([]content.Page(nil), term.Items...)
+			specs = append(specs, spec{
+				Title:    scopedTitle(cfg.Title, term.Name),
+				Filename: strings.Trim(term.URL, "/") + "/",
+				AltURL:   term.CanonicalURL,
+				Items:    items,
+			})
+		}
+	}
+	return specs
+}
+
+func withFilename(feed spec, feedCfg config.FeedConfig) spec {
+	feed.Filename += feedCfg.Filename
+	if feedCfg.Limit > 0 && len(feed.Items) > feedCfg.Limit {
+		feed.Items = feed.Items[:feedCfg.Limit]
+	}
+	return feed
+}
+
+func scopedTitle(siteTitle, scope string) string {
+	if strings.TrimSpace(scope) == "" {
+		return siteTitle
+	}
+	if strings.TrimSpace(siteTitle) == "" {
+		return scope
+	}
+	return siteTitle + " - " + scope
+}
+
+// GenerateRSS renders the optional site-wide RSS 2.0 feed configured by [rss].
+func GenerateRSS(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
+	if !cfg.RSS.Enabled {
+		return nil, nil
+	}
+	return renderRSS(cfg, siteSpec(cfg, cfg.RSS, index))
+}
+
+// Generate renders the site-wide Atom feed configured by [feed].
 func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 	if !cfg.Feed.Enabled {
 		return nil, nil
 	}
+	return renderAtom(cfg, siteSpec(cfg, cfg.Feed, index))
+}
 
-	items := feedItems(index.AllPages, cfg.Feed.Sections, cfg.Feed.Limit)
+func siteSpec(cfg config.SiteConfig, feed config.FeedConfig, index site.SiteIndex) spec {
+	return spec{
+		Title:    cfg.Title,
+		Filename: feed.Filename,
+		AltURL:   strings.TrimSpace(cfg.BaseURL),
+		Items:    feedItems(index.AllPages, feed.Sections, feed.Limit),
+	}
+}
 
-	feedURL, err := feedURL(cfg.BaseURL, cfg.Feed.Filename)
+func renderAtom(cfg config.SiteConfig, feed spec) (*Output, error) {
+	items := feed.Items
+
+	feedURL, err := feedURL(cfg.BaseURL, feed.Filename)
 	if err != nil {
-		return nil, fmt.Errorf("generate Feed: %w", err)
+		return nil, fmt.Errorf("generate Atom feed: %w", err)
 	}
 
 	updated := latestUpdated(items)
 	doc := atomDocument{
 		Lang:  cfg.Language,
-		Title: stripHTML(cfg.Title),
+		Title: content.PlainText(feed.Title),
 		Generator: &atomGenerator{
 			URI:     "https://github.com/MohamedElashri/nida",
 			Version: buildinfo.Version,
@@ -109,7 +241,7 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 		},
 		Link: []atomLink{
 			{Href: feedURL, Rel: "self", Type: "application/atom+xml"},
-			{Href: strings.TrimSpace(cfg.BaseURL), Rel: "alternate", Type: "text/html"},
+			{Href: feed.AltURL, Rel: "alternate", Type: "text/html"},
 		},
 		Updated: formatAtomDate(updated),
 		ID:      feedURL,
@@ -120,19 +252,17 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 	}
 
 	for _, item := range items {
-		link := canonicalURL(cfg.BaseURL, item.URL)
-
-		summary := stripHTML(strings.TrimSpace(item.Description))
+		link := route.CanonicalURL(cfg.BaseURL, item.URL)
 
 		doc.Entries = append(doc.Entries, atomEntry{
-			Title:      stripHTML(item.Title),
+			Title:      content.PlainText(item.Title),
 			Link:       atomLink{Href: link, Rel: "alternate", Type: "text/html"},
 			ID:         link,
 			Authors:    atomEntryAuthors(item, cfg),
-			Categories: atomEntryCategories(item),
+			Categories: atomEntryCategories(item, cfg),
 			Published:  formatAtomDate(item.Date),
-			Updated:    formatAtomDate(item.Date),
-			Summary:    summary,
+			Updated:    formatAtomDate(itemUpdated(item)),
+			Summary:    itemSummary(item),
 			Content: &atomContent{
 				Type:  "html",
 				Value: absolutizeHTML(item.BodyHTML, cfg.BaseURL, item.URL),
@@ -142,16 +272,138 @@ func Generate(cfg config.SiteConfig, index site.SiteIndex) (*Output, error) {
 
 	data, err := xml.MarshalIndent(doc, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("generate Feed XML: %w", err)
+		return nil, fmt.Errorf("generate Atom feed XML: %w", err)
 	}
 
 	data = append([]byte(xml.Header), data...)
 	data = append(data, '\n')
 
 	return &Output{
-		Filename: cfg.Feed.Filename,
+		Filename: feed.Filename,
 		Content:  data,
 	}, nil
+}
+
+type rssDocument struct {
+	XMLName xml.Name   `xml:"rss"`
+	Version string     `xml:"version,attr"`
+	Content string     `xml:"xmlns:content,attr"`
+	DC      string     `xml:"xmlns:dc,attr"`
+	AtomNS  string     `xml:"xmlns:atom,attr"`
+	Channel rssChannel `xml:"channel"`
+}
+
+type rssChannel struct {
+	Title         string      `xml:"title"`
+	Link          string      `xml:"link"`
+	Description   string      `xml:"description"`
+	Language      string      `xml:"language,omitempty"`
+	Generator     string      `xml:"generator"`
+	LastBuildDate string      `xml:"lastBuildDate,omitempty"`
+	AtomLink      rssAtomLink `xml:"atom:link"`
+	Items         []rssItem   `xml:"item"`
+}
+
+type rssAtomLink struct {
+	Href string `xml:"href,attr"`
+	Rel  string `xml:"rel,attr"`
+	Type string `xml:"type,attr"`
+}
+
+type rssItem struct {
+	Title       string    `xml:"title"`
+	Link        string    `xml:"link"`
+	GUID        rssGUID   `xml:"guid"`
+	PubDate     string    `xml:"pubDate,omitempty"`
+	Creators    []string  `xml:"dc:creator,omitempty"`
+	Categories  []string  `xml:"category,omitempty"`
+	Description string    `xml:"description,omitempty"`
+	Content     *rssCDATA `xml:"content:encoded,omitempty"`
+}
+
+type rssGUID struct {
+	IsPermaLink string `xml:"isPermaLink,attr"`
+	Value       string `xml:",chardata"`
+}
+
+type rssCDATA struct {
+	Value string `xml:",cdata"`
+}
+
+func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
+	selfURL, err := feedURL(cfg.BaseURL, feed.Filename)
+	if err != nil {
+		return nil, fmt.Errorf("generate RSS feed: %w", err)
+	}
+
+	channel := rssChannel{
+		Title:       content.PlainText(feed.Title),
+		Link:        feed.AltURL,
+		Description: content.PlainText(cfg.Description),
+		Language:    cfg.Language,
+		Generator:   "Nida " + buildinfo.Version,
+		AtomLink:    rssAtomLink{Href: selfURL, Rel: "self", Type: "application/rss+xml"},
+		Items:       make([]rssItem, 0, len(feed.Items)),
+	}
+	if channel.Description == "" {
+		channel.Description = channel.Title
+	}
+	if latest := latestUpdated(feed.Items); !latest.IsZero() {
+		channel.LastBuildDate = latest.UTC().Format(time.RFC1123Z)
+	}
+
+	for _, item := range feed.Items {
+		link := route.CanonicalURL(cfg.BaseURL, item.URL)
+		entry := rssItem{
+			Title:       content.PlainText(item.Title),
+			Link:        link,
+			GUID:        rssGUID{IsPermaLink: "true", Value: link},
+			Description: itemSummary(item),
+			Content:     &rssCDATA{Value: absolutizeHTML(item.BodyHTML, cfg.BaseURL, item.URL)},
+		}
+		if !item.Date.IsZero() {
+			entry.PubDate = item.Date.UTC().Format(time.RFC1123Z)
+		}
+		for _, author := range atomEntryAuthors(item, cfg) {
+			entry.Creators = append(entry.Creators, author.Name)
+		}
+		for _, category := range atomEntryCategories(item, cfg) {
+			entry.Categories = append(entry.Categories, category.Term)
+		}
+		channel.Items = append(channel.Items, entry)
+	}
+
+	doc := rssDocument{
+		Version: "2.0",
+		Content: "http://purl.org/rss/1.0/modules/content/",
+		DC:      "http://purl.org/dc/elements/1.1/",
+		AtomNS:  "http://www.w3.org/2005/Atom",
+		Channel: channel,
+	}
+	data, err := xml.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("generate RSS feed XML: %w", err)
+	}
+	data = append([]byte(xml.Header), data...)
+	data = append(data, '\n')
+
+	return &Output{Filename: feed.Filename, Content: data}, nil
+}
+
+// itemSummary prefers the author-written description and falls back to the
+// rendered summary so feed readers always get a short teaser.
+func itemSummary(item content.Page) string {
+	if summary := content.PlainText(strings.TrimSpace(item.Description)); summary != "" {
+		return summary
+	}
+	return content.PlainText(item.Summary)
+}
+
+func itemUpdated(item content.Page) time.Time {
+	if item.Updated.After(item.Date) {
+		return item.Updated
+	}
+	return item.Date
 }
 
 func formatAtomDate(value time.Time) string {
@@ -164,82 +416,37 @@ func formatAtomDate(value time.Time) string {
 func latestUpdated(items []content.Page) time.Time {
 	var latest time.Time
 	for _, item := range items {
-		if item.Date.After(latest) {
-			latest = item.Date
+		if updated := itemUpdated(item); updated.After(latest) {
+			latest = updated
 		}
 	}
 	return latest
 }
 
 func feedItems(items []content.Page, sections []string, limit int) []content.Page {
-	allowed := map[string]struct{}{}
-	for _, section := range sections {
-		section = rootSectionName(section)
-		if section != "" {
-			allowed[section] = struct{}{}
-		}
-	}
-
-	filtered := items
-	if len(allowed) > 0 {
-		filtered = make([]content.Page, 0, len(items))
-		for _, item := range items {
-			if _, ok := allowed[rootSectionName(item.SectionPath)]; ok {
-				filtered = append(filtered, item)
-			}
-		}
-	}
-
+	filtered := content.FilterByRootSections(items, sections)
 	if limit > 0 && len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
 	return filtered
 }
 
-func rootSectionName(sectionPath string) string {
-	sectionPath = strings.Trim(sectionPath, "/")
-	if sectionPath == "" {
-		return ""
+// atomEntryCategories lists the page's terms for every configured taxonomy,
+// or for tags and categories when none are configured.
+func atomEntryCategories(item content.Page, cfg config.SiteConfig) []atomCategory {
+	names := []string{"tags", "categories"}
+	if len(cfg.Taxonomies) > 0 {
+		names = names[:0]
+		for _, tc := range cfg.Taxonomies {
+			names = append(names, tc.Name)
+		}
 	}
-	if index := strings.Index(sectionPath, "/"); index >= 0 {
-		return sectionPath[:index]
-	}
-	return sectionPath
-}
-
-func atomEntryCategories(item content.Page) []atomCategory {
 	var cats []atomCategory
-
-	// Add tags
-	if raw, ok := item.Extra["tags"]; ok {
-		if tags, ok := raw.([]string); ok {
-			for _, t := range tags {
-				cats = append(cats, atomCategory{Term: strings.TrimSpace(t)})
-			}
-		} else if tagList, ok := raw.([]any); ok {
-			for _, t := range tagList {
-				if s, ok := t.(string); ok {
-					cats = append(cats, atomCategory{Term: strings.TrimSpace(s)})
-				}
-			}
+	for _, name := range names {
+		for _, term := range frontmatter.StringList(item.Extra[name]) {
+			cats = append(cats, atomCategory{Term: term})
 		}
 	}
-
-	// Add categories
-	if raw, ok := item.Extra["categories"]; ok {
-		if categories, ok := raw.([]string); ok {
-			for _, c := range categories {
-				cats = append(cats, atomCategory{Term: strings.TrimSpace(c)})
-			}
-		} else if catList, ok := raw.([]any); ok {
-			for _, c := range catList {
-				if s, ok := c.(string); ok {
-					cats = append(cats, atomCategory{Term: strings.TrimSpace(s)})
-				}
-			}
-		}
-	}
-
 	return cats
 }
 
@@ -257,32 +464,22 @@ func atomEntryAuthors(item content.Page, cfg config.SiteConfig) []atomAuthor {
 
 func parseAuthorsExtra(raw any) []atomAuthor {
 	var out []atomAuthor
-	switch v := raw.(type) {
-	case []string:
-		for _, s := range v {
-			if strings.TrimSpace(s) != "" {
-				out = append(out, atomAuthor{Name: strings.TrimSpace(s)})
-			}
+	for _, name := range frontmatter.StringList(raw) {
+		out = append(out, atomAuthor{Name: name})
+	}
+	list, _ := raw.([]any)
+	for _, item := range list {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
 		}
-	case []any:
-		for _, item := range v {
-			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
-				out = append(out, atomAuthor{Name: strings.TrimSpace(s)})
-			} else if m, ok := item.(map[string]any); ok {
-				author := atomAuthor{}
-				if name, ok := m["name"].(string); ok {
-					author.Name = strings.TrimSpace(name)
-				}
-				if email, ok := m["email"].(string); ok {
-					author.Email = strings.TrimSpace(email)
-				}
-				if uri, ok := m["uri"].(string); ok {
-					author.URI = strings.TrimSpace(uri)
-				}
-				if author.Name != "" {
-					out = append(out, author)
-				}
-			}
+		author := atomAuthor{}
+		author.Name, _ = m["name"].(string)
+		author.Email, _ = m["email"].(string)
+		author.URI, _ = m["uri"].(string)
+		author.Name, author.Email, author.URI = strings.TrimSpace(author.Name), strings.TrimSpace(author.Email), strings.TrimSpace(author.URI)
+		if author.Name != "" {
+			out = append(out, author)
 		}
 	}
 	return out
@@ -300,67 +497,22 @@ func feedURL(baseURL, filename string) (string, error) {
 	return baseURL + filename, nil
 }
 
-func canonicalURL(baseURL, route string) string {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return route
-	}
-	base.Path = path.Join(base.Path, route)
-	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
-	}
-	return base.String()
-}
-
-func stripHTML(markup string) string {
-	var result strings.Builder
-	inTag := false
-	for _, r := range markup {
-		switch r {
-		case '<':
-			inTag = true
-		case '>':
-			inTag = false
-		default:
-			if !inTag {
-				result.WriteRune(r)
-			}
-		}
-	}
-	return strings.Join(strings.Fields(html.UnescapeString(result.String())), " ")
-}
-
 var htmlURLRegex = regexp.MustCompile(`(?i)(href|src)=["']([^"']+)["']`)
 
+// resolveURL makes a page link absolute the way a browser resolves it.
 func resolveURL(baseURL, itemURL, rawURL string) string {
-	if u, err := url.Parse(rawURL); err == nil && (u.Scheme != "" || u.Host != "") {
-		return rawURL
-	}
 	if strings.HasPrefix(rawURL, "data:") || strings.HasPrefix(rawURL, "#") || strings.HasPrefix(rawURL, "mailto:") {
 		return rawURL
 	}
-
 	rel, err := url.Parse(rawURL)
+	if err != nil || rel.Scheme != "" || rel.Host != "" {
+		return rawURL
+	}
+	page, err := url.Parse(route.CanonicalURL(baseURL, itemURL))
 	if err != nil {
 		return rawURL
 	}
-
-	var route string
-	if strings.HasPrefix(rel.Path, "/") {
-		route = rel.Path
-	} else {
-		route = path.Join(itemURL, rel.Path)
-	}
-
-	resolved := canonicalURL(baseURL, route)
-
-	if resURL, err := url.Parse(resolved); err == nil {
-		resURL.RawQuery = rel.RawQuery
-		resURL.Fragment = rel.Fragment
-		return resURL.String()
-	}
-
-	return resolved
+	return page.ResolveReference(rel).String()
 }
 
 func absolutizeHTML(htmlStr string, baseURL string, itemURL string) string {

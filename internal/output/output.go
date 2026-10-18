@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/parallel"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/safepath"
 )
@@ -42,23 +43,24 @@ func WritePages(siteRoot string, cfg config.SiteConfig, pages []render.Page) err
 		return sorted[i].URL < sorted[j].URL
 	})
 
-	for _, page := range sorted {
+	// Pages map to distinct files, so they can be written concurrently.
+	_, err = parallel.Map(sorted, func(page render.Page) (struct{}, error) {
 		targetPath, err := pagePath(outputDir, page.URL)
 		if err != nil {
-			return fmt.Errorf("resolve output path for %q: %w", page.URL, err)
+			return struct{}{}, fmt.Errorf("resolve output path for %q: %w", page.URL, err)
 		}
 		if err := safepath.EnsureNoSymlinkPath(outputDir, targetPath); err != nil {
-			return fmt.Errorf("check output path for %q: %w", page.URL, err)
+			return struct{}{}, fmt.Errorf("check output path for %q: %w", page.URL, err)
 		}
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
-			return fmt.Errorf("create output directory for %q: %w", targetPath, err)
+			return struct{}{}, fmt.Errorf("create output directory for %q: %w", targetPath, err)
 		}
 		if err := os.WriteFile(targetPath, []byte(page.Content), 0o644); err != nil {
-			return fmt.Errorf("write rendered page %q: %w", targetPath, err)
+			return struct{}{}, fmt.Errorf("write rendered page %q: %w", targetPath, err)
 		}
-	}
-
-	return nil
+		return struct{}{}, nil
+	})
+	return err
 }
 
 func RemovePages(siteRoot string, cfg config.SiteConfig, routes []string) error {
@@ -86,10 +88,8 @@ func RemovePages(siteRoot string, cfg config.SiteConfig, routes []string) error 
 	return nil
 }
 
-// removeEmptyParents removes ancestor directories left empty by a page
-// removal, stopping at (and never including) the output root. Without this,
-// Go's http.FileServer serves a directory listing (HTTP 200) for a removed
-// page's URL instead of 404.
+// removeEmptyParents removes directories emptied by a page removal, so the
+// dev server returns 404 instead of a directory listing.
 func removeEmptyParents(outputDir, removedPath string) error {
 	dir := filepath.Clean(filepath.Dir(removedPath))
 	for dir != outputDir {

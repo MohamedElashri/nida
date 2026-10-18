@@ -3,10 +3,9 @@ package searchindex
 import (
 	"encoding/json"
 	"fmt"
-	"html"
-	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/site"
 )
 
@@ -30,35 +29,30 @@ func Generate(cfg config.SiteConfig, state site.State) (*Output, error) {
 	}
 
 	docs := make(map[string]Doc)
+	allowed := map[string]bool{}
+	for _, section := range cfg.Search.Sections {
+		allowed[content.RootSection(section)] = true
+	}
 
-	// Add all pages
-	for _, page := range state.Index.AllPages {
-		if page.Draft && !cfg.Drafts {
+	for _, page := range content.FilterByRootSections(state.Index.AllPages, cfg.Search.Sections) {
+		if page.URL == "" {
 			continue
 		}
-		url := page.URL
-		if url == "" {
-			continue
-		}
-		body := stripHTML(page.BodyHTML)
-		docs[url] = Doc{
+		docs[page.URL] = Doc{
 			Title:       page.Title,
 			Description: page.Description,
-			Body:        body,
+			Body:        limitBody(content.PlainText(page.BodyHTML), cfg.Search.BodyLimit),
 		}
 	}
 
-	// Add all sections
-	for _, section := range state.Index.Sections {
-		url := section.URL
-		if url == "" {
+	for _, section := range state.Index.SectionLookup {
+		if section.URL == "" || (len(allowed) > 0 && !allowed[content.RootSection(section.SectionPath)]) {
 			continue
 		}
-		body := stripHTML(section.BodyHTML)
-		docs[url] = Doc{
+		docs[section.URL] = Doc{
 			Title:       section.Title,
 			Description: section.Description,
-			Body:        body,
+			Body:        limitBody(content.PlainText(section.BodyHTML), cfg.Search.BodyLimit),
 		}
 	}
 
@@ -73,10 +67,10 @@ func Generate(cfg config.SiteConfig, state site.State) (*Output, error) {
 		return nil, fmt.Errorf("marshal search index: %w", err)
 	}
 
-	content := []byte(fmt.Sprintf("window.searchIndex = %s;\n", data))
+	script := []byte(fmt.Sprintf("window.searchIndex = %s;\n", data))
 	return &Output{
 		Filename: cfg.Search.Filename,
-		Content:  content,
+		Content:  script,
 	}, nil
 }
 
@@ -85,21 +79,13 @@ type Output struct {
 	Content  []byte
 }
 
-func stripHTML(markup string) string {
-	// Very basic HTML stripping for search indexing
-	var result strings.Builder
-	inTag := false
-	for _, r := range markup {
-		switch r {
-		case '<':
-			inTag = true
-		case '>':
-			inTag = false
-		default:
-			if !inTag {
-				result.WriteRune(r)
-			}
-		}
+func limitBody(body string, limit int) string {
+	if limit <= 0 {
+		return body
 	}
-	return strings.Join(strings.Fields(html.UnescapeString(result.String())), " ")
+	runes := []rune(body)
+	if len(runes) <= limit {
+		return body
+	}
+	return string(runes[:limit])
 }

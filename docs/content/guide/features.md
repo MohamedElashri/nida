@@ -1,74 +1,34 @@
 +++
 title = "Features"
-description = "A tour of the major capabilities Nida already supports."
+description = "A tour of what Nida does, with links to the details."
 weight = 25
 template = "page"
 +++
 
-Nida is small, but it already covers the pieces needed for a practical static site.
+Nida is small, but it covers what a blog, personal site, or documentation site needs. Each section links to the full documentation.
 
-## Content model
+## Content
 
-Nida discovers Markdown under `content/`.
+Markdown files under `content/` become pages; `_index.md` files make sections, and a directory with `index.md` is a page bundle whose images and files are published next to it. Sections nest, and their `_index.md` controls sorting, pagination, and templates. See [Front Matter](@/reference/front-matter.md).
 
-- `_index.md` creates a section.
-- `page.md` creates a regular page.
-- `some-page/index.md` creates a page bundle.
+Pages can link to each other by source path, such as `[Templates](@/guide/templates.md)`, and Nida fills in the published URL. Front matter can be TOML or YAML.
 
-Sections can be nested, and pages inherit behavior from their section when a section defines things like `page_template` or sorting.
+## Writing
 
-## Markdown rendering
-
-Nida uses GitHub-flavored Markdown, footnotes, heading IDs, and syntax-highlighted fenced code blocks.
-
-Internal links can use Zola-style `@/` paths:
-
-```markdown
-Read [Templates](@/guide/templates.md).
-```
-
-Nida resolves those paths to generated URLs during rendering.
+GitHub-flavored Markdown with footnotes, plus summaries, tables of contents, heading anchors, callouts, code block titles and line highlighting, math, Mermaid diagrams, and shortcodes. Images get their dimensions and, with the image pipeline, responsive variants. See [Writing Content](@/guide/writing.md).
 
 ## Templates and themes
 
-Templates are Go HTML templates. Sites can provide local templates directly, or use a theme from `themes/name/`.
+Templates are Go HTML templates with Nida's [template functions](@/guide/templates.md#template-functions) and a built-in [SEO partial](@/guide/templates.md#seo-metadata). Themes can extend other themes, and a site can override any part of its theme. See [Themes](@/guide/themes.md).
 
-Themes can extend parent themes, and site templates override theme templates with the same name.
+## Blogs
 
-## Taxonomies
+[Taxonomies](@/guide/configuration.md#taxonomies) such as tags and categories, [related posts and series](@/guide/templates.md#related-posts-and-series), [archives](@/guide/templates.md#archives) by year or month, Atom and RSS [feeds](@/reference/config.md#feed) for the site, sections, and tags, and [`nida new`](@/reference/cli.md#new) for new posts.
 
-Nida can build arbitrary taxonomies, not just tags and categories.
+## Documentation sites
 
-```toml
-[[taxonomies]]
-name = "tags"
-render = true
-paginate_by = 20
-```
+[Generated navigation, breadcrumbs, and edit links](@/guide/templates.md#navigation-for-docs-sites), [data files](@/guide/templates.md#data-files), [translations](@/guide/templates.md#translations) for theme text, and client-side [search](@/reference/search.md). This site is built that way.
 
-Content can assign taxonomy values in front matter through `extra`:
+## Checks and publishing
 
-```toml
-[extra]
-tags = ["docs", "release"]
-```
-
-## Generated files
-
-Nida can generate RSS, Atom, sitemap, robots.txt, and a JavaScript search index.
-
-These features are controlled from `config.toml`, so small sites can disable what they do not need. The generated search index is a plain `window.searchIndex` script that templates can load for client-side search.
-
-## Content diagnostics
-
-Nida can check content before rendering and report broken `@/` internal links and missing Markdown image assets.
-
-## Static assets and pipeline
-
-Files under `static/` are copied to the output directory. Nida also includes optional pipeline features for fingerprinting, CSS/JS minification, SCSS compilation, and image processing.
-
-## Local development server
-
-`nida serve` builds the site, serves the output directory, watches for changes, and injects live reload when enabled.
-
-When `base_url` contains a path such as `/nida/`, the dev server also serves that base path locally so project-hosted sites can be previewed accurately.
+[`nida check`](@/reference/cli.md#check) finds broken links, missing images, template errors, and config typos without writing files. [`nida serve`](@/reference/cli.md#serve) previews the site with live reload. [`nida build`](@/reference/cli.md#build) writes the site, a sitemap, and `robots.txt`, with optional [fingerprinting and minification](@/reference/config.md#pipeline). See [Deployment](@/guide/deployment.md) for hosting.

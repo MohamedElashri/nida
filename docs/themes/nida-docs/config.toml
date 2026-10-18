@@ -1,0 +1,6 @@
+name = "Nida Docs"
+description = "Documentation theme used by the Nida docs site: generated sidebar, search, dark mode, and an on-page table of contents."
+
+[extra]
+# Section path whose tree fills the sidebar and the previous/next pager.
+docs_root = ""

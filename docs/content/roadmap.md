@@ -13,56 +13,31 @@ This roadmap is directional, not a release contract. Items move when real usage,
 
 | Area | Status | Outcome |
 | --- | --- | --- |
-| Asset pipeline ergonomics | Shipped in 0.5.7 | Easier asset URLs and responsive image presets. |
-| Search | Shipped in 0.5.7 | Generated client-side search index. |
-| Content diagnostics | Shipped in 0.5.7 | Build checks for broken internal links and missing Markdown image assets. |
-| Theme authoring | Next | A clearer path for building, overriding, and sharing small themes. |
-| Migration support | Next | Better guidance and diagnostics for trying Nida with existing static sites. |
-| Page table of contents | Future | Structured heading data and anchor links for long-form content. |
-| Local data files | Future | Reusable TOML, YAML, or JSON data for templates. |
-| Publishing workflows | Later | More examples for common hosts and project-hosted sites. |
+| Correctness and config warnings | Shipped in 0.7.0 | Docs, scaffold, and engine agree; unknown keys warn. |
+| Authoring | Shipped in 0.7.0 | Summaries, TOC, callouts, code options, math, Mermaid. |
+| Shortcodes and theme inheritance | Shipped in 0.7.0 | Template shortcodes and a consistent override order. |
+| Blog features | Shipped in 0.7.0 | Related posts, series, SEO partial, scoped feeds, `nida new`. |
+| Docs features | Shipped in 0.7.0 | Generated navigation, breadcrumbs, edit links, data files, translations, `nida check`. |
+| Theme authoring guide | Shipped in 0.7.0 | [Themes](@/guide/themes.md), with a minimal theme and the `nida-docs` theme as examples. |
+| Migration guides | Shipped in 0.7.0 | [Migrating](@/guide/migrating.md) from Zola, Hugo, and Jekyll. |
+| Starter themes | Next | A small blog theme that `nida init` can use. |
+| Migration diagnostics | Next | Warnings for unsupported front matter and shortcode patterns from other generators. |
+| Versioned documentation | Later | Docs for multiple release lines. |
+| Deploy presets | Later | Less setup for common static hosts. |
 
 ## Current focus
 
-### Theme authoring
+### Starter themes
 
-Themes work today, including inheritance and site-level overrides. The next step is making theme creation easier to understand without reading internals.
+`nida init` writes plain templates into the site. A small, maintained blog theme would give new sites a better default while still showing the override rules from the [Themes](@/guide/themes.md) guide.
 
-Planned outcomes:
+### Migration diagnostics
 
-- Minimal theme structure.
-- Clear template override rules.
-- Theme patterns for menus, metadata, and assets.
-- Small starter themes.
+`nida check` already warns about unknown config keys. The next step is warning about content patterns from other generators that Nida does not support, such as Zola function-call shortcodes or Hugo `{{%` shortcodes, so a migration shows a clear to-do list.
 
-### Migration support
+## Not planned
 
-Nida already borrows familiar static-site ideas: front matter, sections, permalinks, taxonomies, aliases, and `@/` internal links. Migration support should make trial runs easier and less mysterious.
-
-Planned outcomes:
-
-- Migration guidance for Zola-style sites.
-- Compatibility notes for Markdown, shortcodes, permalinks, and taxonomies.
-- Diagnostics for unsupported front matter and shortcode patterns.
-
-## Recently shipped
-
-- Asset pipeline ergonomics: clearer template helpers, responsive image presets, and base-path-aware manifest rewriting.
-- Search: generated client-side search indexes for small static sites.
-- Content diagnostics: build checks for broken `@/` links and missing Markdown image assets.
-
-## Later candidates
-
-These are useful ideas, but they should wait until the current surface area is well documented and stable.
-
-| Candidate | Why it might matter |
-| --- | --- |
-| Page table of contents | Improve docs, manuals, and long posts without custom parsing in templates. |
-| Local data files | Make reusable structured data available to templates without turning Nida into a CMS. |
-| Versioned documentation | Support docs for multiple release lines. |
-| Richer taxonomy pages | Better navigation for larger blogs and knowledge bases. |
-| Generated archive pages | A simple built-in archive pattern. |
-| Deploy presets | Less setup for common static hosts. |
+Some features fit general-purpose site frameworks better than a focused publishing tool: plugins or a scripting runtime, JavaScript bundling, arbitrary content collections, full multilingual content trees, and alternative template languages.
 
 ## Product principles
 

@@ -13,9 +13,10 @@ The site includes:
 * multiple blog posts
 * standalone pages
 * tags and categories
-* a lightweight built-in theme (site templates in `templates/`)
-* copied static assets
-* an example theme in `themes/ink/` demonstrating the theme system
+* site templates in `templates/` and static assets in `static/`
+* two demo themes that the site does not select: `themes/base/` and
+  `themes/ink/`, which extends `base`. Add `theme = "ink"` to `config.toml`
+  to try them; site templates still override the theme's.
 
 Typical local usage:
 

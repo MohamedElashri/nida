@@ -11,8 +11,8 @@ Generated artifacts are files that are not direct renders of content templates. 
 
 The build includes artifact paths for enabled features before writing:
 
-- RSS
-- Atom
+- the Atom feed (`[feed]`) and the optional RSS feed (`[rss]`)
+- section feeds and taxonomy term feeds
 - sitemap
 - robots
 - search index
@@ -21,13 +21,20 @@ That list is passed to `output.ValidateWritePlan` so conflicts fail before outpu
 
 ## Feeds
 
-`internal/feeds.GenerateAll` can generate RSS and Atom.
+`internal/feeds.GenerateAll` writes the site Atom feed from `[feed]` and, when enabled, an RSS 2.0 feed from `[rss]`. Both are built from a `spec` (title, filename, alternate URL, and items) and rendered by `renderAtom` or `renderRSS`.
 
-Both feed types start from `state.Index.AllPages`, which is already sorted and draft-filtered by the site index. When `rss.sections` or `atom.sections` is set, feed generation narrows that list to pages whose root section matches one of the configured names before applying the feed limit. When the section list is omitted or empty, the feed keeps the all-page behavior.
+Site feeds start from `state.Index.AllPages`, which is already sorted and filtered for drafts and future dates. When `feed.sections` or `rss.sections` is set, the list is narrowed to pages whose root section matches before the limit is applied.
 
-RSS uses page title, canonical link, GUID, publish date, and description. Atom includes feed metadata, author metadata where available, page summary, and rendered HTML content.
+`scopedSpecs` adds more feeds:
 
-When changing feed behavior, test date formatting, empty dates, author fallback, limit handling, and canonical URL construction.
+- one for each section with `generate_feeds = true`, written at `<section>/feed.xml` (and `<section>/rss.xml`), including pages in nested sections
+- one for each term of a taxonomy with `feed = true`, such as `tags/go/feed.xml`
+
+Scoped feeds use the site feed's filename and limit. `feeds.Filenames` returns the same list of paths so the build can validate and clean them up.
+
+Entries use the page `description` as the summary, falling back to `.Page.Summary`. Atom `updated` uses the page's `updated` date when it is newer than `date`. Links inside entry HTML are made absolute with `resolveURL`, which resolves them the way a browser would against the page URL.
+
+When changing feed behavior, test date formatting, empty dates, author fallback, limit handling, scoped feed paths, and canonical URL construction.
 
 ## Sitemap
 
@@ -47,23 +54,9 @@ If custom robots content is configured, that content is used. Otherwise Nida wri
 
 `internal/searchindex.Generate` writes JavaScript that assigns JSON data to `window.searchIndex`.
 
-The current shape is:
+The output format is described in the [Search reference](@/reference/search.md#index-format).
 
-```json
-{
-  "documentStore": {
-    "docs": {
-      "/page/url/": {
-        "title": "Title",
-        "description": "Optional description",
-        "body": "Plain text"
-      }
-    }
-  }
-}
-```
-
-Pages and sections are included. HTML is stripped with a simple tag scanner, entities are unescaped, and whitespace is collapsed.
+Pages and sections, including nested sections, are included. `search.sections` restricts the index to root sections and `search.body_limit` truncates bodies. HTML is stripped with a simple tag scanner, entities are unescaped, and whitespace is collapsed.
 
 ## Adding Artifacts
 

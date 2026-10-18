@@ -6,65 +6,107 @@ import (
 	stdhtml "html"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/highlight"
+	"github.com/MohamedElashri/nida/internal/parallel"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
 	renderhtml "github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 )
 
-func Render(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
-	processed, err := processShortcodes(source, cfg, pathLookup)
-	if err != nil {
-		return "", err
-	}
-	rendered, err := renderMarkdownCore(processed.Source, cfg, pathLookup)
-	if err != nil {
-		return "", err
-	}
-	return restoreShortcodeHTML(rendered, processed.Replacements), nil
+// Result is rendered Markdown plus the structure templates need from it.
+type Result struct {
+	HTML string
+	TOC  []content.Heading
 }
 
-func renderMarkdownCore(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+// Render renders a Markdown snippet. Template shortcodes are not available;
+// details blocks and rawhtml markers still work.
+func Render(source string, cfg config.SiteConfig, pathLookup PathLookup) (string, error) {
+	result, err := RenderDocument(source, cfg, Env{Lookup: pathLookup})
+	return result.HTML, err
+}
+
+// RenderDocument renders Markdown and also returns its table of contents.
+func RenderDocument(source string, cfg config.SiteConfig, env Env) (Result, error) {
+	processed, err := processShortcodes(source, cfg, env)
+	if err != nil {
+		return Result{}, err
+	}
+	result, err := renderMarkdownCore(processed.Source, cfg, env)
+	if err != nil {
+		return Result{}, err
+	}
+	result.HTML = restoreShortcodeHTML(result.HTML, processed.Replacements)
+	return result, nil
+}
+
+func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
+	pathLookup := env.Lookup
 	options := []renderer.Option{
 		renderer.WithNodeRenderers(
 			util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
-			util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup}, 600),
-			util.Prioritized(&imageRenderer{pathLookup: pathLookup}, 700),
+			util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup, basePath: config.BasePath(cfg.BaseURL)}, 600),
+			util.Prioritized(&imageRenderer{pathLookup: pathLookup, basePath: config.BasePath(cfg.BaseURL), images: env.Images, page: env.Page}, 700),
+			util.Prioritized(&headingRenderer{anchors: cfg.Markdown.HeadingAnchors}, 500),
+			util.Prioritized(calloutRenderer{}, 500),
 		),
-		renderhtml.WithHardWraps(),
+	}
+	if cfg.Markdown.HardWraps {
+		options = append(options, renderhtml.WithHardWraps())
 	}
 	if cfg.Markdown.UnsafeHTML {
 		options = append(options, renderhtml.WithUnsafe())
 	}
 
-	engine := goldmark.New(
-		goldmark.WithExtensions(extension.GFM, extension.Footnote),
-		goldmark.WithParserOptions(
-			parser.WithAutoHeadingID(),
-		),
-		goldmark.WithRendererOptions(options...),
-	)
-
-	var buf bytes.Buffer
-	if err := engine.Convert([]byte(source), &buf); err != nil {
-		return "", fmt.Errorf("render markdown: %w", err)
+	parserOptions := []parser.Option{
+		parser.WithAutoHeadingID(),
+		parser.WithAttribute(),
+		parser.WithASTTransformers(util.Prioritized(calloutTransformer{translate: env.Translate}, 100)),
+	}
+	if cfg.Markdown.Math {
+		parserOptions = append(parserOptions,
+			parser.WithBlockParsers(util.Prioritized(mathBlockParser{}, 150)),
+			parser.WithInlineParsers(util.Prioritized(mathInlineParser{}, 150)),
+		)
+		options = append(options, renderer.WithNodeRenderers(util.Prioritized(mathRenderer{}, 500)))
 	}
 
-	return buf.String(), nil
+	return goldmark.New(
+		goldmark.WithExtensions(extension.GFM, extension.Footnote),
+		goldmark.WithParserOptions(parserOptions...),
+		goldmark.WithRendererOptions(options...),
+	)
+}
+
+func renderMarkdownCore(source string, cfg config.SiteConfig, env Env) (Result, error) {
+	engine := newEngine(cfg, env)
+	src := []byte(source)
+	ctx := parser.NewContext(parser.WithIDs(newHeadingIDs()))
+	doc := engine.Parser().Parse(text.NewReader(src), parser.WithContext(ctx))
+
+	var buf bytes.Buffer
+	if err := engine.Renderer().Render(&buf, src, doc); err != nil {
+		return Result{}, fmt.Errorf("render markdown: %w", err)
+	}
+
+	return Result{HTML: buf.String(), TOC: collectTOC(doc, src)}, nil
 }
 
 type linkRenderer struct {
 	cfg        config.MarkdownConfig
 	pathLookup PathLookup
+	basePath   string
 }
 
 func (r *linkRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -75,7 +117,7 @@ func (r *linkRenderer) renderLink(w util.BufWriter, source []byte, node ast.Node
 	n := node.(*ast.Link)
 	if entering {
 		destination := string(n.Destination)
-		resolved := ResolveInternalPath(destination, r.pathLookup)
+		resolved := resolveWithBasePath(destination, r.pathLookup, r.basePath)
 		resolved = safeMarkdownURL(resolved, linkURL)
 		if _, err := w.WriteString(`<a href="` + string(util.EscapeHTML([]byte(resolved))) + `"`); err != nil {
 			return ast.WalkStop, err
@@ -187,46 +229,56 @@ func externalLinkRel(cfg config.MarkdownConfig) string {
 	return strings.Join(parts, " ")
 }
 
-func RenderItem(item content.Page, cfg config.SiteConfig, pathLookup PathLookup) (content.Page, error) {
-	html, err := Render(item.BodyMarkdown, cfg, pathLookup)
+func RenderItem(item content.Page, cfg config.SiteConfig, env Env) (content.Page, error) {
+	body, summarySource, hasMarker := splitSummary(item.BodyMarkdown)
+	env.Page = &item
+
+	result, err := RenderDocument(body, cfg, env)
 	if err != nil {
 		return content.Page{}, fmt.Errorf("render %q markdown: %w", item.RelativePath, err)
 	}
+	item.BodyHTML = result.HTML
+	item.TOC = result.TOC
 
-	item.BodyHTML = html
-	item.ReadingTime = content.EstimateReadingTime(item.BodyMarkdown)
+	if hasMarker {
+		summaryResult, err := RenderDocument(summarySource, cfg, env)
+		if err != nil {
+			return content.Page{}, fmt.Errorf("render %q summary: %w", item.RelativePath, err)
+		}
+		item.Summary = summaryResult.HTML
+	} else {
+		item.Summary = firstParagraph(result.HTML)
+	}
+
+	item.ReadingTime = content.EstimateReadingTime(body)
+	item.WordCount = content.CountWords(body)
 	return item, nil
 }
 
-func RenderItems(items []content.Page, cfg config.SiteConfig, pathLookup PathLookup) ([]content.Page, error) {
-	rendered := make([]content.Page, 0, len(items))
-	for _, item := range items {
-		next, err := RenderItem(item, cfg, pathLookup)
-		if err != nil {
-			return nil, err
-		}
-		rendered = append(rendered, next)
-	}
-
-	return rendered, nil
+// RenderItems renders pages concurrently; results keep the input order.
+func RenderItems(items []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {
+	return parallel.Map(items, func(item content.Page) (content.Page, error) {
+		return RenderItem(item, cfg, env)
+	})
 }
 
-func RenderPages(pages []content.Page, cfg config.SiteConfig, pathLookup PathLookup) ([]content.Page, error) {
-	return RenderItems(pages, cfg, pathLookup)
+func RenderPages(pages []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {
+	return RenderItems(pages, cfg, env)
 }
 
-func RenderSections(sections []content.Section, cfg config.SiteConfig, pathLookup PathLookup) ([]content.Section, error) {
+func RenderSections(sections []content.Section, cfg config.SiteConfig, env Env) ([]content.Section, error) {
 	rendered := make([]content.Section, len(sections))
 	for i, s := range sections {
 		if s.BodyMarkdown == "" {
 			rendered[i] = s
 			continue
 		}
-		html, err := Render(s.BodyMarkdown, cfg, pathLookup)
+		result, err := RenderDocument(s.BodyMarkdown, cfg, env)
 		if err != nil {
 			return nil, fmt.Errorf("render section %q markdown: %w", s.RelativePath, err)
 		}
-		s.BodyHTML = html
+		s.BodyHTML = result.HTML
+		s.TOC = result.TOC
 		rendered[i] = s
 	}
 	return rendered, nil
@@ -252,9 +304,34 @@ func (r *fencedCodeRenderer) renderFencedCodeBlock(w util.BufWriter, source []by
 		code = stripCollapseMarker(code)
 	}
 
-	html, err := highlight.Render(code, string(n.Language(source)), r.theme)
+	var info codeInfo
+	if n.Info != nil {
+		info = parseCodeInfo(string(n.Info.Value(source)))
+	}
+
+	if strings.EqualFold(info.Language, "mermaid") {
+		// Mermaid reads the diagram source from the element text.
+		_, err := w.WriteString(`<pre class="mermaid">` + stdhtml.EscapeString(code) + "</pre>\n")
+		if err != nil {
+			return ast.WalkStop, err
+		}
+		return ast.WalkSkipChildren, nil
+	}
+
+	// hl_lines count from the first line of the block even when linenostart
+	// changes the displayed numbers.
+	opts := highlight.Options{LineNumbers: info.LineNumbers, LineStart: info.LineStart}
+	offset := max(info.LineStart-1, 0)
+	for _, r := range info.HighlightLn {
+		opts.HighlightLines = append(opts.HighlightLines, [2]int{r[0] + offset, r[1] + offset})
+	}
+
+	html, err := highlight.RenderWithOptions(code, info.Language, r.theme, opts)
 	if err != nil {
 		return ast.WalkStop, err
+	}
+	if info.Title != "" {
+		html = `<figure class="code-block"><figcaption class="code-title">` + stdhtml.EscapeString(info.Title) + "</figcaption>" + html + "</figure>\n"
 	}
 
 	if isCollapsible {
@@ -309,6 +386,9 @@ func blockText(source []byte, node ast.Node) string {
 
 type imageRenderer struct {
 	pathLookup PathLookup
+	basePath   string
+	images     Images
+	page       *content.Page
 }
 
 func (r *imageRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -322,10 +402,22 @@ func (r *imageRenderer) renderImage(w util.BufWriter, source []byte, node ast.No
 
 	n := node.(*ast.Image)
 	dest := string(n.Destination)
-	resolved := ResolveInternalPath(dest, r.pathLookup)
+	resolved := resolveWithBasePath(dest, r.pathLookup, r.basePath)
 	resolved = safeMarkdownURL(resolved, imageURL)
 	altText := extractTextFromInline(n, source)
-	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(altText)) + `" loading="lazy" decoding="async"`)
+	_, _ = w.WriteString(`<img src="` + string(util.EscapeHTML([]byte(resolved))) + `" alt="` + string(util.EscapeHTML(altText)) + `"`)
+	if r.images != nil && resolved != "" {
+		if info, ok := r.images.Image(resolved, r.page); ok {
+			if info.Srcset != "" {
+				_, _ = w.WriteString(` srcset="` + string(util.EscapeHTML([]byte(info.Srcset))) + `"`)
+				if info.Sizes != "" {
+					_, _ = w.WriteString(` sizes="` + string(util.EscapeHTML([]byte(info.Sizes))) + `"`)
+				}
+			}
+			_, _ = w.WriteString(` width="` + strconv.Itoa(info.Width) + `" height="` + strconv.Itoa(info.Height) + `"`)
+		}
+	}
+	_, _ = w.WriteString(` loading="lazy" decoding="async"`)
 	if n.Title != nil {
 		_, _ = w.WriteString(` title="` + string(util.EscapeHTML(n.Title)) + `"`)
 	}

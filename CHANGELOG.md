@@ -2,7 +2,98 @@
 
 All notable changes to Nida are documented here.
 
-## [0.6.0] - Unreleased
+## [0.7.0] - 2026-10-18
+
+### Added
+* Optional RSS 2.0 feed through a new `[rss]` table, written next to the Atom feed. Off by default.
+* Warnings for unrecognized `config.toml` keys, so typos and settings from other generators no longer get dropped without notice.
+* `future` config option and `--future`/`-f` flag. Future-dated pages are now skipped by default.
+* `robots_meta` config option, exposed to templates as `.Robots`.
+* `[home]` table with `sections` and `limit` to control which pages the homepage lists.
+* `markdown.hard_wraps` option.
+* `.Theme.Extra`, the merged theme and site `[extra]` table.
+* Full YAML front matter support, including block lists and nested maps.
+* Zola-style `[taxonomies]` front matter tables are read as taxonomy terms.
+* Summaries: `<!-- more -->` splits a page, and `.Page.Summary` falls back to the first paragraph. Feeds use it when a page has no `description`.
+* `.Page.TOC` and `.Section.TOC`: nested heading data for tables of contents. Custom heading IDs with `## Title {#id}`.
+* `markdown.heading_anchors` adds a `#` self-link to each heading.
+* GitHub-style callouts (`> [!NOTE]`, `> [!WARNING] Custom title`).
+* Code block options in the info string: `title`, `hl_lines`, `linenos`, and `linenostart`.
+* `markdown.math` passes `$...$` and `$$...$$` TeX through for KaTeX or MathJax.
+* KaTeX and Mermaid are bundled in the binary. The built-in `nida-scripts` partial loads them only on pages with math or diagrams, and their files are written only when a page uses them, so sites work offline with no CDN.
+* Shortcode templates can call partials from `templates/partials/` in the site and its themes.
+* ```` ```mermaid ```` blocks render as `<pre class="mermaid">` for Mermaid.
+* `.Page.WordCount`.
+* Template functions: `dict`, `slice`, `seq`, `first`, `last`, `where`, `truncate`, `plainify`, `markdownify`, `absURL`, `relURL`, `jsonify`, `upper`, `title`, `split`, and `urlize`.
+* `.Index.GetPage` and `.Index.GetSection` look up content by path.
+* A "Writing Content" docs page and a template function reference.
+* Template shortcodes: `{{< name args >}}` and paired `{{< name >}}...{{< /name >}}`, loaded from `templates/shortcodes/` in the site and themes. Built-in `figure`, `youtube`, and `callout` shortcodes.
+* Themes can omit `config.toml`, and a site using a theme no longer needs its own `base.html`.
+* `nida new` creates content from archetypes (`archetypes/<section>.md` or `default.md`, in the site or a theme).
+* `.Index.Related` ranks pages by shared taxonomy terms. `.Index.Series` returns a post's series with position, previous, and next.
+* `groupByMonth` and `merge` template functions.
+* `syntaxCSS` template function returns highlighting CSS for `syntax_theme` (or a named Chroma style), so the setting has a visible effect.
+* Built-in `nida-seo` partial for title, description, canonical, Open Graph, Twitter cards, and JSON-LD.
+* `updated_from_git` sets `updated` dates from git history.
+* Section feeds (`generate_feeds = true`) and per-term taxonomy feeds (`feed = true`). Both settings were parsed before but had no effect.
+* Markdown images get `width` and `height` from the image file, and a `srcset` when the image pipeline is enabled. Page bundle images are resized too, with variants written next to the copied original.
+* `nida check` validates config, content links, templates, shortcodes, and routes without writing output; `--external` also checks outbound links.
+* `--base-url` and `--output`/`-o` flags for `build` and `serve`, for preview deployments.
+* Build output reports elapsed time.
+* `.Index.Ancestors` for breadcrumbs, section `weight` for ordering child sections, and `edit_url` with `.EditURL`.
+* Data files: TOML, JSON, and YAML from `data/` (and themes) as `.Data`.
+* Translations: `i18n/<language>.toml` files and the `t` template function, with language fallback. Default callout titles can be translated.
+* `search.sections` and `search.body_limit`, plus a Pagefind guide for larger sites.
+* `.Index.Nav` returns pages and child sections interleaved by weight for documentation sidebars, and `.Index.Neighbors` returns previous and next pages across that tree.
+* Heading IDs keep Unicode letters, so headings in Arabic and other non-Latin scripts get readable anchors instead of `heading`, `heading-1`, and so on. ASCII IDs are unchanged.
+* New docs: [Themes](https://melashri.net/nida/guide/themes/) (theme authoring with a minimal example theme) and [Migrating](https://melashri.net/nida/guide/migrating/) (Zola, Hugo, and Jekyll). The rest of the guide, reference, and internals pages are updated for 0.7.0.
+* The docs site is rebuilt as the `nida-docs` theme in `docs/themes/nida-docs`, with a new design, dark mode, a keyboard-driven search dialog, generated navigation, an on-page outline, "last updated" dates from git, and tabs, cards, steps, and version-badge shortcodes.
+* CI runs `nida check` on the documentation site.
+
+### Changed
+* Markdown rendering, page templates, and page writes now run in parallel. A 2,000-post site builds about 1.7× faster.
+* **Breaking:** single newlines in Markdown paragraphs are now soft breaks (a space), matching CommonMark. Set `markdown.hard_wraps = true` to keep the old `<br>` behavior.
+* **Breaking:** pages with a `date` in the future are no longer published unless `future = true` or `--future` is used.
+* **Breaking:** pages no longer get `noai, noimageai` in `.Robots` by default. Set `robots_meta = "noai, noimageai"` to keep it.
+* The homepage list now respects `[home]` instead of always showing the five newest pages from every section.
+* Atom entry `updated` times now use the page's `updated` front matter when it is newer than `date`.
+
+### Fixed
+* `@/section/_index.md` links resolved through page permalink patterns and could produce URLs like `/posts/{slug}/`. Section links and `.Section.URL` now use the route the section renders at.
+* Nested sections were missing from the search index, and explicit sections had an empty `.URL`.
+* `pipeline.minify_css` and `pipeline.minify_js` were documented but did nothing. CSS and JS assets are now minified (files ending in `.min.css` or `.min.js` are left alone), before fingerprinting so hashes match the served bytes.
+* The asset pipeline only processed the site's `static/` directory. Theme static files are now fingerprinted and minified too, with site files still taking precedence.
+* `minify_html` removed whitespace between inline elements, so `<a>one</a> <b>two</b>` rendered as "onetwo". HTML is now minified with the same library as CSS and JS.
+* Taxonomy terms given as a single string, such as `tags = "go"`, were ignored.
+* Atom and RSS entry categories now come from the configured taxonomies instead of always `tags` and `categories`.
+* `.Page.PrevURL`, `.PrevTitle`, `.NextURL`, and `.NextTitle` were always empty on rendered pages.
+* A site with pages in `content/` but no `content/_index.md` produced no home page.
+* `nida serve` partial rebuilds broke `@/section/_index.md` links.
+* With the image pipeline enabled, a static `.webp` file failed the build. WebP files are now copied without resizing.
+* `resizeImage` ignored `static_dir`, `content_dir`, and `pipeline.images.quality`.
+* `readFile` and `style.css.html` lookup ignored parent themes, and a theme's `style.css.html` overrode the site's.
+* A shortcode inside a heading, such as `## Callouts {{< since "0.7.0" >}}`, leaked its internal placeholder into the heading ID and the TOC title.
+* A site with sections but no `section` or `list` template failed with `missing template "list"`. The error now explains which template to add.
+* Theme inheritance now applies to templates, partials, shortcodes, static files, SCSS, data files, translations, and archetypes. Before, only the selected theme's own files were used and `extends` affected `[extra]` only.
+* A parent theme's `[extra]` values no longer override its child theme's values.
+* Site partials and `base.html` now override theme versions as documented. Before, the order depended on file paths.
+* Shortcode syntax inside code blocks and inline code is no longer processed, including the `details` shortcode.
+* `@/` internal links in Markdown left out the `base_url` path, so they broke on sites published under a subpath such as `/nida/`.
+* Feeds now make links absolute the way a browser does. Root-relative links previously got the `base_url` path added a second time.
+* Pagination links ignored a custom `paginate_path` and always pointed to `/page/N/`, so Next/Previous links led to 404s.
+* `[sections]` `paginate_path`, `default_sort_by`, and `default_page_template` were documented but had no effect.
+* The canonical URL for a section without pagination was missing its trailing slash.
+* `nida init` wrote `[rss]` and `[atom]` tables that the 0.6 engine ignored. It now writes `[feed]`.
+* The docs described `[rss]`/`[atom]` settings that did not exist. They now match the engine.
+* Removed unsupported `taxonomies.path` and `taxonomies.page_template` keys from the example sites.
+* The serve rebuild now cleans up a disabled search index file.
+
+### Migration Notes
+* To keep hard line breaks: `[markdown] hard_wraps = true`.
+* To keep publishing future-dated posts: `future = true`.
+* To keep the previous robots meta value: `robots_meta = "noai, noimageai"`.
+
+## [0.6.0] - 2026-08-02
 
 ### Added
 * N/A

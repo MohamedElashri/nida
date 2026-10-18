@@ -37,9 +37,12 @@ Run from the repository root:
 ```bash
 go test ./...
 go build ./...
+go run ./cmd/nida check -s ./example-site
+go run ./cmd/nida check -s ./example-site-ar
 go run ./cmd/nida build -s ./example-site
 go run ./cmd/nida build -s ./example-site-ar
 make docs-build
+go run ./cmd/nida check -s ./docs --external
 go run ./cmd/nida version
 goreleaser check
 ```

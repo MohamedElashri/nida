@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Fixture Site</title>
+    <link>https://example.com</link>
+    <description>Fixture feed</description>
+    <language>en</language>
+    <generator>Nida dev</generator>
+    <lastBuildDate>Tue, 14 Apr 2026 10:00:00 +0000</lastBuildDate>
+    <atom:link href="https://example.com/rss.xml" rel="self" type="application/rss+xml"></atom:link>
+    <item>
+      <title>Hello World</title>
+      <link>https://example.com/posts/hello-world/</link>
+      <guid isPermaLink="true">https://example.com/posts/hello-world/</guid>
+      <pubDate>Sun, 12 Apr 2026 10:00:00 +0000</pubDate>
+      <dc:creator>Fixture Author</dc:creator>
+      <category>go</category>
+      <description>A fixture post for early tests.</description>
+      <content:encoded><![CDATA[<p>Hello <a href="https://example.com/about/">feed</a>.</p>
+]]></content:encoded>
+    </item>
+  </channel>
+</rss>

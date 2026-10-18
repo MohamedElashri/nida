@@ -1,0 +1,14 @@
+{{- define "search-dialog" -}}
+{{- if .Config.Search.Enabled }}
+<dialog class="search-dialog" data-search-dialog data-index="{{ .BasePath }}/{{ .Config.Search.Filename }}" data-base-path="{{ .BasePath }}" aria-label="{{ t "search_placeholder" }}">
+  <form class="search-form" method="dialog" role="search">
+    {{ template "icon" "search" }}
+    <input class="search-input" type="search" placeholder="{{ t "search_placeholder" }}" autocomplete="off" spellcheck="false" aria-controls="search-results" data-search-input>
+    <kbd class="search-esc">Esc</kbd>
+  </form>
+  <ol class="search-results" id="search-results" role="listbox" data-search-results></ol>
+  <p class="search-empty" data-search-empty hidden>{{ t "search_no_results" }}</p>
+  <p class="search-hint">{{ t "search_hint" }}</p>
+</dialog>
+{{- end }}
+{{- end -}}

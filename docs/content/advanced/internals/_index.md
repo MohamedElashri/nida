@@ -15,13 +15,16 @@ The CLI is intentionally thin. `internal/cli` parses command flags and orchestra
 
 The full build flow is:
 
-1. load and validate config
-2. discover content and render Markdown
+1. load and validate config, collecting warnings
+2. discover content, then render Markdown with shortcodes, images, and translations
 3. build routes, sections, taxonomies, and site index data
-4. load templates and render HTML pages
+4. load templates and data files, then render HTML pages
 5. validate and write output files
-6. write generated artifacts
-7. process and copy assets
+6. process assets: SCSS, minification, images, fingerprinting
+7. write generated artifacts
+8. copy static files and page bundle resources
+
+Markdown rendering, page rendering, and page writes run in parallel.
 
 Serve mode starts with the same build, then watches the site tree and chooses between asset sync, incremental content rebuilds, and full rebuilds.
 
@@ -34,6 +37,7 @@ When changing internals, keep these rules in mind:
 - reject symlink surprises before reading or writing
 - validate routes and output conflicts before writes
 - keep public config and front matter changes documented
-- preserve deterministic ordering for pages, sections, taxonomies, and generated files
+- preserve deterministic ordering for pages, sections, taxonomies, and generated files, even when work runs in parallel
+- resolve theme files through `internal/themes` so inheritance applies everywhere
 
 The pages below describe where those rules are enforced.

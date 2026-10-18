@@ -1,24 +1,37 @@
 package config
 
 type SiteConfig struct {
-	BaseURL     string            `toml:"base_url"`
-	Title       string            `toml:"title"`
-	Description string            `toml:"description"`
-	Language    string            `toml:"language"`
-	Author      string            `toml:"author"`
-	ContentDir  string            `toml:"content_dir"`
-	TemplateDir string            `toml:"template_dir"`
-	StaticDir   string            `toml:"static_dir"`
-	OutputDir   string            `toml:"output_dir"`
-	ThemesDir   string            `toml:"themes_dir"`
-	Theme       string            `toml:"theme"`
-	Paginate    int               `toml:"paginate"`
-	Drafts      bool              `toml:"drafts"`
-	MinifyHTML  bool              `toml:"minify_html"`
-	SyntaxTheme string            `toml:"syntax_theme"`
-	Markdown    MarkdownConfig    `toml:"markdown"`
-	Taxonomies  []TaxonomyConfig  `toml:"taxonomies"`
+	BaseURL     string `toml:"base_url"`
+	Title       string `toml:"title"`
+	Description string `toml:"description"`
+	Language    string `toml:"language"`
+	Author      string `toml:"author"`
+	ContentDir  string `toml:"content_dir"`
+	TemplateDir string `toml:"template_dir"`
+	StaticDir   string `toml:"static_dir"`
+	OutputDir   string `toml:"output_dir"`
+	ThemesDir   string `toml:"themes_dir"`
+	DataDir     string `toml:"data_dir"`
+	Theme       string `toml:"theme"`
+	Paginate    int    `toml:"paginate"`
+	Drafts      bool   `toml:"drafts"`
+	Future      bool   `toml:"future"`
+	RobotsMeta  string `toml:"robots_meta"`
+	// EditURL is prefixed to a page's content path to build .EditURL, for
+	// example "https://github.com/user/repo/edit/main/content/".
+	EditURL string `toml:"edit_url"`
+	// UpdatedFromGit sets a page's updated date from its last git commit
+	// when front matter does not set one.
+	UpdatedFromGit bool             `toml:"updated_from_git"`
+	MinifyHTML     bool             `toml:"minify_html"`
+	SyntaxTheme    string           `toml:"syntax_theme"`
+	Markdown       MarkdownConfig   `toml:"markdown"`
+	Taxonomies     []TaxonomyConfig `toml:"taxonomies"`
+	// Feed is the Atom feed. RSS is an optional second feed for readers
+	// that still expect RSS 2.0.
 	Feed        FeedConfig        `toml:"feed"`
+	RSS         FeedConfig        `toml:"rss"`
+	Home        HomeConfig        `toml:"home"`
 	Sitemap     SitemapConfig     `toml:"sitemap"`
 	Robots      RobotsConfig      `toml:"robots"`
 	Server      ServerConfig      `toml:"server"`
@@ -28,6 +41,15 @@ type SiteConfig struct {
 	Search      SearchConfig      `toml:"search"`
 	Diagnostics DiagnosticsConfig `toml:"diagnostics"`
 	Extra       map[string]any    `toml:"extra"`
+
+	// Warnings collects non-fatal config problems, such as unknown keys or
+	// deprecated tables, for the CLI to report.
+	Warnings []string `toml:"-"`
+}
+
+type HomeConfig struct {
+	Sections []string `toml:"sections"`
+	Limit    int      `toml:"limit"`
 }
 
 type DiagnosticsConfig struct {
@@ -37,6 +59,10 @@ type DiagnosticsConfig struct {
 type SearchConfig struct {
 	Enabled  bool   `toml:"enabled"`
 	Filename string `toml:"filename"`
+	// Sections limits the index to these root sections. Empty indexes all.
+	Sections []string `toml:"sections"`
+	// BodyLimit truncates each body to this many characters. 0 keeps it all.
+	BodyLimit int `toml:"body_limit"`
 }
 
 type TaxonomyConfig struct {
@@ -51,9 +77,14 @@ type MarkdownConfig struct {
 	ExternalLinksTargetBlank bool `toml:"external_links_target_blank"`
 	ExternalLinksNoFollow    bool `toml:"external_links_no_follow"`
 	ExternalLinksNoReferrer  bool `toml:"external_links_no_referrer"`
-	// UnsafeHTML is an explicit opt-in for trusted-author sites that need raw
-	// HTML in Markdown. Keep this false when Markdown can come from untrusted
-	// contributors.
+	// HardWraps renders single newlines inside a paragraph as <br>. CommonMark
+	// and most generators treat them as spaces, so this is off by default.
+	HardWraps bool `toml:"hard_wraps"`
+	// HeadingAnchors appends a "#" self-link to every heading.
+	HeadingAnchors bool `toml:"heading_anchors"`
+	// Math passes $...$ and $$...$$ TeX through for KaTeX or MathJax.
+	Math bool `toml:"math"`
+	// UnsafeHTML allows raw HTML in Markdown; only for trusted authors.
 	UnsafeHTML bool `toml:"unsafe_html"`
 }
 
@@ -96,6 +127,11 @@ type PipelineConfig struct {
 	MinifyJS    bool        `toml:"minify_js"`
 	Images      ImageConfig `toml:"images"`
 	SCSS        SCSSConfig  `toml:"scss"`
+}
+
+// Active reports whether any asset pipeline step is enabled.
+func (p PipelineConfig) Active() bool {
+	return p.Fingerprint || p.MinifyCSS || p.MinifyJS || p.Images.Enabled || p.SCSS.Enabled
 }
 
 type ImageConfig struct {

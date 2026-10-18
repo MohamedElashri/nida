@@ -12,25 +12,22 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/MohamedElashri/nida/internal/archetype"
 	"github.com/MohamedElashri/nida/internal/assets"
 	"github.com/MohamedElashri/nida/internal/buildinfo"
 	"github.com/MohamedElashri/nida/internal/config"
-	"github.com/MohamedElashri/nida/internal/feeds"
 	"github.com/MohamedElashri/nida/internal/output"
-	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
-	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/scaffold"
-	"github.com/MohamedElashri/nida/internal/searchindex"
 	"github.com/MohamedElashri/nida/internal/server"
 	"github.com/MohamedElashri/nida/internal/site"
-	"github.com/MohamedElashri/nida/internal/sitemap"
 	"github.com/MohamedElashri/nida/internal/watcher"
 )
 
-// Run executes the narrow public command surface defined in the project plan.
+// Run executes a nida command and returns the process exit code.
 func Run(args []string) int {
 	return run(os.Stdout, os.Stderr, args)
 }
@@ -39,7 +36,11 @@ type commandOptions struct {
 	siteRoot   string
 	configPath string
 	drafts     bool
+	future     bool
 	port       int
+	baseURL    string
+	outputDir  string
+	external   bool
 }
 
 type initOptions struct {
@@ -66,6 +67,18 @@ func run(stdout, stderr io.Writer, args []string) int {
 			return writeCommandError(stderr, err)
 		}
 		return runInit(stdout, stderr, opts)
+	case "new":
+		opts, target, err := parseNewFlags(args[1:])
+		if err != nil {
+			return writeCommandError(stderr, err)
+		}
+		return runNew(stdout, stderr, opts, target)
+	case "check":
+		opts, err := parseCheckFlags(args[1:])
+		if err != nil {
+			return writeCommandError(stderr, err)
+		}
+		return runCheck(stdout, stderr, opts)
 	case "build":
 		opts, err := parseBuildFlags(args[1:])
 		if err != nil {
@@ -109,17 +122,62 @@ func parseInitFlags(args []string) (initOptions, error) {
 	return opts, nil
 }
 
+func parseNewFlags(args []string) (commandOptions, string, error) {
+	fs := flag.NewFlagSet("new", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	opts := commandOptions{}
+	addSiteFlags(fs, &opts)
+
+	if err := fs.Parse(args); err != nil {
+		return commandOptions{}, "", err
+	}
+	if fs.NArg() != 1 {
+		return commandOptions{}, "", fmt.Errorf("new expects one content path, such as posts/my-post.md")
+	}
+	return opts, fs.Arg(0), nil
+}
+
+func runNew(stdout, stderr io.Writer, opts commandOptions, target string) int {
+	cfg, _, err := loadCommandConfig(opts)
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+	result, err := archetype.Create(opts.siteRoot, cfg, target, time.Now())
+	if err != nil {
+		return writeCommandError(stderr, err)
+	}
+	colors := colorsFor(stdout)
+	_, _ = fmt.Fprintf(stdout, "%s %s path=%s archetype=%s\n", colors.command("nida new:"), colors.success("created"), result.Path, result.Archetype)
+	return 0
+}
+
+// addSiteFlags registers the flags shared by commands that load a site.
+func addSiteFlags(fs *flag.FlagSet, opts *commandOptions) {
+	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
+	fs.StringVar(&opts.siteRoot, "s", ".", "site root")
+	fs.StringVar(&opts.configPath, "config", "", "config file path")
+	fs.StringVar(&opts.configPath, "c", "", "config file path")
+}
+
+// addContentFlags registers flags that change which content is built.
+func addContentFlags(fs *flag.FlagSet, opts *commandOptions) {
+	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
+	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
+	fs.BoolVar(&opts.future, "future", false, "include future-dated content")
+	fs.BoolVar(&opts.future, "f", false, "include future-dated content")
+	fs.StringVar(&opts.baseURL, "base-url", "", "override base_url")
+	fs.StringVar(&opts.outputDir, "output", "", "override output_dir")
+	fs.StringVar(&opts.outputDir, "o", "", "override output_dir")
+}
+
 func parseBuildFlags(args []string) (commandOptions, error) {
 	fs := flag.NewFlagSet("build", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
 	opts := commandOptions{}
-	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
-	fs.StringVar(&opts.siteRoot, "s", ".", "site root")
-	fs.StringVar(&opts.configPath, "config", "", "config file path")
-	fs.StringVar(&opts.configPath, "c", "", "config file path")
-	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
-	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
+	addSiteFlags(fs, &opts)
+	addContentFlags(fs, &opts)
 
 	if err := fs.Parse(args); err != nil {
 		return commandOptions{}, err
@@ -132,14 +190,28 @@ func parseServeFlags(args []string) (commandOptions, error) {
 	fs.SetOutput(io.Discard)
 
 	opts := commandOptions{}
-	fs.StringVar(&opts.siteRoot, "site", ".", "site root")
-	fs.StringVar(&opts.siteRoot, "s", ".", "site root")
-	fs.StringVar(&opts.configPath, "config", "", "config file path")
-	fs.StringVar(&opts.configPath, "c", "", "config file path")
-	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
-	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
+	addSiteFlags(fs, &opts)
+	addContentFlags(fs, &opts)
 	fs.IntVar(&opts.port, "port", 0, "override server port")
 	fs.IntVar(&opts.port, "p", 0, "override server port")
+
+	if err := fs.Parse(args); err != nil {
+		return commandOptions{}, err
+	}
+	return opts, nil
+}
+
+func parseCheckFlags(args []string) (commandOptions, error) {
+	fs := flag.NewFlagSet("check", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	opts := commandOptions{}
+	addSiteFlags(fs, &opts)
+	fs.BoolVar(&opts.drafts, "drafts", false, "include draft content")
+	fs.BoolVar(&opts.drafts, "d", false, "include draft content")
+	fs.BoolVar(&opts.future, "future", false, "include future-dated content")
+	fs.BoolVar(&opts.future, "f", false, "include future-dated content")
+	fs.BoolVar(&opts.external, "external", false, "also check external links over the network")
 
 	if err := fs.Parse(args); err != nil {
 		return commandOptions{}, err
@@ -160,13 +232,15 @@ func runInit(stdout, stderr io.Writer, opts initOptions) int {
 }
 
 func runBuild(stdout, stderr io.Writer, opts commandOptions) int {
+	started := time.Now()
 	result, err := buildSite(opts)
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
+	writeWarnings(stderr, result.cfg.Warnings)
 
 	colors := colorsFor(stdout)
-	_, _ = fmt.Fprintf(stdout, "%s %s config=%s drafts=%t output=%s pages=%d routes=%d rendered=%d\n", colors.command("nida build:"), colors.success("complete"), result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.AllPages), len(result.state.Index.RouteRegistry), len(result.pages))
+	_, _ = fmt.Fprintf(stdout, "%s %s config=%s drafts=%t output=%s pages=%d routes=%d rendered=%d time=%s\n", colors.command("nida build:"), colors.success("complete"), result.path, result.cfg.Drafts, result.cfg.OutputDir, len(result.state.Index.AllPages), len(result.state.Index.RouteRegistry), len(result.pages), formatElapsed(time.Since(started)))
 	return 0
 }
 
@@ -175,6 +249,7 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 	if err != nil {
 		return writeCommandError(stderr, err)
 	}
+	writeWarnings(stderr, current.cfg.Warnings)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -237,94 +312,23 @@ func runServe(stdout, stderr io.Writer, opts commandOptions) int {
 }
 
 func buildSite(opts commandOptions) (buildResult, error) {
-	cfg, path, err := loadCommandConfig(opts)
+	result, err := buildSiteState(opts)
 	if err != nil {
 		return buildResult{}, err
 	}
-
-	state, err := site.Load(opts.siteRoot, cfg)
-	if err != nil {
+	if err := output.WriteSite(opts.siteRoot, result.cfg, result.pages); err != nil {
 		return buildResult{}, err
 	}
-
-	pages, err := render.RenderSite(opts.siteRoot, cfg, state)
-	if err != nil {
+	if err := writeGenerated(opts.siteRoot, result); err != nil {
 		return buildResult{}, err
 	}
-
-	artifacts := make([]output.Artifact, 0, 3)
-	if cfg.Feed.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Feed.Filename})
-	}
-	if cfg.Sitemap.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
-	}
-	if cfg.Robots.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Robots.Filename})
-	}
-	if cfg.Search.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Search.Filename})
-	}
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, artifacts); err != nil {
+	if err := assets.Copy(opts.siteRoot, result.cfg); err != nil {
 		return buildResult{}, err
 	}
-
-	if err := output.WriteSite(opts.siteRoot, cfg, pages); err != nil {
+	if err := assets.CopyPageBundles(opts.siteRoot, result.cfg, bundlePagesFromIndex(result.state.Index)); err != nil {
 		return buildResult{}, err
 	}
-
-	if cfg.Pipeline.Fingerprint || cfg.Pipeline.Images.Enabled || cfg.Pipeline.SCSS.Enabled {
-		manifest, pipeErr := pipeline.Process(opts.siteRoot, cfg)
-		if pipeErr != nil {
-			return buildResult{}, pipeErr
-		}
-		if manifest != nil {
-			if err := pipeline.RewriteOutputFiles(opts.siteRoot, cfg, manifest); err != nil {
-				return buildResult{}, err
-			}
-		}
-	}
-
-	feedOutputs, err := feeds.GenerateAll(cfg, state.Index)
-	if err != nil {
-		return buildResult{}, err
-	}
-	for _, feedOutput := range feedOutputs {
-		if err := output.WriteFile(opts.siteRoot, cfg, feedOutput.Filename, feedOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	sitemapOutput, err := sitemap.Generate(cfg, state, pages)
-	if err != nil {
-		return buildResult{}, err
-	}
-	if sitemapOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, cfg, sitemapOutput.Filename, sitemapOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	if robotsOutput := robots.Generate(cfg); robotsOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, cfg, robotsOutput.Filename, robotsOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	searchOutput, err := searchindex.Generate(cfg, state)
-	if err != nil {
-		return buildResult{}, err
-	}
-	if searchOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, cfg, searchOutput.Filename, searchOutput.Content); err != nil {
-			return buildResult{}, err
-		}
-	}
-	if err := assets.Copy(opts.siteRoot, cfg); err != nil {
-		return buildResult{}, err
-	}
-	if err := assets.CopyPageBundles(opts.siteRoot, cfg, bundlePagesFromIndex(state.Index)); err != nil {
-		return buildResult{}, err
-	}
-
-	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
+	return result, nil
 }
 
 func loadCommandConfig(opts commandOptions) (config.SiteConfig, string, error) {
@@ -339,8 +343,22 @@ func loadCommandConfig(opts commandOptions) (config.SiteConfig, string, error) {
 	if opts.drafts {
 		cfg.Drafts = true
 	}
+	if opts.future {
+		cfg.Future = true
+	}
 	if opts.port != 0 {
 		cfg.Server.Port = opts.port
+	}
+	if opts.baseURL != "" || opts.outputDir != "" {
+		if opts.baseURL != "" {
+			cfg.BaseURL = strings.TrimSpace(opts.baseURL)
+		}
+		if opts.outputDir != "" {
+			cfg.OutputDir = safepath.CleanRelative(opts.outputDir)
+		}
+		if err := config.Validate(cfg); err != nil {
+			return config.SiteConfig{}, "", fmt.Errorf("invalid command-line override: %w", err)
+		}
 	}
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {
 		return config.SiteConfig{}, "", errors.New("server.port must be between 1 and 65535")
@@ -355,17 +373,28 @@ func writeCommandError(stderr io.Writer, err error) int {
 	return 1
 }
 
+func writeWarnings(stderr io.Writer, warnings []string) {
+	colors := colorsFor(stderr)
+	for _, warning := range warnings {
+		_, _ = fmt.Fprintf(stderr, "%s %s\n", colors.warning("warning:"), warning)
+	}
+}
+
 func writeUsage(w io.Writer) {
 	_, _ = io.WriteString(w, `Usage:
   nida init [PATH]
-  nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-p PORT] [--port PORT]
-  nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts]
+  nida new [-s PATH] [--site PATH] [-c PATH] [--config PATH] CONTENT_PATH
+  nida serve [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR] [-p PORT] [--port PORT]
+  nida build [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--base-url URL] [-o DIR] [--output DIR]
+  nida check [-s PATH] [--site PATH] [-c PATH] [--config PATH] [-d] [--drafts] [-f] [--future] [--external]
   nida version
 
 Commands:
-  init    Create a minimal new site
+  init    Create an example site to start from
+  new     Create a content file from an archetype, e.g. posts/my-post.md
   serve   Build, watch, and serve the local site
   build   Build the site into the configured output directory
+  check   Validate config, content, links, and templates without writing output
   version Show nida build and version information
 `)
 }

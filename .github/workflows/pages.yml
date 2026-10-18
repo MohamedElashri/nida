@@ -30,6 +30,9 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # sanad: ref=v7.0.1
+        with:
+          # Full history so updated_from_git can date every docs page.
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # sanad: ref=v7.0.0
@@ -42,6 +45,9 @@ jobs:
 
       - name: Generate release notes page
         run: go run ./scripts/generate_release_notes.go
+
+      - name: Check documentation site
+        run: go run ./cmd/nida check --site ./docs
 
       - name: Build documentation site
         run: go run ./cmd/nida build --site ./docs

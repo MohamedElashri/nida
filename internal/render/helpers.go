@@ -2,8 +2,6 @@ package render
 
 import (
 	"html"
-	"net/url"
-	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -31,7 +29,7 @@ func redirectHTML(target string) string {
 `
 }
 
-func buildPaginator(baseURL string, current, total int, pages []content.Page) *Paginator {
+func buildPaginator(baseURL, paginatePath string, current, total int, pages []content.Page) *Paginator {
 	if total <= 1 {
 		return nil
 	}
@@ -39,7 +37,7 @@ func buildPaginator(baseURL string, current, total int, pages []content.Page) *P
 	for i := 1; i <= total; i++ {
 		pageLinks = append(pageLinks, PageLink{
 			Number:  i,
-			URL:     pageURL(baseURL, i),
+			URL:     pageURL(baseURL, paginatePath, i),
 			Current: i == current,
 		})
 	}
@@ -50,49 +48,41 @@ func buildPaginator(baseURL string, current, total int, pages []content.Page) *P
 		Pages:        pages,
 	}
 	if current > 1 {
-		paginator.Previous = pageURL(baseURL, current-1)
+		paginator.Previous = pageURL(baseURL, paginatePath, current-1)
 	}
 	if current < total {
-		paginator.Next = pageURL(baseURL, current+1)
+		paginator.Next = pageURL(baseURL, paginatePath, current+1)
 	}
 	return paginator
 }
 
-func pageURL(baseURL string, pageNum int) string {
+func pageURL(baseURL, paginatePath string, pageNum int) string {
 	if pageNum <= 1 {
 		return baseURL
 	}
-	return strings.TrimSuffix(baseURL, "/") + "/page/" + strconv.Itoa(pageNum) + "/"
+	if paginatePath == "" {
+		paginatePath = "page"
+	}
+	return strings.TrimSuffix(baseURL, "/") + "/" + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 }
 
-func latestItems(items []content.Page, mainSections []string, limit int) []content.Page {
-	filtered := make([]content.Page, 0, len(items))
-	allowed := map[string]struct{}{}
-	for _, section := range mainSections {
-		allowed[strings.TrimSpace(section)] = struct{}{}
-	}
-	for _, item := range items {
-		if len(allowed) > 0 {
-			root := rootSectionName(item.SectionPath)
-			if _, ok := allowed[root]; !ok {
-				continue
-			}
-		}
-		filtered = append(filtered, item)
-	}
-	slices.SortFunc(filtered, func(a, b content.Page) int {
-		if !a.Date.Equal(b.Date) {
-			if a.Date.After(b.Date) {
-				return -1
-			}
-			return 1
-		}
-		return strings.Compare(a.Title, b.Title)
-	})
-	if len(filtered) > limit {
+func latestItems(items []content.Page, sections []string, limit int) []content.Page {
+	filtered := slices.Clone(content.FilterByRootSections(items, sections))
+	slices.SortStableFunc(filtered, content.CompareByDateDesc)
+	if limit > 0 && len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
 	return filtered
+}
+
+// joinRobots combines a required robots directive with the site-wide
+// robots_meta value, skipping whichever is empty.
+func joinRobots(required, configured string) string {
+	configured = strings.TrimSpace(configured)
+	if configured == "" {
+		return required
+	}
+	return required + ", " + configured
 }
 
 func pickExistingTemplate(set templates.Set, names ...string) string {
@@ -111,17 +101,6 @@ func normalizeTemplateName(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func rootSectionName(sectionPath string) string {
-	sectionPath = strings.Trim(sectionPath, "/")
-	if sectionPath == "" {
-		return ""
-	}
-	if index := strings.Index(sectionPath, "/"); index >= 0 {
-		return sectionPath[:index]
-	}
-	return sectionPath
-}
-
 func defaultLanguage(value string) string {
 	if strings.TrimSpace(value) == "" {
 		return "en"
@@ -129,14 +108,9 @@ func defaultLanguage(value string) string {
 	return value
 }
 
-func canonicalURL(baseURL, route string) string {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return route
+func joinEditURL(prefix, relativePath string) string {
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
 	}
-	base.Path = path.Join(base.Path, route)
-	if strings.HasSuffix(route, "/") && !strings.HasSuffix(base.Path, "/") {
-		base.Path += "/"
-	}
-	return base.String()
+	return prefix + strings.TrimPrefix(relativePath, "/")
 }

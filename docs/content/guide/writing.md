@@ -1,0 +1,283 @@
++++
+title = "Writing Content"
+description = "Summaries, tables of contents, callouts, code blocks, math, and diagrams in Nida Markdown."
+weight = 27
+template = "page"
++++
+
+Nida renders GitHub-flavored Markdown with footnotes. This page covers the extra syntax for long posts, technical writing, and documentation.
+
+## Summaries
+
+Put `<!-- more -->` on its own line to mark where the summary ends:
+
+```markdown
+Nida 0.7 makes feeds and pagination behave the way the docs describe.
+
+<!-- more -->
+
+The rest of the post...
+```
+
+Everything above the marker is available as `.Page.Summary`. The marker itself is removed from the page body. Without a marker, `.Page.Summary` is the first paragraph of the page.
+
+```html
+{{ range .Pages }}
+  <article>
+    <h2><a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a></h2>
+    {{ unsafeHTML .Summary }}
+  </article>
+{{ end }}
+```
+
+Feeds use the page `description` as the entry summary when it is set, and fall back to `.Page.Summary` otherwise.
+
+## Table of contents
+
+Every page and section has a `.TOC`: a list of headings, each with `Level`, `ID`, `Title`, and nested `Children`. A heading is nested under the closest earlier heading with a smaller level.
+
+```html
+{{ define "toc" }}
+<ul>
+  {{ range . }}
+  <li>
+    <a href="#{{ .ID }}">{{ .Title }}</a>
+    {{ with .Children }}{{ template "toc" . }}{{ end }}
+  </li>
+  {{ end }}
+</ul>
+{{ end }}
+
+{{ with .Page.TOC }}<nav class="toc">{{ template "toc" . }}</nav>{{ end }}
+```
+
+Heading IDs are generated from the heading text. Set a custom ID with an attribute:
+
+```markdown
+## Installing from source {#install}
+```
+
+To add a `#` self-link to each heading, enable anchors:
+
+```toml
+[markdown]
+heading_anchors = true
+```
+
+Each heading then ends with `<a class="heading-anchor" href="#id" aria-hidden="true">#</a>`, which themes can style or reveal on hover.
+
+## Callouts {{< since "0.7.0" >}}
+
+Callouts use GitHub's alert syntax:
+
+```markdown
+> [!NOTE]
+> Nida skips future-dated posts unless you pass `--future`.
+
+> [!WARNING] Back up first
+> Text after the marker replaces the default title.
+```
+
+The common types are `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, and `CAUTION`; any other single word also works. The output is:
+
+```html
+<div class="callout callout-warning" data-callout="warning">
+<p class="callout-title">Back up first</p>
+<p>Text after the marker replaces the default title.</p>
+</div>
+```
+
+Blockquotes without a marker render as normal blockquotes. Here is how the five common types look in this theme:
+
+> [!NOTE]
+> Useful information that readers should know, even when skimming.
+
+> [!TIP]
+> Helpful advice for doing things better or more easily.
+
+> [!IMPORTANT]
+> Key information readers need to achieve their goal.
+
+> [!WARNING]
+> Urgent information that needs immediate attention to avoid problems.
+
+> [!CAUTION]
+> Advises about risks or negative outcomes of certain actions.
+
+Default titles can be translated with `callout.<type>` keys in an [i18n file](@/reference/config.md#translations).
+
+## Code blocks
+
+Fenced code blocks are highlighted with CSS classes prefixed `z-`; the theme supplies the colors, for example with `{{ syntaxCSS }}` and the `syntax_theme` setting. Options go in braces after the language:
+
+````markdown
+```go {title="main.go", hl_lines="3 5-6", linenos=true}
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello")
+}
+```
+````
+
+| Option | Description |
+| --- | --- |
+| `title` | Wraps the block in `<figure class="code-block">` with a `<figcaption class="code-title">`. |
+| `hl_lines` | Lines to highlight, as `"3 5-6"` or `[3, "5-6"]`. Lines count from 1 at the first line of the block. |
+| `linenos` | Show line numbers. `linenos` alone means `true`. |
+| `linenostart` | Number shown for the first line. |
+
+Highlighted lines get the `z-hl` class and line numbers get `z-ln`. The example above renders as:
+
+```go {title="main.go", hl_lines="3 5-6", linenos=true}
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello")
+}
+```
+
+To make a long block collapsible, start it with `[!COLLAPSE] Show label | Hide label`.
+
+## Math {{< since "0.7.0" >}}
+
+Enable math to pass TeX through to KaTeX or MathJax without Markdown changing underscores or asterisks inside formulas:
+
+```toml
+[markdown]
+math = true
+```
+
+Use `$...$` for inline math and a `$$` block for display math:
+
+```markdown
+Euler's identity is $e^{i\pi} + 1 = 0$.
+
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
+```
+
+Inline math becomes `<span class="math math-inline">\(...\)</span>` and display math becomes `<div class="math math-display">\[...\]</div>`. Nida ships [KaTeX](https://katex.org) and renders these in the browser with no CDN; see [Bundled scripts](#bundled-scripts).
+
+Prices stay as plain text: in `$5 and $10`, a `$` followed by a digit does not close a formula.
+
+This page loads KaTeX, so the examples above render like this: Euler's identity is $e^{i\pi} + 1 = 0$, and
+
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
+
+## Diagrams {{< since "0.7.0" >}}
+
+A `mermaid` code block becomes `<pre class="mermaid">` with the diagram source, which [Mermaid](https://mermaid.js.org) renders in the browser:
+
+````markdown
+```mermaid
+graph LR
+  Markdown --> Nida --> HTML
+```
+````
+
+Rendered on this page:
+
+```mermaid
+graph LR
+  A[Markdown] --> B(Nida)
+  T[Templates] --> B
+  B --> C[Static HTML]
+  B --> D[Feeds and sitemap]
+```
+
+## Bundled scripts {{< since "0.7.0" >}}
+
+Nida ships KaTeX and Mermaid inside its binary, so math and diagrams work offline and without third-party requests. Add the built-in partial once, before `</body>` in your base template:
+
+```html
+{{ template "nida-scripts" . }}
+</body>
+```
+
+It adds script tags only on pages that need them:
+
+| Library | Loaded when | Written to |
+| --- | --- | --- |
+| KaTeX | `markdown.math` is on and the page has math | `vendor/katex-<version>/` |
+| Mermaid | the page has a `mermaid` code block | `vendor/mermaid-<version>/` |
+
+A library's files are written to the output only if at least one page loads it, so a site without diagrams carries no Mermaid files. Mermaid follows the page's `data-theme="dark"` attribute, or the reader's color scheme. List pages check page summaries, not full bodies.
+
+To load a library on a page where Nida can't detect it, call the function directly with its name:
+
+```html
+{{ bundledScripts .Page "mermaid" }}
+```
+
+To use your own copy or a CDN instead, leave out the partial and add your own tags.
+
+## Shortcodes {{< since "0.7.0" >}}
+
+Shortcodes insert template-rendered HTML into Markdown. They work even when `markdown.unsafe_html` is off, because the HTML comes from your templates, not from the content.
+
+```markdown
+{{< figure src="screenshot.png" caption="The new *editor*" >}}
+
+Press {{< kbd "Ctrl+K" >}} to search.
+
+{{< callout type="tip" title="Faster builds" >}}
+Shortcode bodies are **Markdown**.
+{{< /callout >}}
+```
+
+A shortcode with a matching `{{< /name >}}` is paired, and its body is passed to the template. Otherwise it stands alone; `{{< name />}}` makes that explicit. A shortcode alone on its line renders as a block. One inside a sentence renders inline.
+
+Arguments are named (`key="value"`) or positional (`"value"`). Quote any value that contains spaces.
+
+Shortcode syntax inside code blocks and inline code is left as-is, so you can document shortcodes without escaping them.
+
+### Built-in shortcodes
+
+| Shortcode | Arguments | Output |
+| --- | --- | --- |
+| `figure` | `src`, `alt`, `caption` (Markdown), `link`, `width`, `height`, `class` | `<figure>` with a lazy-loaded image and optional caption. `src` and `link` accept `@/` content paths. |
+| `youtube` | video id (positional or `id`), `start`, `title` | A privacy-enhanced YouTube embed in `<div class="embed embed-youtube">`. |
+| `callout` | `type` (default `note`), `title` | The same markup as `> [!NOTE]` callouts, for bodies that need nested shortcodes. |
+
+Nida also understands two Zola shortcodes: `{% details(summary="...") %}...{% end %}` renders a `<details>` block, and `{{< rawhtml >}}` markers are dropped.
+
+### Writing a shortcode
+
+Create `templates/shortcodes/<name>.html` in the site or in a theme. Site shortcodes override theme shortcodes, which override built-ins. The template receives:
+
+| Field | Description |
+| --- | --- |
+| `.Name` | The shortcode name. |
+| `.Get "key"`, `.Get 0` | A named or positional argument, or `""`. |
+| `.Args`, `.Pos` | All named arguments as a map, and positional arguments as a list. |
+| `.Inner` | The raw body of a paired shortcode. |
+| `.InnerHTML` | The body rendered as Markdown. |
+| `.Page` | The page being rendered, or nil inside a section's `_index.md`. |
+| `.Config`, `.BasePath` | Site config and the `base_url` path prefix. |
+| `.ResolveURL "..."` | Resolve an `@/` content path the way Markdown links do. |
+
+All site template functions are available, and so are the partials in `templates/partials/` of the site and its themes. For example, `templates/shortcodes/kbd.html`:
+
+```html
+<kbd>{{ .Get 0 }}</kbd>
+```
+
+Using a shortcode that has no template fails the build with `unknown shortcode "name"`.
+
+## Images
+
+Markdown images get `loading="lazy"` and `decoding="async"`. When Nida can find the image file, it also adds `width` and `height` from the image itself, so the browser reserves space and the page does not shift while loading. That works for page bundle images (`![Map](map.png)`) and for static files (`![Hero](/img/hero.jpg)`).
+
+With the image pipeline enabled (`[pipeline.images] enabled = true`), static images also get a `srcset` of the generated variants smaller than the original, plus the original, along with `sizes` from the `content` preset. Page bundle images are resized too: their variants are written next to the copied original, and the `srcset` uses relative URLs. JPEG, PNG, and GIF images can be resized; other formats only get dimensions.
+
+## Word count and reading time
+
+`.Page.WordCount` and `.Page.ReadingTime` (minutes, at 200 words per minute) are available in templates.

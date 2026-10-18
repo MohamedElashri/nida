@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -13,16 +14,26 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/frontmatter"
+	"github.com/MohamedElashri/nida/internal/i18n"
 	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
+
+//go:embed builtin/*.html
+var builtinFS embed.FS
 
 const (
 	baseTemplateFile = "base.html"
 	templateExt      = ".html"
+	shortcodeDir     = "shortcodes"
 )
 
 type Set struct {
 	templates map[string]*template.Template
+	// Data is site data from the data directory, exposed to every template
+	// execution as .Data.
+	Data map[string]any
 }
 
 func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
@@ -31,19 +42,11 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 		return Set{}, fmt.Errorf("resolve site root %q: %w", siteRoot, err)
 	}
 
-	var templateRoots []string
-
-	if cfg.Theme != "" {
-		themeRoot, err := safepath.Join(absSiteRoot, filepath.Join(cfg.ThemesDir, cfg.Theme, "templates"))
-		if err != nil {
-			return Set{}, fmt.Errorf("resolve theme templates: %w", err)
-		}
-		if err := safepath.EnsureNoSymlinkPath(absSiteRoot, themeRoot); err != nil && !os.IsNotExist(err) {
-			return Set{}, fmt.Errorf("check theme templates: %w", err)
-		}
-		if _, err := os.Stat(themeRoot); err == nil {
-			templateRoots = append(templateRoots, themeRoot)
-		}
+	// Roots are ordered from least to most specific: parent themes, the
+	// selected theme, then the site. Later roots override earlier ones.
+	templateRoots, err := themes.Dirs(absSiteRoot, cfg, "templates")
+	if err != nil {
+		return Set{}, fmt.Errorf("resolve theme templates: %w", err)
 	}
 
 	siteTemplateRoot, err := safepath.Join(absSiteRoot, cfg.TemplateDir)
@@ -55,22 +58,37 @@ func Load(siteRoot string, cfg config.SiteConfig) (Set, error) {
 	}
 	templateRoots = append(templateRoots, siteTemplateRoot)
 
-	basePath := filepath.Join(siteTemplateRoot, baseTemplateFile)
-	if _, err := os.Stat(basePath); err != nil {
-		if os.IsNotExist(err) {
-			return Set{}, fmt.Errorf("load templates: missing required %s", baseTemplateFile)
+	hasBase := false
+	for _, root := range templateRoots {
+		if _, err := os.Stat(filepath.Join(root, baseTemplateFile)); err == nil {
+			hasBase = true
+			break
+		} else if !os.IsNotExist(err) {
+			return Set{}, fmt.Errorf("load templates: %w", err)
 		}
-		return Set{}, fmt.Errorf("load templates: %w", err)
+	}
+	if !hasBase {
+		return Set{}, fmt.Errorf("load templates: missing required %s", baseTemplateFile)
 	}
 
-	return loadFromRoots(templateRoots, absSiteRoot, cfg)
+	funcs, err := FuncMap(absSiteRoot, cfg)
+	if err != nil {
+		return Set{}, err
+	}
+	return loadFromRoots(templateRoots, funcs)
 }
 
-func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set, error) {
+func loadFromRoots(roots []string, funcs template.FuncMap) (Set, error) {
 	var shared []string
 	entries := map[string]string{}
 
 	for _, root := range roots {
+		if _, err := os.Stat(root); os.IsNotExist(err) {
+			continue
+		}
+		// Files within a root are parsed in path order; roots are parsed in
+		// the order given so a later root's {{ define }} replaces an earlier one.
+		var rootShared []string
 		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
@@ -88,21 +106,17 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 			}
 			relative = filepath.ToSlash(relative)
 
-			if relative == baseTemplateFile {
-				shared = append(shared, path)
+			if strings.HasPrefix(relative, shortcodeDir+"/") {
+				// Shortcode templates are loaded separately by internal/shortcodes.
 				return nil
 			}
 
-			if strings.Contains(relative, "/") {
-				shared = append(shared, path)
+			if relative == baseTemplateFile || strings.Contains(relative, "/") {
+				rootShared = append(rootShared, path)
 				return nil
 			}
 
 			name := strings.TrimSuffix(relative, filepath.Ext(relative))
-			if name == "base" {
-				shared = append(shared, path)
-				return nil
-			}
 
 			entries[name] = path
 			return nil
@@ -110,13 +124,19 @@ func loadFromRoots(roots []string, siteRoot string, cfg config.SiteConfig) (Set,
 		if err != nil {
 			return Set{}, fmt.Errorf("read template directory %q: %w", root, err)
 		}
+		slices.Sort(rootShared)
+		shared = append(shared, rootShared...)
 	}
 
-	slices.Sort(shared)
 	set := Set{templates: map[string]*template.Template{}}
 	for name, entry := range entries {
 		files := append(append([]string(nil), shared...), entry)
-		tmpl := template.New("root").Funcs(funcMap(siteRoot, cfg))
+		tmpl := template.New("root").Funcs(funcs)
+		// Built-in partials are parsed first so site and theme templates can
+		// replace them by defining the same name.
+		if _, err := tmpl.ParseFS(builtinFS, "builtin/*.html"); err != nil {
+			return Set{}, fmt.Errorf("parse built-in templates: %w", err)
+		}
 		for _, file := range files {
 			data, err := os.ReadFile(file)
 			if err != nil {
@@ -155,7 +175,12 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 	if len(cfgs) > 0 {
 		cfg = cfgs[0]
 	}
+	return funcMapWith(siteRoot, cfg, i18n.Translations{})
+}
+
+func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) template.FuncMap {
 	return template.FuncMap{
+		"t":                 tr.T,
 		"formatDate":        formatDate,
 		"formatDateWith":    formatDateWith,
 		"safeHTML":          unsafeHTML,
@@ -175,6 +200,7 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 		"slugify":           content.DeriveSlug,
 		"documentDirection": config.DocumentDirection,
 		"groupByYear":       groupByYear,
+		"groupByMonth":      groupByMonth,
 		"now":               time.Now,
 		"asset":             assetURLFunc(cfg),
 		"assetURL":          assetURLFunc(cfg),
@@ -183,9 +209,28 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 		"imagePresetSrcset": imagePresetSrcsetFunc(cfg),
 		"imagePresetSizes":  imagePresetSizesFunc(cfg),
 		"readFile":          readFileFunc(siteRoot, cfg),
-		"resizeImage":       resizeImageFunc(siteRoot),
+		"resizeImage":       resizeImageFunc(siteRoot, cfg),
 		"sortDesc":          sortDesc,
 		"dig":               digValue,
+		"dict":              dict,
+		"merge":             merge,
+		"slice":             sliceOf,
+		"seq":               seq,
+		"first":             first,
+		"last":              last,
+		"where":             where,
+		"truncate":          truncate,
+		"plainify":          content.PlainText,
+		"markdownify":       markdownifyFunc(cfg),
+		"absURL":            absURLFunc(cfg),
+		"relURL":            relURLFunc(cfg),
+		"jsonify":           jsonify,
+		"syntaxCSS":         syntaxCSSFunc(cfg),
+		"bundledScripts":    bundledScriptsFunc(cfg),
+		"upper":             strings.ToUpper,
+		"title":             content.TitleCase,
+		"split":             strings.Split,
+		"urlize":            content.DeriveSlug,
 	}
 }
 
@@ -198,20 +243,7 @@ func sub(a, b int) int {
 }
 
 func joinValues(value any, sep string) string {
-	switch values := value.(type) {
-	case []string:
-		return strings.Join(values, sep)
-	case []any:
-		parts := make([]string, 0, len(values))
-		for _, item := range values {
-			if s, ok := item.(string); ok {
-				parts = append(parts, s)
-			}
-		}
-		return strings.Join(parts, sep)
-	default:
-		return ""
-	}
+	return strings.Join(frontmatter.StringList(value), sep)
 }
 
 func formatDate(value time.Time) string {
@@ -241,15 +273,6 @@ func defaultString(value, fallback string) string {
 		return fallback
 	}
 	return value
-}
-
-func AvailableNames(set Set) []string {
-	names := make([]string, 0, len(set.templates))
-	for name := range set.templates {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-	return names
 }
 
 func strftimeToGoLayout(format string) string {
@@ -298,6 +321,36 @@ func groupByYear(pages []content.Page) []YearGroup {
 	return result
 }
 
+// MonthGroup holds pages from one calendar month. Month is the first day of
+// that month, so templates can format it with formatDateWith.
+type MonthGroup struct {
+	Key   string
+	Month time.Time
+	Pages []content.Page
+}
+
+// groupByMonth groups dated pages by month, newest month first, keeping the
+// input order within each month.
+func groupByMonth(pages []content.Page) []MonthGroup {
+	var groups []MonthGroup
+	index := map[string]int{}
+	for _, p := range pages {
+		if p.Date.IsZero() {
+			continue
+		}
+		key := p.Date.Format("2006-01")
+		i, ok := index[key]
+		if !ok {
+			i = len(groups)
+			index[key] = i
+			groups = append(groups, MonthGroup{Key: key, Month: time.Date(p.Date.Year(), p.Date.Month(), 1, 0, 0, 0, 0, p.Date.Location())})
+		}
+		groups[i].Pages = append(groups[i].Pages, p)
+	}
+	sort.SliceStable(groups, func(a, b int) bool { return groups[a].Key > groups[b].Key })
+	return groups
+}
+
 func readFileFunc(siteRoot string, cfg config.SiteConfig) func(string) (string, error) {
 	absSiteRoot, err := filepath.Abs(siteRoot)
 	if err != nil {
@@ -335,11 +388,13 @@ func readFileAllowedRoots(absSiteRoot string, cfg config.SiteConfig) []string {
 		cfg.TemplateDir,
 		cfg.StaticDir,
 	}
-	if strings.TrimSpace(cfg.Theme) != "" {
-		candidates = append(candidates,
-			filepath.Join(cfg.ThemesDir, cfg.Theme, "templates"),
-			filepath.Join(cfg.ThemesDir, cfg.Theme, "static"),
-		)
+	for _, sub := range []string{"templates", "static"} {
+		dirs, _ := themes.Dirs(absSiteRoot, cfg, sub)
+		for _, dir := range dirs {
+			if rel, err := filepath.Rel(absSiteRoot, dir); err == nil {
+				candidates = append(candidates, rel)
+			}
+		}
 	}
 
 	roots := make([]string, 0, len(candidates))
@@ -407,4 +462,14 @@ func digValue(values map[string]any, path string) any {
 		}
 	}
 	return values
+}
+
+// FuncMap returns the site template functions, including translations, for
+// other template sets such as shortcodes.
+func FuncMap(siteRoot string, cfg config.SiteConfig) (template.FuncMap, error) {
+	tr, err := i18n.Load(siteRoot, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return funcMapWith(siteRoot, cfg, tr), nil
 }

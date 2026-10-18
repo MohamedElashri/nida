@@ -9,6 +9,10 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/datafiles"
+	"github.com/MohamedElashri/nida/internal/parallel"
+	"github.com/MohamedElashri/nida/internal/pipeline"
+	"github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/templates"
 )
@@ -16,6 +20,9 @@ import (
 func RenderSite(siteRoot string, cfg config.SiteConfig, state site.State) ([]Page, error) {
 	set, err := templates.Load(siteRoot, cfg)
 	if err != nil {
+		return nil, err
+	}
+	if set.Data, err = datafiles.Load(siteRoot, cfg); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +80,7 @@ func renderAll(set templates.Set, cfg config.SiteConfig, theme Theme, state site
 
 	if cfg.MinifyHTML {
 		for i := range pages {
-			pages[i].Content = minifyHTML(pages[i].Content)
+			pages[i].Content = pipeline.MinifyHTML(pages[i].Content)
 		}
 	}
 
@@ -84,6 +91,13 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	var pages []Page
 
 	templateName := sectionTemplateName(set, section)
+	if !set.Has(templateName) {
+		where := section.SectionPath
+		if where == "" {
+			where = "the root section"
+		}
+		return nil, fmt.Errorf("render section %q: no template for section pages; add section.html (or list.html), or set template in %s/_index.md", where, section.SectionPath)
+	}
 
 	sectionURL := "/" + section.SectionPath + "/"
 	if section.SectionPath == "" {
@@ -92,7 +106,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 	var ctxPages []content.Page
 	if section.SectionPath == "" {
-		ctxPages = latestItems(index.AllPages, nil, 5)
+		ctxPages = latestItems(index.AllPages, cfg.Home.Sections, cfg.Home.Limit)
 	} else {
 		ctxPages = section.Pages
 	}
@@ -108,12 +122,11 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	var out string
 	var err error
 
-	// When pagination is disabled, render the section once without a paginator.
-	// For sections with pagination, paginated page 1 occupies sectionURL, so
-	// rendering a separate non-paginated page would produce a URL conflict.
+	// Without pagination, render the section once. With it, page 1 of the
+	// paginated output already occupies sectionURL.
 	paginateSection := perPage > 0
-	if !paginateSection && set.Has(templateName) {
-		canonical := canonicalURL(cfg.BaseURL, "/"+section.SectionPath)
+	if !paginateSection {
+		canonical := route.CanonicalURL(cfg.BaseURL, sectionURL)
 
 		ctx := templateContext{
 			Title:        section.Title,
@@ -126,7 +139,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 			Index:        index,
 			Section:      section,
 			Pages:        ctxPages,
-			Robots:       "noai, noimageai",
+			Robots:       cfg.RobotsMeta,
 		}
 
 		out, err = renderTemplate(set, templateName, ctx)
@@ -138,7 +151,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	if out != "" {
 		pages = append(pages, Page{
 			URL:          sectionURL,
-			CanonicalURL: canonicalURL(cfg.BaseURL, sectionURL),
+			CanonicalURL: route.CanonicalURL(cfg.BaseURL, sectionURL),
 			TemplateName: templateName,
 			Title:        section.Title,
 			Content:      out,
@@ -148,7 +161,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 	if paginateSection {
 		var paginatePages []content.Page
 		if section.SectionPath == "" {
-			paginatePages = index.AllPages
+			paginatePages = latestItems(index.AllPages, cfg.Home.Sections, 0)
 		} else {
 			paginatePages = section.Pages
 		}
@@ -167,21 +180,21 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 				pageURL = sectionURL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 			}
 
-			paginator := buildPaginator(sectionURL, pageNum, totalPages, paginatePages[start:end])
+			paginator := buildPaginator(sectionURL, paginatePath, pageNum, totalPages, paginatePages[start:end])
 
 			ctx := templateContext{
 				Title:        section.Title,
 				Description:  section.Description,
 				HomeURL:      "/",
 				CurrentURL:   pageURL,
-				CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+				CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 				Config:       cfg,
 				Theme:        theme,
 				Index:        index,
 				Section:      section,
 				Pages:        paginatePages[start:end],
 				Paginator:    paginator,
-				Robots:       "noai, noimageai",
+				Robots:       cfg.RobotsMeta,
 			}
 
 			out, err = renderTemplate(set, templateName, ctx)
@@ -191,7 +204,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 			pages = append(pages, Page{
 				URL:          pageURL,
-				CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+				CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 				TemplateName: templateName,
 				Title:        section.Title,
 				Content:      out,
@@ -200,7 +213,7 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 
 		// Generate page/1/ redirect to canonical section URL
 		pageOneURL := sectionURL + paginatePath + "/1/"
-		canonicalSectionURL := canonicalURL(cfg.BaseURL, sectionURL)
+		canonicalSectionURL := route.CanonicalURL(cfg.BaseURL, sectionURL)
 		pages = append(pages, Page{
 			URL:          pageOneURL,
 			CanonicalURL: canonicalSectionURL,
@@ -228,67 +241,78 @@ func sectionTemplateName(set templates.Set, section content.Section) string {
 }
 
 func renderPages(set templates.Set, cfg config.SiteConfig, theme Theme, index site.SiteIndex, pages []content.Page) ([]Page, error) {
-	var out []Page
-
-	for _, page := range pages {
-		templateName := pageTemplateName(set, index, page)
-		canonical := canonicalURL(cfg.BaseURL, page.URL)
-
-		ctx := templateContext{
-			Title:        page.Title,
-			Description:  page.Description,
-			HomeURL:      "/",
-			CurrentURL:   page.URL,
-			CanonicalURL: canonical,
-			Config:       cfg,
-			Theme:        theme,
-			Index:        index,
-			Page:         page,
-			Section:      index.SectionLookup[page.SectionPath],
-			Robots:       "noai, noimageai",
-		}
-
-		rendered, err := renderTemplate(set, templateName, ctx)
-		if err != nil {
-			return nil, fmt.Errorf("render page %q: %w", page.RelativePath, err)
-		}
-
-		out = append(out, Page{
-			URL:          page.URL,
-			CanonicalURL: canonical,
-			TemplateName: templateName,
-			Title:        page.Title,
-			Content:      rendered,
-		})
-
-		// Generate alias redirect pages
-		for _, alias := range page.Aliases {
-			aliasURL := alias
-			if !strings.HasPrefix(aliasURL, "/") {
-				aliasURL = "/" + aliasURL
-			}
-			if !strings.HasSuffix(aliasURL, "/") {
-				aliasURL += "/"
-			}
-			aliasURL, err = site.NormalizeRoute("alias", aliasURL)
-			if err != nil {
-				return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
-			}
-			targetURL := canonicalURL(cfg.BaseURL, page.URL)
-			out = append(out, Page{
-				URL:          aliasURL,
-				CanonicalURL: targetURL,
-				TemplateName: "redirect",
-				Title:        "Redirect",
-				Content:      redirectHTML(targetURL),
-			})
-		}
+	// Each page renders independently, so spread the work across cores and
+	// flatten the per-page results (page plus alias redirects) in order.
+	perPage, err := parallel.Map(pages, func(page content.Page) ([]Page, error) {
+		return renderPage(set, cfg, theme, index, page)
+	})
+	if err != nil {
+		return nil, err
 	}
-
+	var out []Page
+	for _, rendered := range perPage {
+		out = append(out, rendered...)
+	}
 	return out, nil
 }
 
-func pageTemplateName(set templates.Set, index site.SiteIndex, page content.Page) string {
+func renderPage(set templates.Set, cfg config.SiteConfig, theme Theme, index site.SiteIndex, page content.Page) ([]Page, error) {
+	templateName := pageTemplateName(set, cfg, index, page)
+	canonical := route.CanonicalURL(cfg.BaseURL, page.URL)
+
+	ctx := templateContext{
+		Title:        page.Title,
+		Description:  page.Description,
+		HomeURL:      "/",
+		CurrentURL:   page.URL,
+		CanonicalURL: canonical,
+		Config:       cfg,
+		Theme:        theme,
+		Index:        index,
+		Page:         page,
+		Section:      index.SectionLookup[page.SectionPath],
+		Robots:       cfg.RobotsMeta,
+	}
+
+	rendered, err := renderTemplate(set, templateName, ctx)
+	if err != nil {
+		return nil, fmt.Errorf("render page %q: %w", page.RelativePath, err)
+	}
+
+	out := []Page{{
+		URL:          page.URL,
+		CanonicalURL: canonical,
+		TemplateName: templateName,
+		Title:        page.Title,
+		Content:      rendered,
+	}}
+
+	// Generate alias redirect pages
+	for _, alias := range page.Aliases {
+		aliasURL := alias
+		if !strings.HasPrefix(aliasURL, "/") {
+			aliasURL = "/" + aliasURL
+		}
+		if !strings.HasSuffix(aliasURL, "/") {
+			aliasURL += "/"
+		}
+		aliasURL, err = route.Normalize("alias", aliasURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid alias %q for page %q: %w", alias, page.RelativePath, err)
+		}
+		targetURL := route.CanonicalURL(cfg.BaseURL, page.URL)
+		out = append(out, Page{
+			URL:          aliasURL,
+			CanonicalURL: targetURL,
+			TemplateName: "redirect",
+			Title:        "Redirect",
+			Content:      redirectHTML(targetURL),
+		})
+	}
+	return out, nil
+}
+
+func pageTemplateName(set templates.Set, cfg config.SiteConfig, index site.SiteIndex, page content.Page) string {
 	tmpl := normalizeTemplateName(page.Template)
 	if tmpl != "" && set.Has(tmpl) {
 		return tmpl
@@ -298,6 +322,9 @@ func pageTemplateName(set templates.Set, index site.SiteIndex, page content.Page
 		if ptmpl != "" && set.Has(ptmpl) {
 			return ptmpl
 		}
+	}
+	if dflt := normalizeTemplateName(cfg.Sections.DefaultPageTemplate); dflt != "" && set.Has(dflt) {
+		return dflt
 	}
 	if set.Has("post") {
 		return "post"
@@ -328,7 +355,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 				Index:        index,
 				Taxonomy:     collection,
 				Terms:        collection.Terms,
-				Robots:       "noai, noimageai",
+				Robots:       cfg.RobotsMeta,
 			}
 
 			rendered, err := renderTemplate(set, listTemplate, ctx)
@@ -369,7 +396,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 					Taxonomy:     collection,
 					Term:         term,
 					Pages:        term.Items,
-					Robots:       "noai, noimageai",
+					Robots:       cfg.RobotsMeta,
 				}
 
 				rendered, err := renderTemplate(set, singleTemplate, ctx)
@@ -396,14 +423,14 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 					pageURL = term.URL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
 				}
 
-				paginator := buildPaginator(term.URL, pageNum, totalPages, term.Items[start:end])
+				paginator := buildPaginator(term.URL, paginatePath, pageNum, totalPages, term.Items[start:end])
 
 				ctx := templateContext{
 					Title:        term.Name,
 					Description:  term.Name,
 					HomeURL:      "/",
 					CurrentURL:   pageURL,
-					CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+					CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 					Config:       cfg,
 					Theme:        theme,
 					Index:        index,
@@ -411,7 +438,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 					Term:         term,
 					Pages:        term.Items[start:end],
 					Paginator:    paginator,
-					Robots:       "noai, noimageai",
+					Robots:       cfg.RobotsMeta,
 				}
 
 				rendered, err := renderTemplate(set, singleTemplate, ctx)
@@ -421,7 +448,7 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 
 				pages = append(pages, Page{
 					URL:          pageURL,
-					CanonicalURL: canonicalURL(cfg.BaseURL, pageURL),
+					CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 					TemplateName: singleTemplate,
 					Title:        term.Name,
 					Content:      rendered,
@@ -445,6 +472,15 @@ func renderTaxonomyPages(set templates.Set, cfg config.SiteConfig, theme Theme, 
 
 func renderTemplate(set templates.Set, name string, data templateContext) (string, error) {
 	data.BasePath = config.BasePath(data.Config.BaseURL)
+	data.Data = set.Data
+	if data.Config.EditURL != "" {
+		switch {
+		case data.Page.RelativePath != "":
+			data.EditURL = joinEditURL(data.Config.EditURL, data.Page.RelativePath)
+		case data.Section.SourcePath != "" && data.Taxonomy.Name == "":
+			data.EditURL = joinEditURL(data.Config.EditURL, data.Section.RelativePath)
+		}
+	}
 	out, err := set.Execute(name, data)
 	if err != nil {
 		return "", fmt.Errorf("render %s page: %w", name, err)
@@ -457,7 +493,7 @@ func renderTemplate(set templates.Set, name string, data templateContext) (strin
 
 func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme) (Page, error) {
 	title := "Page not found"
-	canonical := canonicalURL(cfg.BaseURL, "/404.html")
+	canonical := route.CanonicalURL(cfg.BaseURL, "/404.html")
 	if set.Has("404") {
 		out, err := renderTemplate(set, "404", templateContext{
 			Title:        title,
@@ -467,7 +503,7 @@ func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme) (
 			CanonicalURL: canonical,
 			Config:       cfg,
 			Theme:        theme,
-			Robots:       "noindex, noai, noimageai",
+			Robots:       joinRobots("noindex", cfg.RobotsMeta),
 		})
 		if err != nil {
 			return Page{}, err

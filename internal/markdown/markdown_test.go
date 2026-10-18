@@ -184,7 +184,7 @@ func TestRenderPagesStoresBodyHTML(t *testing.T) {
 		BodyMarkdown: "# Hello\n",
 	}}
 
-	rendered, err := RenderPages(pages, cfg, nil)
+	rendered, err := RenderPages(pages, cfg, Env{})
 	if err != nil {
 		t.Fatalf("RenderPages returned error: %v", err)
 	}
@@ -283,5 +283,26 @@ func assertGolden(t *testing.T, name, got string) {
 
 	if got != string(want) {
 		t.Fatalf("golden mismatch for %s\nwant:\n%s\ngot:\n%s", name, string(want), got)
+	}
+}
+
+func TestRenderSoftLineBreaksByDefault(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+
+	got, err := Render("line one\nline two\n", cfg, nil)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	if strings.Contains(got, "<br>") {
+		t.Fatalf("expected soft line break, got %q", got)
+	}
+
+	cfg.Markdown.HardWraps = true
+	got, err = Render("line one\nline two\n", cfg, nil)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	if !strings.Contains(got, "<br>") {
+		t.Fatalf("expected hard wrap with markdown.hard_wraps, got %q", got)
 	}
 }

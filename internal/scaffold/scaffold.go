@@ -43,15 +43,10 @@ name = "tags"
 render = true
 paginate_by = 20
 
-[rss]
+# Atom feed. Add an [rss] table with the same keys for an extra RSS 2.0 feed.
+[feed]
 enabled = true
-filename = "rss.xml"
-limit = 20
-sections = ["posts"]
-
-[atom]
-enabled = true
-filename = "atom.xml"
+filename = "feed.xml"
 limit = 20
 sections = ["posts"]
 
@@ -262,8 +257,8 @@ Nida copies page bundle resources next to the rendered page.
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ if .Title }}{{ .Title }} | {{ end }}{{ .Config.Title }}</title>
-  <meta name="description" content="{{ default .Description .Config.Description }}">
+  {{ template "nida-seo" . }}
+  {{ if .Config.Feed.Enabled }}<link rel="alternate" type="application/atom+xml" title="{{ .Config.Title }}" href="{{ .BasePath }}/{{ .Config.Feed.Filename }}">{{ end }}
   <link rel="stylesheet" href="{{ asset "site.css" }}">
 </head>
 <body>
@@ -282,6 +277,7 @@ Nida copies page bundle resources next to the rendered page.
   <footer class="site-footer">
     <p>{{ .Config.Description }}</p>
   </footer>
+  {{- template "nida-scripts" . }}
 </body>
 </html>
 {{- end }}
@@ -330,6 +326,14 @@ Nida copies page bundle resources next to the rendered page.
     {{ end }}
     {{ unsafeHTML .Page.BodyHTML }}
   </article>
+  {{ with .Index.Related .Page 3 }}
+  <aside class="related">
+    <h2>Related posts</h2>
+    <ul>
+      {{ range . }}<li><a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a></li>{{ end }}
+    </ul>
+  </aside>
+  {{ end }}
 {{- end }}
 `,
 	},
@@ -719,6 +723,70 @@ details {
   padding: 0.75rem 1rem;
   border: 1px solid #bcccdc;
   background: #ffffff;
+}
+
+/* Callouts: > [!NOTE], > [!WARNING], ... */
+.callout {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid #0969da;
+  border-radius: 4px;
+  background: #f6f8fa;
+}
+
+.callout > :last-child {
+  margin-bottom: 0;
+}
+
+.callout-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+.callout-tip { border-inline-start-color: #1a7f37; }
+.callout-important { border-inline-start-color: #8250df; }
+.callout-warning { border-inline-start-color: #9a6700; }
+.callout-caution { border-inline-start-color: #cf222e; }
+
+/* Code block titles and highlighted lines */
+.code-block {
+  margin: 1.25rem 0;
+}
+
+.code-block pre {
+  margin-top: 0;
+}
+
+.code-title {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
+.z-hl {
+  display: block;
+  background: rgba(255, 213, 79, 0.25);
+}
+
+.z-ln {
+  margin-inline-end: 0.75rem;
+  color: #8c959f;
+  user-select: none;
+}
+
+/* Heading self-links from markdown.heading_anchors */
+.heading-anchor {
+  margin-inline-start: 0.4rem;
+  text-decoration: none;
+  opacity: 0;
+}
+
+:is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 0.6;
 }
 `,
 	},

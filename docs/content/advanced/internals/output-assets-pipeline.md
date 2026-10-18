@@ -21,7 +21,7 @@ Routes must start with `/`. Cleaned output paths cannot escape the output direct
 
 `WriteSite` resolves the output directory, removes it, recreates it, and calls `WritePages`.
 
-`WritePages` sorts rendered pages by URL before writing. Deterministic ordering matters for reproducible builds and tests.
+`WritePages` sorts rendered pages by URL, then writes them concurrently with `internal/parallel`. Each page maps to its own file, so the result does not depend on scheduling, and errors are reported for the lowest URL that failed.
 
 ## Incremental Writes
 
@@ -39,10 +39,11 @@ This catches conflicts such as a page route that writes `rss.xml` or two routes 
 
 `internal/assets.Copy` copies static files from layered static roots:
 
-1. theme static files
-2. site static files
+1. site static files
+2. selected theme static files
+3. parent theme static files, nearest first
 
-The copy operation skips a file if the destination already exists. Because theme static files copy first, site static files take precedence on conflicts.
+The copy operation skips a file if the destination already exists, so the first root that has a path wins: the site overrides its theme, and a theme overrides its parent. Files the asset pipeline already wrote are skipped the same way.
 
 Static symlinks are rejected. Missing static directories are allowed.
 
@@ -60,19 +61,26 @@ content/posts/launching-nida/
 
 If the page route is `/posts/launching-nida/`, `screenshot.png` is copied into `public/posts/launching-nida/screenshot.png`.
 
+With `pipeline.images.enabled`, `pipeline.ResizeVariants` also writes width variants next to each copied JPEG, PNG, or GIF resource, such as `screenshot.480w.png`. Files that cannot be decoded are copied without variants.
+
 ## Asset Pipeline
 
-`internal/pipeline.Process` runs only when at least one of these is enabled:
+`internal/pipeline.Process` runs only when `PipelineConfig.Active` reports at least one enabled step:
 
 - `pipeline.fingerprint`
+- `pipeline.minify_css` or `pipeline.minify_js`
 - `pipeline.images.enabled`
 - `pipeline.scss.enabled`
 
-It resolves the static root and output root, creates output as needed, then:
+It resolves the static roots in the same order as `assets.Copy` (site, theme, parent themes), creates output as needed, then:
 
 1. compiles SCSS when enabled
-2. processes static files
+2. processes static files from every root, skipping relative paths an earlier root already handled
 3. writes `manifest.json` when fingerprinted assets exist
+
+## Minification
+
+`minifyAsset` minifies `.css`, `.js`, and `.mjs` files with `github.com/tdewolff/minify/v2` when the matching option is on. Files ending in `.min.css` or `.min.js` are left alone, and a file the minifier cannot parse is copied unchanged rather than failing the build. Minification happens before fingerprinting, so the hash matches the bytes that are served.
 
 ## Fingerprinting
 
@@ -110,7 +118,7 @@ Output is written under the configured SCSS entry directory in the output root. 
 
 ## Image Processing
 
-Image processing supports PNG, JPEG, GIF, and WebP detection, with resized output currently encoded for JPEG, PNG, and GIF.
+Image processing supports PNG, JPEG, GIF, and WebP detection, with resized output currently encoded for JPEG, PNG, and GIF. Static images and bundle resources share `scaleImage` and `encodeImage`.
 
 The pipeline generates the union of `pipeline.images.widths` and all `pipeline.images.presets.<name>.widths`. Target widths greater than or equal to the original width are skipped.
 
@@ -126,7 +134,9 @@ Templates can use the same presets:
 
 The pipeline guards image processing with maximum file size, maximum dimensions, and maximum pixel count.
 
-When fingerprinting is also enabled, both original and resized image paths can be fingerprinted and added to the manifest.
+When fingerprinting is also enabled, both original and resized static image paths can be fingerprinted and added to the manifest. Bundle images are not fingerprinted.
+
+Markdown images get `width`, `height`, and a matching `srcset` from the site image resolver; see [Site Index And Routing](@/advanced/internals/site-index-routing.md#images).
 
 ## Adding Pipeline Behavior
 

@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/assets"
+	"github.com/MohamedElashri/nida/internal/bundled"
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/diagnostics"
 	"github.com/MohamedElashri/nida/internal/feeds"
+	"github.com/MohamedElashri/nida/internal/i18n"
 	"github.com/MohamedElashri/nida/internal/markdown"
 	"github.com/MohamedElashri/nida/internal/output"
 	"github.com/MohamedElashri/nida/internal/pipeline"
@@ -18,6 +20,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/robots"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/searchindex"
+	"github.com/MohamedElashri/nida/internal/shortcodes"
 	"github.com/MohamedElashri/nida/internal/site"
 	"github.com/MohamedElashri/nida/internal/sitemap"
 )
@@ -65,17 +68,17 @@ func buildSiteState(opts commandOptions) (buildResult, error) {
 		return buildResult{}, err
 	}
 
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg, state.Index)); err != nil {
 		return buildResult{}, err
 	}
 
 	return buildResult{cfg: cfg, path: path, state: state, pages: pages}, nil
 }
 
-func buildArtifactList(cfg config.SiteConfig) []output.Artifact {
+func buildArtifactList(cfg config.SiteConfig, index site.SiteIndex) []output.Artifact {
 	artifacts := make([]output.Artifact, 0, 5)
-	if cfg.Feed.Enabled {
-		artifacts = append(artifacts, output.Artifact{Path: cfg.Feed.Filename})
+	for _, name := range feeds.Filenames(cfg, index) {
+		artifacts = append(artifacts, output.Artifact{Path: name})
 	}
 	if cfg.Sitemap.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Sitemap.Filename})
@@ -105,7 +108,16 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	}
 	contentPrefix := filepath.ToSlash(cfg.ContentDir + "/")
 
-	pathLookup := buildPathLookupFromPages(previous.state.Pages, previous.state.Sections, cfg)
+	pathLookup := site.BuildPathLookup(previous.state.Pages, previous.state.Sections, cfg)
+	codes, err := shortcodes.Load(opts.siteRoot, cfg)
+	if err != nil {
+		return buildResult{}, err
+	}
+	tr, err := i18n.Load(opts.siteRoot, cfg)
+	if err != nil {
+		return buildResult{}, err
+	}
+	env := markdown.Env{Lookup: pathLookup, Shortcodes: codes, Images: site.NewImages(opts.siteRoot, cfg), Translate: tr.Lookup}
 
 	changedByRelPath := make(map[string]content.Page)
 	removedByRelPath := make(map[string]bool)
@@ -141,8 +153,13 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 		if loadErr != nil {
 			return buildResult{}, loadErr
 		}
+		if cfg.UpdatedFromGit {
+			single := []content.Page{page}
+			content.ApplyGitDates(contentRoot, single)
+			page = single[0]
+		}
 
-		pages, err := markdown.RenderPages([]content.Page{page}, cfg, pathLookup)
+		pages, err := markdown.RenderPages([]content.Page{page}, cfg, env)
 		if err != nil {
 			return buildResult{}, err
 		}
@@ -168,7 +185,7 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 	}
 
 	if cfg.Diagnostics.Enabled {
-		nextLookup := buildPathLookupFromPages(merged, previous.state.Sections, cfg)
+		nextLookup := site.BuildPathLookup(merged, previous.state.Sections, cfg)
 		if err := diagnostics.Check(opts.siteRoot, cfg, merged, previous.state.Sections, nextLookup); err != nil {
 			return buildResult{}, err
 		}
@@ -186,7 +203,7 @@ func buildIncremental(opts commandOptions, previous buildResult, changedPaths []
 		return buildResult{}, err
 	}
 
-	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg)); err != nil {
+	if err := output.ValidateWritePlan(opts.siteRoot, cfg, pages, buildArtifactList(cfg, index)); err != nil {
 		return buildResult{}, err
 	}
 
@@ -214,8 +231,8 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 		}
 	}
 
-	prevArtifacts := artifactPaths(previous.cfg)
-	nextArtifacts := artifactPaths(next.cfg)
+	prevArtifacts := artifactPaths(previous)
+	nextArtifacts := artifactPaths(next)
 	for _, oldPath := range prevArtifacts {
 		if !slices.Contains(nextArtifacts, oldPath) {
 			if err := output.RemoveFile(opts.siteRoot, previous.cfg, oldPath); err != nil {
@@ -224,51 +241,8 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 		}
 	}
 
-	if next.cfg.Pipeline.Fingerprint || next.cfg.Pipeline.Images.Enabled || next.cfg.Pipeline.SCSS.Enabled {
-		manifest, pipeErr := pipeline.Process(opts.siteRoot, next.cfg)
-		if pipeErr != nil {
-			return pipeErr
-		}
-		if manifest != nil {
-			if err := pipeline.RewriteOutputFiles(opts.siteRoot, next.cfg, manifest); err != nil {
-				return err
-			}
-		}
-	}
-
-	feedOutputs, err := feeds.GenerateAll(next.cfg, next.state.Index)
-	if err != nil {
+	if err := writeGenerated(opts.siteRoot, next); err != nil {
 		return err
-	}
-	for _, feedOutput := range feedOutputs {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, feedOutput.Filename, feedOutput.Content); err != nil {
-			return err
-		}
-	}
-
-	sitemapOutput, err := sitemap.Generate(next.cfg, next.state, next.pages)
-	if err != nil {
-		return err
-	}
-	if sitemapOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, sitemapOutput.Filename, sitemapOutput.Content); err != nil {
-			return err
-		}
-	}
-	if robotsOutput := robots.Generate(next.cfg); robotsOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, robotsOutput.Filename, robotsOutput.Content); err != nil {
-			return err
-		}
-	}
-
-	searchOutput, err := searchindex.Generate(next.cfg, next.state)
-	if err != nil {
-		return err
-	}
-	if searchOutput != nil {
-		if err := output.WriteFile(opts.siteRoot, next.cfg, searchOutput.Filename, searchOutput.Content); err != nil {
-			return err
-		}
 	}
 
 	if err := assets.SyncChanged(opts.siteRoot, next.cfg, changedStaticPaths(next.cfg, changedPaths)); err != nil {
@@ -279,6 +253,75 @@ func writeIncrementalOutputs(opts commandOptions, previous, next buildResult, ch
 	}
 
 	return nil
+}
+
+// writeGenerated runs the asset pipeline and writes feeds, sitemap, robots,
+// and the search index for a build result.
+func writeGenerated(siteRoot string, result buildResult) error {
+	cfg := result.cfg
+	if cfg.Pipeline.Active() {
+		manifest, err := pipeline.Process(siteRoot, cfg)
+		if err != nil {
+			return err
+		}
+		if manifest != nil {
+			if err := pipeline.RewriteOutputFiles(siteRoot, cfg, manifest); err != nil {
+				return err
+			}
+		}
+	}
+
+	files, err := feeds.GenerateAll(cfg, result.state.Index)
+	if err != nil {
+		return err
+	}
+	sitemapOutput, err := sitemap.Generate(cfg, result.state, result.pages)
+	if err != nil {
+		return err
+	}
+	searchOutput, err := searchindex.Generate(cfg, result.state)
+	if err != nil {
+		return err
+	}
+	if sitemapOutput != nil {
+		files = append(files, feeds.Output{Filename: sitemapOutput.Filename, Content: sitemapOutput.Content})
+	}
+	if robotsOutput := robots.Generate(cfg); robotsOutput != nil {
+		files = append(files, feeds.Output{Filename: robotsOutput.Filename, Content: robotsOutput.Content})
+	}
+	if searchOutput != nil {
+		files = append(files, feeds.Output{Filename: searchOutput.Filename, Content: searchOutput.Content})
+	}
+	libFiles, err := bundledFiles(result.pages)
+	if err != nil {
+		return err
+	}
+	files = append(files, libFiles...)
+	for _, file := range files {
+		if err := output.WriteFile(siteRoot, cfg, file.Filename, file.Content); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// bundledFiles returns the files of each bundled library a page links to.
+func bundledFiles(pages []render.Page) ([]feeds.Output, error) {
+	contents := make([]string, len(pages))
+	for i, page := range pages {
+		contents[i] = page.Content
+	}
+	var out []feeds.Output
+	for _, lib := range bundled.Used(contents) {
+		files, err := lib.Files()
+		if err != nil {
+			return nil, err
+		}
+		for _, file := range files {
+			out = append(out, feeds.Output{Filename: file.Path, Content: file.Content})
+		}
+	}
+	return out, nil
 }
 
 func rebuildMode(cfg config.SiteConfig, changedPaths []string) string {
@@ -354,16 +397,11 @@ func diffRenderedPages(previous, next []render.Page) ([]render.Page, []string) {
 	return changed, removed
 }
 
-func artifactPaths(cfg config.SiteConfig) []string {
-	paths := make([]string, 0, 2)
-	if cfg.Feed.Enabled {
-		paths = append(paths, cfg.Feed.Filename)
-	}
-	if cfg.Sitemap.Enabled {
-		paths = append(paths, cfg.Sitemap.Filename)
-	}
-	if cfg.Robots.Enabled {
-		paths = append(paths, cfg.Robots.Filename)
+func artifactPaths(result buildResult) []string {
+	artifacts := buildArtifactList(result.cfg, result.state.Index)
+	paths := make([]string, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		paths = append(paths, artifact.Path)
 	}
 	return paths
 }
@@ -385,30 +423,4 @@ func changedStaticPaths(cfg config.SiteConfig, changedPaths []string) []string {
 		}
 	}
 	return out
-}
-
-func buildPathLookupFromPages(pages []content.Page, sections []content.Section, cfg config.SiteConfig) markdown.PathLookup {
-	lookup := make(markdown.PathLookup)
-
-	for _, page := range pages {
-		if page.URL != "" {
-			lookup[page.RelativePath] = page.URL
-			withoutExt := strings.TrimSuffix(page.RelativePath, ".md")
-			if withoutExt != page.RelativePath {
-				lookup[withoutExt] = page.URL
-			}
-		}
-	}
-
-	for _, section := range sections {
-		if section.URL != "" && section.RelativePath != "" {
-			lookup[section.RelativePath] = section.URL
-			withoutExt := strings.TrimSuffix(section.RelativePath, ".md")
-			if withoutExt != section.RelativePath {
-				lookup[withoutExt] = section.URL
-			}
-		}
-	}
-
-	return lookup
 }

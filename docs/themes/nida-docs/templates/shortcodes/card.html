@@ -1,0 +1,5 @@
+{{- /* {{< card title="Writing" href="@/guide/writing.md" >}}Short text.{{< /card >}} */ -}}
+<a class="card" href="{{ .ResolveURL (.Get "href") }}">
+  <span class="card-title">{{ .Get "title" }}</span>
+  {{- with .Inner }}<span class="card-text">{{ markdownify (trimSpace .) }}</span>{{ end }}
+</a>

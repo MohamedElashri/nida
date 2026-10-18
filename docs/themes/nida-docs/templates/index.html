@@ -1,0 +1,60 @@
+{{- define "index" -}}{{ template "base" . }}{{- end }}
+{{- define "content" -}}
+<main id="main" class="home">
+  <section class="hero">
+    <div class="hero-text">
+      {{- with dig .Data "home.eyebrow" }}<p class="eyebrow">{{ . }}</p>{{ end }}
+      <h1 class="hero-title">{{ with dig .Data "home.title" }}{{ markdownify . }}{{ else }}{{ .Config.Title }}{{ end }}</h1>
+      <p class="hero-lede">{{ with dig .Data "home.tagline" }}{{ . }}{{ else }}{{ .Config.Description }}{{ end }}</p>
+      <div class="hero-actions">
+        {{- range dig .Data "home.actions" }}
+        <a class="button {{ if .primary }}button-primary{{ else }}button-secondary{{ end }}" href="{{ if hasPrefix .url "/" }}{{ $.BasePath }}{{ end }}{{ .url }}">{{ .name }}</a>
+        {{- end }}
+      </div>
+      {{- with dig .Data "project.install" }}
+      <div class="install" data-copy-root>
+        <span class="install-prompt" aria-hidden="true">$</span>
+        <code class="install-command" data-copy-source>{{ . }}</code>
+        <button class="icon-button copy-button" type="button" data-copy aria-label="{{ t "copy" }}">{{ template "icon" "copy" }}</button>
+      </div>
+      {{- end }}
+    </div>
+    {{- with dig .Data "home.sample" }}
+    <div class="hero-sample">
+      <div class="window">
+        <div class="window-bar"><span></span><span></span><span></span><p>{{ dig $.Data "home.sample_title" }}</p></div>
+        <div class="window-body">{{ markdownify . }}</div>
+      </div>
+    </div>
+    {{- end }}
+  </section>
+
+  {{- with .Section.BodyHTML }}
+  <section class="home-section prose">{{ unsafeHTML . }}</section>
+  {{- end }}
+
+  {{- with dig .Data "home.features" }}
+  <section class="home-section prose" aria-labelledby="features">
+    <h2 id="features">{{ t "features" }}</h2>
+    <div class="card-grid">
+      {{- range . }}
+      <div class="card">
+        <span class="card-title"><span class="card-icon">{{ template "icon" .icon }}</span>{{ .title }}</span>
+        <span class="card-text">{{ .text }}</span>
+        {{- with .items }}
+        <ul class="chips">{{ range . }}<li>{{ . }}</li>{{ end }}</ul>
+        {{- end }}
+      </div>
+      {{- end }}
+    </div>
+  </section>
+  {{- end }}
+
+  {{- with dig .Data "home.about" }}
+  <section class="home-section prose">
+    {{ with dig $.Data "home.about_title" }}<h2>{{ . }}</h2>{{ end }}
+    {{ markdownify . }}
+  </section>
+  {{- end }}
+</main>
+{{- end }}

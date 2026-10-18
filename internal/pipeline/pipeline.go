@@ -1,18 +1,21 @@
 package pipeline
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
 
 type Manifest map[string]string
 
 func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
-	if !cfg.Pipeline.Fingerprint && !cfg.Pipeline.Images.Enabled && !cfg.Pipeline.SCSS.Enabled {
+	if !cfg.Pipeline.Active() {
 		return nil, nil
 	}
 
@@ -57,8 +60,21 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 		}
 	}
 
+	// Site first, then theme, then parent themes; the first root wins a path.
+	var roots []string
 	if staticExists {
-		if err := processStaticFiles(staticRoot, outputRoot, "", staticRoot, cfg, manifest); err != nil {
+		roots = append(roots, staticRoot)
+	}
+	themeStatic, err := themes.Dirs(absSiteRoot, cfg, "static")
+	if err != nil {
+		return nil, err
+	}
+	for i := len(themeStatic) - 1; i >= 0; i-- {
+		roots = append(roots, themeStatic[i])
+	}
+	seen := map[string]bool{}
+	for _, root := range roots {
+		if err := processStaticFiles(root, outputRoot, "", root, cfg, manifest, seen); err != nil {
 			return nil, err
 		}
 	}
@@ -72,7 +88,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 	return manifest, nil
 }
 
-func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest) error {
+func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest, seen map[string]bool) error {
 	entries, err := os.ReadDir(absDir)
 	if err != nil {
 		return fmt.Errorf("read dir %q: %w", absDir, err)
@@ -88,7 +104,7 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 		relPath := filepath.ToSlash(filepath.Join(relDir, name))
 
 		if entry.IsDir() {
-			if err := processStaticFiles(staticRoot, outputRoot, relPath, srcPath, cfg, manifest); err != nil {
+			if err := processStaticFiles(staticRoot, outputRoot, relPath, srcPath, cfg, manifest, seen); err != nil {
 				return err
 			}
 			continue
@@ -96,8 +112,12 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 		if entry.Type()&os.ModeSymlink != 0 {
 			return fmt.Errorf("refuse static symlink %q", srcPath)
 		}
+		if seen[relPath] {
+			continue
+		}
+		seen[relPath] = true
 
-		if cfg.Pipeline.Images.Enabled && isImageFile(name) {
+		if cfg.Pipeline.Images.Enabled && IsImageFile(name) {
 			if err := processImage(srcPath, relPath, outputRoot, cfg, manifest); err != nil {
 				return fmt.Errorf("process image %q: %w", relPath, err)
 			}
@@ -111,6 +131,20 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 		if err := safepath.EnsureNoSymlinkPath(outputRoot, dstPath); err != nil {
 			return fmt.Errorf("check output path %q: %w", relPath, err)
 		}
+		if cfg.Pipeline.MinifyCSS || cfg.Pipeline.MinifyJS {
+			data, err := os.ReadFile(srcPath)
+			if err != nil {
+				return fmt.Errorf("read %q: %w", relPath, err)
+			}
+			minified := minifyAsset(name, data, cfg.Pipeline)
+			if !bytes.Equal(minified, data) {
+				if err := writeProcessed(minified, relPath, dstPath, outputRoot, cfg, manifest); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
 		if cfg.Pipeline.Fingerprint && isFingerprintable(name) {
 			fpPath, err := fingerprintFile(srcPath, relPath, outputRoot)
 			if err != nil {
@@ -127,10 +161,11 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 	return nil
 }
 
-func isImageFile(name string) bool {
-	ext := filepath.Ext(name)
-	switch ext {
-	case ".png", ".jpg", ".jpeg", ".gif", ".webp":
+// IsImageFile reports whether the pipeline can resize a file. WebP is read
+// but not encoded, so it is copied like any other asset.
+func IsImageFile(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".png", ".jpg", ".jpeg", ".gif":
 		return true
 	}
 	return false
@@ -143,4 +178,24 @@ func isFingerprintable(name string) bool {
 		return true
 	}
 	return false
+}
+
+// writeProcessed writes transformed asset bytes, fingerprinting them when
+// that is enabled so the hash reflects the bytes actually served.
+func writeProcessed(data []byte, relPath, dstPath, outputRoot string, cfg config.SiteConfig, manifest Manifest) error {
+	if cfg.Pipeline.Fingerprint && isFingerprintable(relPath) {
+		fpPath, err := fingerprintData(data, relPath, outputRoot)
+		if err != nil {
+			return fmt.Errorf("fingerprint %q: %w", relPath, err)
+		}
+		manifest[relPath] = fpPath
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+		return fmt.Errorf("create dir for %q: %w", relPath, err)
+	}
+	if err := os.WriteFile(dstPath, data, 0o644); err != nil {
+		return fmt.Errorf("write %q: %w", relPath, err)
+	}
+	return nil
 }

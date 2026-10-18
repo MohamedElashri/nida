@@ -1,0 +1,13 @@
+{{- define "page" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}{{ template "docs-shell" . }}{{ end }}
+{{- define "article" -}}
+<header class="doc-header">
+  <h1>{{ .Page.Title }}</h1>
+  {{- with .Page.Description }}
+  <p class="doc-lede">{{ markdownify . }}</p>
+  {{- end }}
+</header>
+<div class="prose">
+  {{ unsafeHTML .Page.BodyHTML }}
+</div>
+{{- end }}

@@ -1,0 +1,16 @@
+{{- define "post" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}{{ template "docs-shell" . }}{{ end }}
+{{- define "article" -}}
+<header class="doc-header">
+  <h1>{{ .Page.Title }}</h1>
+  {{- with .Page.Description }}
+  <p class="doc-lede">{{ markdownify . }}</p>
+  {{- end }}
+  {{- if not .Page.Date.IsZero }}
+  <p class="doc-date"><time datetime="{{ .Page.Date.Format "2006-01-02" }}">{{ formatDateWith .Page.Date "%B %d, %Y" }}</time> · {{ t "reading_time" (dict "minutes" .Page.ReadingTime) }}</p>
+  {{- end }}
+</header>
+<div class="prose">
+  {{ unsafeHTML .Page.BodyHTML }}
+</div>
+{{- end }}

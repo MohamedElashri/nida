@@ -1,0 +1,27 @@
+{{- define "section" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}{{ template "docs-shell" . }}{{ end }}
+{{- define "article" -}}
+<header class="doc-header">
+  <h1>{{ .Section.Title }}</h1>
+  {{- with .Section.Description }}
+  <p class="doc-lede">{{ markdownify . }}</p>
+  {{- end }}
+</header>
+{{- with .Section.BodyHTML }}
+<div class="prose">{{ unsafeHTML . }}</div>
+{{- end }}
+{{- with .Index.Nav .Section.SectionPath }}
+<div class="card-grid">
+  {{- range . }}
+  <a class="card" href="{{ $.BasePath }}{{ .URL }}">
+    <span class="card-title">{{ .Title }}{{ if .IsSection }} <span class="card-count">{{ len .Children }}</span>{{ end }}</span>
+    {{- if .IsSection }}
+    {{ with .Section.Description }}<span class="card-text">{{ . }}</span>{{ end }}
+    {{- else }}
+    {{ with .Page.Description }}<span class="card-text">{{ . }}</span>{{ end }}
+    {{- end }}
+  </a>
+  {{- end }}
+</div>
+{{- end }}
+{{- end }}

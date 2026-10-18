@@ -1,0 +1,15 @@
+{{- define "breadcrumbs" -}}
+{{- $path := .Section.SectionPath -}}
+{{- $crumbs := .Index.Ancestors $path -}}
+{{- if or .Page.RelativePath (gt (len $crumbs) 1) }}
+<nav class="breadcrumbs" aria-label="{{ t "breadcrumb" }}">
+  <ol>
+    {{- range $i, $s := $crumbs }}
+    {{- if or $.Page.RelativePath (lt (add $i 1) (len $crumbs)) }}
+    <li><a href="{{ $.BasePath }}{{ $s.URL }}">{{ if eq $s.SectionPath "" }}{{ t "docs_home" }}{{ else }}{{ $s.Title }}{{ end }}</a></li>
+    {{- end }}
+    {{- end }}
+  </ol>
+</nav>
+{{- end }}
+{{- end -}}

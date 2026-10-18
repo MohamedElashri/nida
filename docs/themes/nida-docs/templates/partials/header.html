@@ -1,0 +1,33 @@
+{{- define "site-header" -}}
+<header class="site-header">
+  <div class="header-inner">
+    <button class="icon-button nav-toggle" type="button" aria-controls="sidebar" aria-expanded="false" data-nav-toggle>
+      {{ template "icon" "menu" }}<span class="sr-only">{{ t "menu" }}</span>
+    </button>
+    <a class="brand" href="{{ .BasePath }}/">
+      <img class="brand-mark" src="{{ asset "favicon.svg" }}" alt="" width="28" height="28">
+      <span class="brand-name">{{ with (dig .Data "project.name") }}{{ . }}{{ else }}{{ $.Config.Title }}{{ end }}</span>
+      {{ with (dig .Data "project.version") }}<span class="version-badge">v{{ . }}</span>{{ end }}
+    </a>
+    <nav class="top-nav" aria-label="{{ t "primary_navigation" }}">
+      {{- range dig .Data "nav.top" }}
+      {{- $active := and (ne .url "/") (hasPrefix $.CurrentURL .url) }}
+      <a{{ if $active }} class="active" aria-current="page"{{ end }} href="{{ $.BasePath }}{{ .url }}">{{ .name }}</a>
+      {{- end }}
+    </nav>
+    <div class="header-actions">
+      {{- if .Config.Search.Enabled }}
+      <button class="search-trigger" type="button" data-search-open>
+        {{ template "icon" "search" }}<span class="search-trigger-label">{{ t "search_placeholder" }}</span><kbd class="search-key" data-search-key>/</kbd>
+      </button>
+      {{- end }}
+      <button class="icon-button" type="button" data-theme-toggle aria-label="{{ t "toggle_theme" }}" title="{{ t "toggle_theme" }}">
+        <span class="theme-icon-light">{{ template "icon" "sun" }}</span><span class="theme-icon-dark">{{ template "icon" "moon" }}</span>
+      </button>
+      {{- with (dig .Data "project.repo") }}
+      <a class="icon-button" href="{{ . }}" aria-label="GitHub" title="GitHub">{{ template "icon" "github" }}</a>
+      {{- end }}
+    </div>
+  </div>
+</header>
+{{- end -}}

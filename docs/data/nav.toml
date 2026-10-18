@@ -1,0 +1,44 @@
+# Header links and footer columns for the docs theme.
+
+[[top]]
+name = "Guide"
+url = "/guide/"
+
+[[top]]
+name = "Reference"
+url = "/reference/"
+
+[[top]]
+name = "Advanced"
+url = "/advanced/"
+
+[[top]]
+name = "Release notes"
+url = "/release-notes/"
+
+[[footer]]
+title = "Docs"
+links = [
+  { name = "Getting started", url = "/guide/getting-started/" },
+  { name = "Writing content", url = "/guide/writing/" },
+  { name = "Themes", url = "/guide/themes/" },
+  { name = "Migrating", url = "/guide/migrating/" },
+]
+
+[[footer]]
+title = "Reference"
+links = [
+  { name = "CLI", url = "/reference/cli/" },
+  { name = "Configuration", url = "/reference/config/" },
+  { name = "Front matter", url = "/reference/front-matter/" },
+  { name = "Templates", url = "/guide/templates/" },
+]
+
+[[footer]]
+title = "Project"
+links = [
+  { name = "GitHub", url = "https://github.com/MohamedElashri/nida" },
+  { name = "Release notes", url = "/release-notes/" },
+  { name = "Roadmap", url = "/roadmap/" },
+  { name = "Report an issue", url = "https://github.com/MohamedElashri/nida/issues" },
+]
