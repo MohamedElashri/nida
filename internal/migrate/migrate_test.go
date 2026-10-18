@@ -598,3 +598,21 @@ func TestCustomPathFieldIsNotAURL(t *testing.T) {
 		t.Errorf("check: %s", result.Report.Check)
 	}
 }
+
+func TestCleanOldURL(t *testing.T) {
+	for in, want := range map[string]string{
+		"//2024/05/x.html":                        "/2024/05/x.html",
+		"https://old.example/blog/caf%C3%A9/?a#b": "/blog/café/",
+		"/a/b/index.html":                         "/a/b/",
+		"posts/x":                                 "/posts/x/",
+		"":                                        "/",
+	} {
+		got, err := cleanOldURL(in)
+		if err != nil || got != want {
+			t.Errorf("cleanOldURL(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	if _, err := cleanOldURL("/a%2Fb/"); err == nil {
+		t.Error("an escaped slash must not become a separator")
+	}
+}

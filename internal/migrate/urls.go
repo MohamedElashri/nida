@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"fmt"
 	"io/fs"
 	"net/url"
 	"os"
@@ -213,15 +214,33 @@ func checkBundleResources(p *Plan, pages []content.Page, finalURL map[string]str
 // scheme and host, the query and fragment, decodes percent escapes, and
 // treats a trailing index.html as the directory it names.
 func cleanOldURL(raw string) (string, error) {
-	if u, err := url.Parse(raw); err == nil {
-		raw = u.Path
-		if u.RawPath != "" {
-			raw = u.RawPath
+	raw = strings.TrimSpace(raw)
+	// Only a URL with a scheme has a host; "//2024/x/" from an empty
+	// Jekyll :categories is a path with a doubled slash.
+	if strings.Contains(raw, "://") {
+		if u, err := url.Parse(raw); err == nil {
+			raw = u.EscapedPath()
 		}
 	}
-	if decoded, err := url.PathUnescape(raw); err == nil {
-		raw = decoded
+	raw, _, _ = strings.Cut(raw, "#")
+	raw, _, _ = strings.Cut(raw, "?")
+	for strings.Contains(raw, "//") {
+		raw = strings.ReplaceAll(raw, "//", "/")
 	}
+	// Decode each segment on its own, so an escaped slash (%2F) cannot
+	// become a path separator.
+	segments := strings.Split(raw, "/")
+	for i, seg := range segments {
+		decoded, err := url.PathUnescape(seg)
+		if err != nil {
+			continue
+		}
+		if strings.Contains(decoded, "/") {
+			return "", fmt.Errorf("segment %q holds an escaped slash", seg)
+		}
+		segments[i] = decoded
+	}
+	raw = strings.Join(segments, "/")
 	if strings.HasSuffix(raw, "/index.html") || raw == "index.html" {
 		raw = strings.TrimSuffix(raw, "index.html")
 	}

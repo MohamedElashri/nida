@@ -79,7 +79,7 @@ diff <(grep -o '<loc>[^<]*' old-site/_site/sitemap.xml | sort) \
 | --- | --- |
 | Config | Mapped onto `config.toml`: title, base URL, language, taxonomies, permalinks, feeds, pagination, Markdown options. Custom values go into `[extra]`. Keys with no Nida equivalent are reported. |
 | Content | Copied into `content/`. Non-`.md` Markdown extensions such as `.markdown` are renamed to `.md`. Sections get an `_index.md`, and page bundles stay bundles. |
-| Front matter | Edited in place. YAML stays YAML and TOML stays TOML, with comments and key order kept. Keys are renamed to Nida's (`lastmod` becomes `updated`, `layout` becomes `template`, `redirect_from` becomes `aliases`). Dates are rewritten into a form Nida reads, and files that had no front matter get some. |
+| Front matter | Edited in place. A custom `path` field moves to `extra.path`, since `path` sets the URL in Nida. YAML stays YAML and TOML stays TOML, with comments and key order kept. Keys are renamed to Nida's (`lastmod` becomes `updated`, `layout` becomes `template`, `redirect_from` becomes `aliases`). Dates are rewritten into a form Nida reads, and files that had no front matter get some. |
 | Shortcodes and template tags in content | Converted to Nida's `{{< name >}}` syntax. Code blocks and inline code are left alone. Shortcodes Nida has no template for render a visible placeholder until you write one. |
 | URLs | Kept. See [Keeping URLs](#keeping-urls). |
 | Static files | Copied into `static/` at the paths they were served from. |

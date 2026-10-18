@@ -47,7 +47,9 @@ type Source interface {
 | `Config` | The `config.toml` builder: `Set`, `Table`, `Taxonomy`. Keys come out in the order they were set. |
 | `Report.Add(severity, file, line, ...)` | A note for `MIGRATION.md`. |
 
-Two destinations claiming the same path are not an error. The second one is reported as needing manual work, so one bad file can't stop the whole migration.
+Two destinations claiming the same path are not an error. The second one is reported as needing manual work, so one bad file can't stop the whole migration. The same goes for a destination outside the new site (`../`), and for a source path that leaves the old site, directly or through a symlink at any level: each is refused with a report note. If writing fails partway, `Run` empties DEST again so the migration can be rerun.
+
+`Walk` skips version control directories everywhere, dependency and cache directories such as `node_modules/` everywhere, and `vendor/`, `.cache/`, and `.bundle/` only at the top of the site. Skipped directories inside a migrated tree, such as `static/node_modules/`, are reported.
 
 ## Editing content
 
@@ -60,7 +62,7 @@ Two destinations claiming the same path are not an error. The second one is repo
 - **Files without front matter** get TOML front matter when a key is first set. Nida requires front matter on every content file.
 - **Formatting:** CRLF line endings and trailing spaces after delimiters are handled. Output keeps the file's line endings.
 
-`RewriteProse` (`body.go`) applies a rewrite to Markdown prose only. Fenced code blocks and inline code spans pass through untouched, so a shortcode shown as an example in a code block is never converted. It follows the same CommonMark rules as Nida's shortcode scanner.
+`RewriteProse` (`body.go`) applies a rewrite to Markdown prose only. Fenced code blocks and inline code spans pass through untouched, so a shortcode shown as an example in a code block is never converted. It deliberately matches Nida's own shortcode scanner rather than full CommonMark: indented (four-space) code blocks count as prose, because Nida runs shortcodes there too, and so did Hugo.
 
 `NormalizeDate` rewrites dates Nida can't read, such as Jekyll's `2024-05-01 10:00:00 -0500`, into RFC 3339 or a TOML date.
 
@@ -77,7 +79,7 @@ Two destinations claiming the same path are not an error. The second one is repo
 - **Mismatch, default `--urls keep`:** the page gets a `path` set to its old URL.
 - **Mismatch, `--urls redirect`:** the old URL is added to `aliases`.
 
-A fix never takes a URL that another page already serves; a collision is reported instead. Old URLs are cleaned before comparison: the scheme and host are dropped, percent escapes are decoded, and a trailing `index.html` becomes its directory. Sources should still emit `[permalinks]` patterns that reproduce the old scheme, so only exceptions need a `path`.
+A fix never takes a URL that something else serves: another page, a section, a taxonomy page, an alias, a feed, the sitemap, `robots.txt`, the search index, or a static file. A collision is reported instead. Pages that move back to their old URLs free the ones Nida gave them first, so two pages can trade URLs. The pass also reports page bundles whose resources would overwrite each other, which can happen when pages are written as files such as `/posts/a.html` and `/posts/b.html`. Old URLs are cleaned before comparison: the scheme and host are dropped, percent escapes are decoded, and a trailing `index.html` becomes its directory. Sources should still emit `[permalinks]` patterns that reproduce the old scheme, so only exceptions need a `path`.
 
 `chooseTemplates` tries the translated templates first, if there are any. If the site doesn't build with them, it switches to the starter templates in `internal/migrate/starter/`, keeps the translations in `_migration/translated-templates/`, and reports why. The build check is passed in by the CLI, because the build code lives outside this package.
 
@@ -97,6 +99,6 @@ Read the diff before accepting it. The golden files define correct behavior, not
 1. **Create the source.** Add `<name>.go` with a type implementing `Source`, and append it to `Sources` in `migrate.go`.
 2. **Detect it.** Score marker files; two markers should outscore one.
 3. **Map the config.** Every key you don't map should become an `Unsupported` note.
-4. **Convert the content.** Walk it with `Plan.Walk`, parse each file with `ParseDocument`, rename and normalize keys, rewrite the body with `RewriteProse`, and pass the page's old URL to `Page`.
+4. **Convert the content.** Walk it with `Plan.Walk`, parse each file with `ParseDocument`, call `MoveCustomPath` unless `path` already means a URL in that generator, rename and normalize keys, rewrite the body with `RewriteProse`, and pass the page's old URL to `Page`.
 5. **Keep the rest.** Copy static files, and `Preserve` templates and anything else that has no equivalent.
 6. **Test it.** Add a fixture and a `Test<Name>Golden` test, and document the source in [Migrating to Nida](@/guide/migrating.md).

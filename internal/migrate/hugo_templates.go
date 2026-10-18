@@ -29,6 +29,9 @@ func planHugoTemplates(p *Plan, dirs []string) {
 	t := &hugoTr{p: p, files: map[string]hugoFile{}, done: map[string]bool{}, partials: map[string]*strings.Builder{}, assets: map[string]bool{}}
 	t.collect(dirs)
 	if !t.hasLayouts() {
+		if len(t.files) > 0 {
+			p.Report.Add(Review, "", 0, "The Hugo layouts hold no page layouts, only partials or shortcodes (the theme may be a Hugo module), so the site uses Nida's starter templates.")
+		}
 		return
 	}
 	if err := t.translate(); err != nil {
@@ -99,11 +102,21 @@ func (t *hugoTr) collect(dirs []string) {
 	}
 }
 
+// hasLayouts reports whether there is at least one page layout to
+// translate. Shortcode, partial, and render-hook templates alone (a site
+// whose theme is a Hugo module, for example) would translate into bare
+// skeleton pages, so the starter templates are better then.
 func (t *hugoTr) hasLayouts() bool {
 	for rel := range t.files {
-		if strings.HasSuffix(rel, ".html") {
-			return true
+		if !strings.HasSuffix(rel, ".html") {
+			continue
 		}
+		first, _, _ := strings.Cut(rel, "/")
+		switch first {
+		case "shortcodes", "_shortcodes", "partials", "_partials", "_markup", "_internal":
+			continue
+		}
+		return true
 	}
 	return false
 }

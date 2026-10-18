@@ -340,3 +340,19 @@ func TestHugoReportsUnreadableShortcodes(t *testing.T) {
 		t.Errorf("expected one note, got %d: %v", found, result.Report.Notes)
 	}
 }
+
+func TestHugoShortcodeOnlyLayoutsUseStarter(t *testing.T) {
+	src := t.TempDir()
+	writeTree(t, src, map[string]string{
+		"hugo.toml":                   "baseURL = \"https://x/\"\ntitle = \"T\"\n",
+		"layouts/shortcodes/box.html": `<div class="box">{{ .Inner }}</div>`,
+		"content/posts/a.md":          "---\ntitle: A\n---\n{{< box >}}hi{{< /box >}}\n",
+	})
+	result, err := Run(Options{Source: src, Dest: filepath.Join(t.TempDir(), "out"), From: "hugo", Check: checkSite})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(result.Report.TemplateSet, "Nida starter") || result.Report.Check != "passed" {
+		t.Errorf("templates=%q check=%q", result.Report.TemplateSet, result.Report.Check)
+	}
+}
