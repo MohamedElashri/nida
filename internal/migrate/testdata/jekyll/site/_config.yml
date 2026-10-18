@@ -1,0 +1,46 @@
+title: Jekyll Fixture
+description: A Jekyll site with edge cases.
+url: "https://example.com"
+baseurl: "/blog"
+lang: en_US
+timezone: America/New_York
+author:
+  name: Ada Lovelace
+  email: ada@example.com
+twitter_username: ada
+permalink: date
+excerpt_separator: <!--excerpt-->
+paginate: 5
+paginate_path: "/page:num/"
+collections:
+  recipes:
+    output: true
+    permalink: /cookbook/:name/
+  team:
+    output: false
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+      comments: true
+  - scope:
+      path: "docs"
+    values:
+      layout: doc
+plugins:
+  - jekyll-feed
+  - jekyll-redirect-from
+  - jekyll-seo-tag
+  - jekyll-gist
+  - jemoji
+sass:
+  style: compressed
+kramdown:
+  input: GFM
+  hard_wrap: false
+  smart_quotes: lsquo,rsquo,ldquo,rdquo
+exclude:
+  - README.md
+  - scripts/
