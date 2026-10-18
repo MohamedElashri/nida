@@ -309,17 +309,49 @@ func (d *Document) Delete(key string) bool {
 		}
 		_ = d.decodeYAML()
 	case TOML:
+		before := d.tomlText
 		if start, end, ok := d.tomlExtent(key); ok {
 			lines := strings.Split(d.tomlText, "\n")
 			d.tomlText = strings.Join(slices.Delete(lines, start, end), "\n")
-			if d.decodeTOML() == nil {
-				return true
-			}
+		} else {
+			d.tomlText = deleteTOMLTable(d.tomlText, key)
 		}
+		if d.tomlText != before && d.decodeTOML() == nil && !d.Has(key) {
+			return true
+		}
+		d.tomlText = before
 		// Re-encoding values that were just decoded cannot fail.
 		_ = d.reencodeTOML(func(values map[string]any) { delete(values, key) })
 	}
 	return true
+}
+
+// tomlTableHeader matches [name], [name.sub], [[name]], and [[name.sub]].
+var tomlTableHeader = regexp.MustCompile(`^\s*\[\[?\s*("[^"]*"|'[^']*'|[A-Za-z0-9_-]+)\s*[.\]]`)
+
+// deleteTOMLTable removes every table section belonging to key, from its
+// header to the next header of another table, and the blank lines before
+// it, keeping everything else as written.
+func deleteTOMLTable(text, key string) string {
+	lines := strings.Split(text, "\n")
+	var out []string
+	inside := false
+	for _, line := range lines {
+		if tomlHeader.MatchString(line) {
+			m := tomlTableHeader.FindStringSubmatch(line)
+			wasInside := inside
+			inside = m != nil && strings.Trim(m[1], `"'`) == key
+			if inside {
+				out = trimTrailingBlank(out)
+			} else if wasInside && len(out) > 0 {
+				out = append(out, "") // keep a blank line between tables
+			}
+		}
+		if !inside {
+			out = append(out, line)
+		}
+	}
+	return strings.Join(out, "\n")
 }
 
 // Rename moves a top-level key to a new name, keeping its position and

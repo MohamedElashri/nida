@@ -8,6 +8,21 @@ import (
 	"github.com/MohamedElashri/nida/internal/frontmatter"
 )
 
+func TestDocumentTOMLDeleteTableKeepsTheRest(t *testing.T) {
+	in := "+++\ntitle = \"A\" # c\ndraft = true\n\n[params]\nmood = \"x\"\n\n[params.deep]\nk = 1\n\n[extra]\nimage = \"y\"\n+++\nbody\n"
+	doc, err := ParseDocument([]byte(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !doc.Delete("params") {
+		t.Fatal("delete failed")
+	}
+	want := "+++\ntitle = \"A\" # c\ndraft = true\n\n[extra]\nimage = \"y\"\n+++\nbody\n"
+	if got := string(doc.Bytes()); got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
 func TestDocumentUnchangedIsByteForByte(t *testing.T) {
 	inputs := []string{
 		"+++\ntitle = \"A\"\n# comment\n+++\nbody\n",
