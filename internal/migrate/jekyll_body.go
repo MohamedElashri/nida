@@ -14,19 +14,19 @@ import (
 // code blocks is reported, since Jekyll would have rendered it.
 
 var (
-	liquidRaw       = regexp.MustCompile(`(?s)\{%-?\s*raw\s*-?%\}(.*?)\{%-?\s*endraw\s*-?%\}`)
-	liquidComment   = regexp.MustCompile(`(?s)\{%-?\s*comment\s*-?%\}.*?\{%-?\s*endcomment\s*-?%\}`)
-	liquidHighlight = regexp.MustCompile(`(?s)\{%-?\s*highlight\s+([A-Za-z0-9_+#.-]+)([^%]*?)-?%\}(.*?)\{%-?\s*endhighlight\s*-?%\}`)
-	liquidPostURL   = regexp.MustCompile(`\{%-?\s*post_url\s+([^\s%]+)\s*-?%\}`)
-	liquidLink      = regexp.MustCompile(`\{%-?\s*link\s+([^\s%]+)\s*-?%\}`)
-	liquidInclude   = regexp.MustCompile(`\{%-?\s*include\s+([^\s%]+)((?:\s+[A-Za-z0-9_-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s%]+))*)\s*-?%\}`)
-	liquidIncArg    = regexp.MustCompile(`([A-Za-z0-9_-]+)\s*=\s*("[^"]*"|'[^']*'|[^\s%]+)`)
-	liquidGist      = regexp.MustCompile(`\{%-?\s*gist\s+([^\s%]+)(?:\s+([^\s%]+))?\s*-?%\}`)
-	liquidURLFilter = regexp.MustCompile(`\{\{-?\s*(?:site\.url\s*\}\}\s*\{\{-?\s*)?["']([^"']*)["']\s*\|\s*(?:relative_url|absolute_url|prepend:\s*site\.baseurl)\s*-?\}\}`)
-	liquidBaseURL   = regexp.MustCompile(`\{\{-?\s*site\.url\s*-?\}\}\s*\{\{-?\s*site\.baseurl\s*-?\}\}|\{\{-?\s*site\.(?:baseurl|url)\s*-?\}\}`)
-	liquidVariable  = regexp.MustCompile(`\{\{-?\s*(page|site)\.([A-Za-z0-9_]+)\s*-?\}\}`)
-	liquidAny       = regexp.MustCompile(`\{\{[^<].*?\}\}|\{%.*?%\}`)
-	mdLink          = regexp.MustCompile(`\]\(([^)\s#?]+\.(?:md|markdown))((?:#|\?)[^)\s]*)?\)`)
+	liquidRaw           = regexp.MustCompile(`(?s)\{%-?\s*raw\s*-?%\}(.*?)\{%-?\s*endraw\s*-?%\}`)
+	jekyllLiquidComment = regexp.MustCompile(`(?s)\{%-?\s*comment\s*-?%\}.*?\{%-?\s*endcomment\s*-?%\}`)
+	liquidHighlight     = regexp.MustCompile(`(?s)\{%-?\s*highlight\s+([A-Za-z0-9_+#.-]+)([^%]*?)-?%\}(.*?)\{%-?\s*endhighlight\s*-?%\}`)
+	liquidPostURL       = regexp.MustCompile(`\{%-?\s*post_url\s+([^\s%]+)\s*-?%\}`)
+	liquidLink          = regexp.MustCompile(`\{%-?\s*link\s+([^\s%]+)\s*-?%\}`)
+	liquidInclude       = regexp.MustCompile(`\{%-?\s*include\s+([^\s%]+)((?:\s+[A-Za-z0-9_-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s%]+))*)\s*-?%\}`)
+	liquidIncArg        = regexp.MustCompile(`([A-Za-z0-9_-]+)\s*=\s*("[^"]*"|'[^']*'|[^\s%]+)`)
+	liquidGist          = regexp.MustCompile(`\{%-?\s*gist\s+([^\s%]+)(?:\s+([^\s%]+))?\s*-?%\}`)
+	liquidURLFilter     = regexp.MustCompile(`\{\{-?\s*(?:site\.url\s*\}\}\s*\{\{-?\s*)?["']([^"']*)["']\s*\|\s*(?:relative_url|absolute_url|prepend:\s*site\.baseurl)\s*-?\}\}`)
+	liquidBaseURL       = regexp.MustCompile(`\{\{-?\s*site\.url\s*-?\}\}\s*\{\{-?\s*site\.baseurl\s*-?\}\}|\{\{-?\s*site\.(?:baseurl|url)\s*-?\}\}`)
+	liquidVariable      = regexp.MustCompile(`\{\{-?\s*(page|site)\.([A-Za-z0-9_]+)\s*-?\}\}`)
+	jekyllLiquidAny     = regexp.MustCompile(`\{\{[^<].*?\}\}|\{%.*?%\}`)
+	mdLink              = regexp.MustCompile(`\]\(([^)\s#?]+\.(?:md|markdown))((?:#|\?)[^)\s]*)?\)`)
 
 	kramdownTOC        = regexp.MustCompile(`(?m)^[ \t]*(?:[*+-]|\d+\.)[ \t]+.*\n[ \t]*\{:[ \t]*(?:\.?toc|#markdown-toc)[^}]*\}[ \t]*\n?`)
 	kramdownOptions    = regexp.MustCompile(`\{::options\b[^}]*/\}\n?`)
@@ -65,14 +65,14 @@ func (s *jekyllSite) convertBody(d *jekyllDoc) {
 	if len(raws) > 0 {
 		s.p.Report.Add(Changed, rel, 0, "Removed `{%% raw %%}` tags; Nida does not run Liquid, so their content shows as written.")
 	}
-	if liquidComment.MatchString(body) {
-		body = liquidComment.ReplaceAllString(body, "")
+	if jekyllLiquidComment.MatchString(body) {
+		body = jekyllLiquidComment.ReplaceAllString(body, "")
 		s.p.Report.Add(Changed, rel, 0, "Removed `{%% comment %%}` blocks.")
 	}
 	body = liquidHighlight.ReplaceAllStringFunc(body, func(m string) string {
 		sub := liquidHighlight.FindStringSubmatch(m)
 		s.p.Report.Add(Changed, rel, 0, "Converted `{%% highlight %%}` blocks to fenced code blocks.")
-		return highlightFence(sub[1], sub[2], sub[3])
+		return jekyllHighlightFence(sub[1], sub[2], sub[3])
 	})
 	body = s.convertKramdown(d, body, at)
 
@@ -82,17 +82,17 @@ func (s *jekyllSite) convertBody(d *jekyllDoc) {
 
 	// Report what is left. Shortcodes we wrote start with {{<.
 	RewriteProse(body, func(prose string, _ int) string {
-		for _, m := range liquidAny.FindAllString(prose, -1) {
+		for _, m := range jekyllLiquidAny.FindAllString(prose, -1) {
 			s.p.Report.Add(Manual, rel, at(m), "Liquid `%s` is left as text; Nida does not run Liquid. Replace it with content or a shortcode.", truncate(m, 60))
 		}
 		return prose
 	})
 	proseLiquid := 0
 	RewriteProse(body, func(prose string, _ int) string {
-		proseLiquid += len(liquidAny.FindAllString(prose, -1))
+		proseLiquid += len(jekyllLiquidAny.FindAllString(prose, -1))
 		return prose
 	})
-	if len(liquidAny.FindAllString(body, -1)) > proseLiquid {
+	if len(jekyllLiquidAny.FindAllString(body, -1)) > proseLiquid {
 		s.p.Report.Add(Review, rel, 0, "Code blocks contain Liquid, which Jekyll rendered and Nida shows as written. Replace it with its output, or keep it if it was meant as an example.")
 	}
 
@@ -110,9 +110,9 @@ func (s *jekyllSite) convertBody(d *jekyllDoc) {
 	d.doc.SetBody(body)
 }
 
-// highlightFence turns a highlight block into a fenced code block with
+// jekyllHighlightFence turns a highlight block into a fenced code block with
 // Nida's info string options.
-func highlightFence(lang, opts, code string) string {
+func jekyllHighlightFence(lang, opts, code string) string {
 	code = strings.TrimPrefix(strings.TrimPrefix(code, "\r"), "\n")
 	code = strings.TrimRight(code, " \t")
 	code = strings.TrimSuffix(code, "\n")

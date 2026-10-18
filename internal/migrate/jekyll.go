@@ -1291,7 +1291,7 @@ var (
 // HTML. It returns false when the page needs Liquid and was kept aside.
 func (s *jekyllSite) convertHTML(d *jekyllDoc) bool {
 	body := d.doc.Body
-	body = liquidComment.ReplaceAllString(body, "")
+	body = jekyllLiquidComment.ReplaceAllString(body, "")
 	if liquidMarker.MatchString(liquidRaw.ReplaceAllString(body, "")) && !d.skipLiquid {
 		s.p.Preserve(d.origin)
 		if d.isIndex {

@@ -106,8 +106,8 @@ func TestNidaPattern(t *testing.T) {
 	}
 }
 
-func TestHighlightFence(t *testing.T) {
-	got := highlightFence("ruby", ` linenos mark_lines="1 3"`, "\nputs 1\n```\nputs 2\n")
+func TestJekyllHighlightFence(t *testing.T) {
+	got := jekyllHighlightFence("ruby", ` linenos mark_lines="1 3"`, "\nputs 1\n```\nputs 2\n")
 	want := "````ruby {linenos=true, hl_lines=\"1 3\"}\nputs 1\n```\nputs 2\n````"
 	if got != want {
 		t.Errorf("got %q\nwant %q", got, want)
