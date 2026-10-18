@@ -1,0 +1,3 @@
+---
+title: Ignored by .eleventyignore
+---
