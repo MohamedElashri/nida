@@ -1,0 +1,15 @@
+{{- define "list" -}}{{ template "base" . }}{{- end }}
+{{- define "content" }}
+  <section>
+    <h1>{{ .Section.Title }}</h1>
+    <div class="prose">{{ unsafeHTML .Section.BodyHTML }}</div>
+    <ul class="post-list">
+      {{ range .Pages }}
+      <li>
+        <a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a>
+        {{ if not .Date.IsZero }}<span>{{ formatDate .Date }}</span>{{ end }}
+      </li>
+      {{ end }}
+    </ul>
+  </section>
+{{- end }}
