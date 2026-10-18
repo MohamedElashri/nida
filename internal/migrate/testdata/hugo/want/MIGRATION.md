@@ -5,15 +5,15 @@ Migrated from Hugo by `nida migrate`.
 - Source: `testdata/hugo/site`
 - Pages: 9, sections: 5, files copied: 15
 - URLs: 7 unchanged, 2 kept with a path or alias
-- Templates: Nida starter templates (restyle them, or port your old layouts from `_migration/original/`)
+- Templates: translated from Hugo
 - `nida check`: passed
 
 | Severity | Notes |
 | --- | --- |
 | Needs manual work | 4 |
-| Not supported by Nida | 9 |
-| Needs review | 18 |
-| Changed automatically | 25 |
+| Not supported by Nida | 8 |
+| Needs review | 20 |
+| Changed automatically | 26 |
 
 Work through the sections from the top. When `nida check` passes, compare the old and new `sitemap.xml` files to confirm every URL still exists.
 
@@ -30,7 +30,6 @@ These were left in place. `nida check` fails on most of them until they are fixe
 
 Nida has no equivalent for these, so they were dropped or kept only for reference.
 
-- Hugo Pipes assets in `assets/` are not processed; they are kept in `_migration/original/assets/`. Copy compiled CSS and JS into `static/`, or move SCSS into `static/css/` and enable `[pipeline.scss]`. (`assets`)
 - `markup.highlight.linenos` has no Nida equivalent; set code block options per block instead. (`config.toml`)
 - `summaryLength = 40` has no equivalent; Nida summaries are the text before `<!-- more -->` or the first paragraph. (`config.toml`)
 - Languages fr are not migrated: Nida builds one language per site. Only `en` content was migrated; translated files are kept in `_migration/original/`. (`config.toml`)
@@ -46,8 +45,10 @@ These were converted, but the result may not match the old site exactly.
 
 - Hugo layouts are kept in `_migration/original/` for reference.
 - Content uses raw HTML, so `markdown.unsafe_html` is on. Nida turns it off by default because it lets Markdown authors inject scripts; keep it only if you trust everyone who writes content.
+- Hugo Pipes assets in `assets/` were copied to `static/` at the same paths. Nida does not fingerprint, minify, or bundle them the way Pipes did; see `[pipeline]` for the options it has. (`assets`)
+- SCSS compiles through Nida's pipeline from `static/scss/`, which needs the `sass` command installed (Hugo uses its own Dart Sass or LibSass). (`assets`)
 - Hugo turns straight quotes and dashes into typographic ones by default; Nida leaves them as written. (`config.toml`)
-- Nida has no menus; Hugo's menus were copied to `[extra] menus` for templates to read (`.Config.Extra.menus`). Menu entries in page front matter stay in each page's `extra`. (`config.toml`)
+- Nida has no menus; Hugo's menus were copied to `[extra.menu]`, one list of `name`, `url`, and `weight` entries per menu, for templates to read with `dig .Config.Extra "menu.main"`. Menu entries in page front matter stay in each page's `extra`. (`config.toml`)
 - The Google Analytics ID is in `[extra] google_analytics`; add the tracking snippet to your base template. (`config.toml`)
 - Permalink `docs = "/docs/:filename/:yearday/"` uses tokens Nida cannot express, so its pages keep their URLs through `path`. (`config.toml`)
 - Environment config in `config/production/` was not merged; only `config/_default/` and the root config were read. Copy any settings you need into config.toml. (`config/production`)
@@ -67,6 +68,7 @@ These were converted, but the result may not match the old site exactly.
 
 The migrator converted these. They are listed so you know what changed.
 
+- Translated 4 Hugo layouts into Nida templates. The translation is best effort: compare the pages with the old site.
 - Archetype expressions now use Nida's `.Title`, `.Date`, and `.Slug`. (`archetypes/default.md`)
 - `enableGitInfo` became `updated_from_git`, which sets each page's `updated` date from git. (`config.toml`)
 - Hugo's RSS feeds map to `[rss]` with the file name `index.xml`, so `/index.xml`, section feeds, and term feeds keep their URLs. Nida's Atom feed is off, as Hugo has none. (`config.toml`)

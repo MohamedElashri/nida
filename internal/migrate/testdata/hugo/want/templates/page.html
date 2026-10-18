@@ -1,7 +1,2 @@
-{{- define "page" -}}{{ template "base" . }}{{- end }}
-{{- define "content" }}
-  <article class="prose">
-    <h1>{{ .Page.Title }}</h1>
-    {{ unsafeHTML .Page.BodyHTML }}
-  </article>
-{{- end }}
+{{ define "page" }}{{ template "base" . }}{{ end }}
+{{ define "main" }}{{ unsafeHTML .Page.BodyHTML }}{{ end }}

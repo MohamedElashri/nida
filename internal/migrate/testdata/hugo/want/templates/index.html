@@ -1,22 +1,2 @@
-{{- define "index" -}}{{ template "base" . }}{{- end }}
-{{- define "content" }}
-  <section class="home">
-    <h1>{{ .Config.Title }}</h1>
-    {{ with .Config.Description }}<p class="lede">{{ . }}</p>{{ end }}
-    <div class="prose">{{ unsafeHTML .Section.BodyHTML }}</div>
-  </section>
-  {{ if .Pages }}
-  <section>
-    <h2>Latest</h2>
-    <ul class="post-list">
-      {{ range .Pages }}
-      <li>
-        <a href="{{ $.BasePath }}{{ .URL }}">{{ .Title }}</a>
-        {{ if not .Date.IsZero }}<span>{{ formatDate .Date }}</span>{{ end }}
-        {{ with .Summary }}<p>{{ plainify . }}</p>{{ end }}
-      </li>
-      {{ end }}
-    </ul>
-  </section>
-  {{ end }}
-{{- end }}
+{{ define "index" }}{{ template "base" . }}{{ end }}
+{{ define "main" }}<h1>{{ .Title }}</h1>{{ unsafeHTML .Section.BodyHTML }}<ul>{{ range .Pages }}<li><a href="{{ relURL .URL }}">{{ .Title }}</a></li>{{ end }}</ul>{{ end }}

@@ -616,8 +616,8 @@ func (h *hugoSite) planConfig() {
 		}
 	}
 	if hasMenus {
-		extra.Set("menus", menus)
-		r.Add(Review, file, 0, "Nida has no menus; Hugo's menus were copied to `[extra] menus` for templates to read (`.Config.Extra.menus`). Menu entries in page front matter stay in each page's `extra`.")
+		extra.Set("menu", normalizeHugoMenus(menus))
+		r.Add(Review, file, 0, "Nida has no menus; Hugo's menus were copied to `[extra.menu]`, one list of `name`, `url`, and `weight` entries per menu, for templates to read with `dig .Config.Extra \"menu.main\"`. Menu entries in page front matter stay in each page's `extra`.")
 	}
 	if ga, ok := h.get("services.googleanalytics.id"); ok {
 		extra.Set("google_analytics", ga)
@@ -753,15 +753,46 @@ func (h *hugoSite) planStatic() {
 	for _, theme := range h.themes {
 		assetDirs = append(assetDirs, path.Join(theme, "assets"))
 	}
+	// Translated templates link Pipes resources with `asset "<path>"`, so
+	// assets are copied to the same paths under static/. SCSS entry files
+	// compile through Nida's pipeline, which writes static/<dir>/x.scss
+	// to /<dir>/x.css, the URL the translation expects.
+	scssDirs := map[string]bool{}
 	for _, dir := range assetDirs {
 		found := false
 		_ = h.p.Walk(dir, func(rel string) error {
 			found = true
-			h.p.Preserve(rel)
+			inner := strings.TrimPrefix(rel, dir+"/")
+			dest := path.Join("static", inner)
+			if h.p.Planned(dest) {
+				return nil // the site's own asset wins over a theme's
+			}
+			h.p.Copy(dest, rel)
+			base := path.Base(inner)
+			switch ext := strings.ToLower(path.Ext(base)); {
+			case (ext == ".scss" || ext == ".sass") && !strings.HasPrefix(base, "_"):
+				scssDirs[path.Dir(inner)] = true
+			case ext == ".ts" || ext == ".tsx" || ext == ".jsx":
+				h.p.Report.Add(Manual, rel, 0, "Hugo built this with `js.Build`; Nida does not compile %s. Build it to JavaScript and put the result in `static/`.", ext)
+			}
 			return nil
 		})
 		if found {
-			h.p.Report.Add(Unsupported, dir, 0, "Hugo Pipes assets in `%s/` are not processed; they are kept in `%s/%s/`. Copy compiled CSS and JS into `static/`, or move SCSS into `static/css/` and enable `[pipeline.scss]`.", dir, preservedDir, dir)
+			h.p.Report.Add(Review, dir, 0, "Hugo Pipes assets in `%s/` were copied to `static/` at the same paths. Nida does not fingerprint, minify, or bundle them the way Pipes did; see `[pipeline]` for the options it has.", dir)
+		}
+	}
+	if scssDirs["."] {
+		delete(scssDirs, ".")
+		h.p.Report.Add(Manual, h.assetDir, 0, "SCSS entry files at the top of `%s/` were copied to `static/`, but Nida compiles SCSS only from a directory such as `static/css/`. Move them there and update the links.", h.assetDir)
+	}
+	if len(scssDirs) > 0 {
+		dirs := sortedKeys(scssDirs)
+		scss := h.p.Config.Table("pipeline.scss")
+		scss.Set("enabled", true)
+		scss.Set("entry_dir", dirs[0])
+		h.p.Report.Add(Review, h.assetDir, 0, "SCSS compiles through Nida's pipeline from `static/%s/`, which needs the `sass` command installed (Hugo uses its own Dart Sass or LibSass).", dirs[0])
+		if len(dirs) > 1 {
+			h.p.Report.Add(Manual, h.assetDir, 0, "Nida compiles SCSS entry files from one directory below `static/`; entry files in %s were copied but are not compiled. Move them to `static/%s/` or import them from there.", strings.Join(dirs, ", "), dirs[0])
 		}
 	}
 }
@@ -973,4 +1004,40 @@ func (h *hugoSite) planLayouts() {
 		h.p.Report.Add(Review, "", 0, "Hugo layouts are kept in `%s/` for reference.", preservedDir)
 	}
 	planHugoTemplates(h.p, present)
+}
+
+// normalizeHugoMenus turns Hugo's menus into the shape the translated
+// templates read: a map from menu name to a list of entries with
+// lowercase keys, where pageRef fills in a missing url.
+func normalizeHugoMenus(menus any) map[string]any {
+	out := map[string]any{}
+	byName, ok := menus.(map[string]any)
+	if !ok {
+		return out
+	}
+	for name, raw := range byName {
+		var entries []any
+		for _, item := range anyList(raw) {
+			entry, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			clean := map[string]any{}
+			for key, value := range entry {
+				clean[strings.ToLower(key)] = value
+			}
+			if _, ok := clean["url"]; !ok {
+				if ref, ok := clean["pageref"].(string); ok {
+					clean["url"] = "/" + strings.Trim(ref, "/") + "/"
+					if ref == "/" || ref == "" {
+						clean["url"] = "/"
+					}
+				}
+			}
+			delete(clean, "pageref")
+			entries = append(entries, clean)
+		}
+		out[strings.ToLower(name)] = entries
+	}
+	return out
 }

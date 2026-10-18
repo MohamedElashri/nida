@@ -1,16 +1,2 @@
-{{- define "post" -}}{{ template "base" . }}{{- end }}
-{{- define "content" }}
-  <article class="prose">
-    <h1>{{ .Page.Title }}</h1>
-    {{ if not .Page.Date.IsZero }}<p class="post-meta">{{ formatDate .Page.Date }}</p>{{ end }}
-    {{ range $.Config.Taxonomies }}
-      {{ $name := .Name }}
-      {{ with index $.Page.Extra $name }}
-      <ul class="tag-list" aria-label="{{ $name }}">
-        {{ range . }}<li><a href="{{ $.BasePath }}/{{ $name }}/{{ slugify . }}/">{{ . }}</a></li>{{ end }}
-      </ul>
-      {{ end }}
-    {{ end }}
-    {{ unsafeHTML .Page.BodyHTML }}
-  </article>
-{{- end }}
+{{ define "post" }}{{ template "base" . }}{{ end }}
+{{ define "main" }}{{ unsafeHTML .Page.BodyHTML }}{{ end }}
