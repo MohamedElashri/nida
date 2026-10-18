@@ -1,0 +1,9 @@
+---
+layout: layouts/home.njk
+title: Archive
+eleventyNavigation:
+  key: Archive
+  order: 2
+---
+<h1>Archive</h1>
+{% for post in collections.posts %}{{ post.data.title }}{% endfor %}
