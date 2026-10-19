@@ -77,13 +77,21 @@ type MarkdownConfig struct {
 	ExternalLinksTargetBlank bool `toml:"external_links_target_blank"`
 	ExternalLinksNoFollow    bool `toml:"external_links_no_follow"`
 	ExternalLinksNoReferrer  bool `toml:"external_links_no_referrer"`
+	// DiagramWidth is the content width, in pixels, that Mermaid diagrams are
+	// laid out for. Wider diagrams wrap labels or switch to a vertical layout
+	// instead of shrinking; 0 keeps their natural layout.
+	DiagramWidth int `toml:"diagram_width"`
 	// HardWraps renders single newlines inside a paragraph as <br>. CommonMark
 	// and most generators treat them as spaces, so this is off by default.
 	HardWraps bool `toml:"hard_wraps"`
 	// HeadingAnchors appends a "#" self-link to every heading.
 	HeadingAnchors bool `toml:"heading_anchors"`
-	// Math passes $...$ and $$...$$ TeX through for KaTeX or MathJax.
+	// Math renders $...$ and $$...$$ TeX to MathML at build time.
 	Math bool `toml:"math"`
+	// MathFont picks the site-wide math stylesheet: "latin-modern" ships the
+	// Latin Modern Math font, "local" uses the reader's installed math
+	// fonts, and "none" ships no stylesheet.
+	MathFont string `toml:"math_font"`
 	// UnsafeHTML allows raw HTML in Markdown; only for trusted authors.
 	UnsafeHTML bool `toml:"unsafe_html"`
 }

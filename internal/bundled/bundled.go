@@ -1,16 +1,13 @@
-// Package bundled ships KaTeX and Mermaid inside the binary so sites can
-// render math and diagrams without a CDN. A library's files are written to
-// the output only when a rendered page links to them.
+// Package bundled ships the stylesheet and fonts for math inside the binary,
+// so sites need no CDN. Math itself is MathML rendered at build time by
+// package mathml, and Mermaid diagrams are SVG rendered by package diagram,
+// so no library here is JavaScript. A library's files are written to the
+// output only when a rendered page links to them.
 package bundled
 
 import (
-	"bytes"
-	"compress/gzip"
 	"embed"
-	"fmt"
 	"html/template"
-	"io"
-	"io/fs"
 	"path"
 	"strings"
 )
@@ -18,18 +15,19 @@ import (
 //go:embed files
 var files embed.FS
 
-// Library is one bundled JavaScript library.
+// Library is one set of bundled files.
 type Library struct {
 	Name    string
 	Version string
-	// Marker is HTML that Nida's Markdown renderer emits when a page needs
-	// the library.
-	Marker  string
+	// src is the directory under files/ that holds the library.
+	src     string
 	styles  []string
 	scripts []string
+	// files lists every file written to the output, relative to src.
+	files []string
 }
 
-// Dir is the library's directory in the output, such as vendor/katex-0.16.47.
+// Dir is the library's directory in the output, such as vendor/temml-0.14.0.
 func (l Library) Dir() string {
 	return "vendor/" + l.Name + "-" + l.Version
 }
@@ -47,18 +45,44 @@ func (l Library) Tags(basePath string) template.HTML {
 	return template.HTML(b.String())
 }
 
-var (
-	KaTeX = Library{
-		Name: "katex", Version: "0.16.47", Marker: `class="math math-`,
-		styles:  []string{"katex.min.css"},
-		scripts: []string{"katex.min.js", "nida-katex.js"},
-	}
-	Mermaid = Library{
-		Name: "mermaid", Version: "11.17.2", Marker: `<pre class="mermaid">`,
-		scripts: []string{"mermaid.min.js", "nida-mermaid.js"},
-	}
-	Libraries = []Library{KaTeX, Mermaid}
+// Math font choices for markdown.math_font.
+const (
+	MathFontLatinModern = "latin-modern"
+	MathFontLocal       = "local"
+	// MathFontNone ships no math stylesheet, for themes that style MathML
+	// themselves.
+	MathFontNone = "none"
 )
+
+var (
+	// MathLatinModern styles MathML with the Latin Modern Math font, the
+	// look of LaTeX, the same in every browser.
+	MathLatinModern = Library{
+		Name: "temml", Version: TemmlVersion, src: "temml",
+		styles: []string{"Temml-Latin-Modern.css"},
+		files:  []string{"Temml-Latin-Modern.css", "Temml.woff2", "latinmodernmath.woff2", "LICENSE", "GUST-FONT-LICENSE.txt"},
+	}
+	// MathLocal styles MathML with the reader's installed math fonts, such
+	// as Cambria Math or STIX Two Math, and downloads only a 10 KB font.
+	MathLocal = Library{
+		Name: "temml-local", Version: TemmlVersion, src: "temml",
+		styles: []string{"Temml-Local.css"},
+		files:  []string{"Temml-Local.css", "Temml.woff2", "LICENSE"},
+	}
+	Libraries = []Library{MathLatinModern, MathLocal}
+)
+
+// Math returns the math library for a markdown.math_font value, or false
+// for "none".
+func Math(font string) (Library, bool) {
+	switch font {
+	case MathFontNone:
+		return Library{}, false
+	case MathFontLocal:
+		return MathLocal, true
+	}
+	return MathLatinModern, true
+}
 
 // Used returns the libraries whose files any of the given pages link to.
 func Used(pages []string) []Library {
@@ -81,36 +105,15 @@ type File struct {
 	Content []byte
 }
 
-// Files returns a library's output files, decompressing gzipped sources.
+// Files returns a library's output files.
 func (l Library) Files() ([]File, error) {
-	root := path.Join("files", l.Name)
-	var out []File
-	err := fs.WalkDir(files, root, func(name string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		data, err := files.ReadFile(name)
+	out := make([]File, 0, len(l.files))
+	for _, name := range l.files {
+		data, err := files.ReadFile(path.Join("files", l.src, name))
 		if err != nil {
-			return err
+			return nil, err
 		}
-		rel := strings.TrimPrefix(name, root+"/")
-		if strings.HasSuffix(rel, ".gz") {
-			if data, err = gunzip(data); err != nil {
-				return fmt.Errorf("decompress %s: %w", name, err)
-			}
-			rel = strings.TrimSuffix(rel, ".gz")
-		}
-		out = append(out, File{Path: path.Join(l.Dir(), rel), Content: data})
-		return nil
-	})
-	return out, err
-}
-
-func gunzip(data []byte) ([]byte, error) {
-	r, err := gzip.NewReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
+		out = append(out, File{Path: path.Join(l.Dir(), name), Content: data})
 	}
-	defer func() { _ = r.Close() }()
-	return io.ReadAll(r)
+	return out, nil
 }

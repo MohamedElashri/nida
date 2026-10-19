@@ -349,7 +349,7 @@ func (t *hugoTr) translateBase(rel string) error {
 	var b strings.Builder
 	sc := t.entryScope(rel, main, "any")
 	body := t.list(sc, main.Root)
-	// Nida's bundled KaTeX and Mermaid load through nida-scripts.
+	// Nida's bundled math stylesheet loads through nida-scripts.
 	if i := strings.LastIndex(body, "</body>"); i >= 0 {
 		body = body[:i] + "{{ template \"nida-scripts\" . }}\n" + body[i:]
 	}

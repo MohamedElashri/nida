@@ -1,0 +1,59 @@
+name: goja
+
+# third_party/goja is a patched copy that Dependabot cannot update. Each week
+# this checks upstream goja for new commits, tries the patch against them,
+# and opens or updates an issue with the result.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  outdated:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # sanad: ref=v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # sanad: ref=v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check upstream goja
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          current="$(go list -m -f '{{.Version}}' github.com/dop251/goja)"
+          latest="$(go run ./scripts/vendorgoja -outdated)"
+          if [[ -z "${latest}" ]]; then
+            echo "goja ${current} is the latest upstream commit"
+            exit 0
+          fi
+
+          if go run ./scripts/vendorgoja -update "${latest}" && go test ./internal/jsengine ./internal/diagram ./internal/mathml ./internal/markdown; then
+            status="The patch applies cleanly and the rendering tests pass. Run \`make goja-update GOJA=${latest}\`, then commit \`go.mod\`, \`go.sum\`, and \`third_party/goja\`."
+          else
+            status="**The patch no longer applies, or the rendering tests fail.** See the [workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). Update \`third_party/goja.patch\` against the new version, then run \`make goja-update GOJA=${latest}\`."
+          fi
+
+          title="Update vendored goja"
+          body="Upstream goja has moved from \`${current}\` to \`${latest}\` ([commits](https://github.com/dop251/goja/commits/master)).
+
+          ${status}"
+
+          number="$(gh issue list --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty')"
+          if [[ -n "${number}" ]]; then
+            gh issue edit "${number}" --body "${body}"
+          else
+            gh issue create --title "${title}" --body "${body}"
+          fi

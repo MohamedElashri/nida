@@ -1,0 +1,57 @@
+Nida patch for goja: String.prototype.localeCompare compares code points
+instead of using golang.org/x/text/collate. Pele and Temml never call
+localeCompare, and the collation tables add 1.3 MB to the nida binary.
+
+--- a/builtin_string.go
++++ b/builtin_string.go
+@@ -10,20 +10,9 @@
+ 	"github.com/dop251/goja/unistring"
+ 
+ 	"github.com/dop251/goja/parser"
+-	"golang.org/x/text/collate"
+-	"golang.org/x/text/language"
+ 	"golang.org/x/text/unicode/norm"
+ )
+ 
+-func (r *Runtime) collator() *collate.Collator {
+-	collator := r._collator
+-	if collator == nil {
+-		collator = collate.New(language.Und)
+-		r._collator = collator
+-	}
+-	return collator
+-}
+-
+ func toString(arg Value) String {
+ 	if s, ok := arg.(String); ok {
+ 		return s
+@@ -375,7 +364,9 @@
+ 	r.checkObjectCoercible(call.This)
+ 	this := norm.NFD.String(call.This.toString().String())
+ 	that := norm.NFD.String(call.Argument(0).toString().String())
+-	return intToValue(int64(r.collator().CompareString(this, that)))
++	// Patched for Nida: compare code points instead of collating, which
++	// drops golang.org/x/text/collate from the binary.
++	return intToValue(int64(strings.Compare(this, that)))
+ }
+ 
+ func (r *Runtime) stringproto_match(call FunctionCall) Value {
+--- a/runtime.go
++++ b/runtime.go
+@@ -16,8 +16,6 @@
+ 	"strconv"
+ 	"time"
+ 
+-	"golang.org/x/text/collate"
+-
+ 	js_ast "github.com/dop251/goja/ast"
+ 	"github.com/dop251/goja/file"
+ 	"github.com/dop251/goja/parser"
+@@ -188,7 +186,6 @@
+ 	stringSingleton *stringObject
+ 	rand            RandSource
+ 	now             Now
+-	_collator       *collate.Collator
+ 	parserOptions   []parser.Option
+ 
+ 	symbolRegistry map[unistring.String]*Symbol

@@ -30,6 +30,15 @@ func Validate(cfg SiteConfig) error {
 		problems = append(problems, "paginate must be greater than 0")
 	}
 
+	switch cfg.Markdown.MathFont {
+	case "latin-modern", "local", "none":
+	default:
+		problems = append(problems, `markdown.math_font must be "latin-modern", "local", or "none"`)
+	}
+	if cfg.Markdown.DiagramWidth < 0 {
+		problems = append(problems, "markdown.diagram_width must not be negative")
+	}
+
 	if cfg.RSS.Enabled && cfg.RSS.Limit <= 0 {
 		problems = append(problems, "rss.limit must be greater than 0 when rss is enabled")
 	}

@@ -135,6 +135,28 @@
       "logical_ref": "v7.0.1",
       "pinned_sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
       "resolved_at": "2026-09-16T20:20:09Z"
+    },
+    {
+      "file": ".github/workflows/goja.yml",
+      "node": "jobs.outdated.steps[0].uses",
+      "owner": "actions",
+      "repo": "checkout",
+      "path": "",
+      "kind": "github-action",
+      "logical_ref": "v7.0.1",
+      "pinned_sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "resolved_at": "2026-09-16T20:20:09Z"
+    },
+    {
+      "file": ".github/workflows/goja.yml",
+      "node": "jobs.outdated.steps[1].uses",
+      "owner": "actions",
+      "repo": "setup-go",
+      "path": "",
+      "kind": "github-action",
+      "logical_ref": "v7.0.0",
+      "pinned_sha": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+      "resolved_at": "2026-09-16T20:20:09Z"
     }
   ]
 }

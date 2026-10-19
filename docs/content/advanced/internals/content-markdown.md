@@ -57,8 +57,8 @@ Route validation later rejects unsafe generated routes, so slug changes should b
 - auto heading IDs from `headingIDs`, which follows Goldmark's rules for ASCII but keeps Unicode letters, so Arabic headings get readable IDs
 - heading attributes, for custom IDs such as `## Title {#id}`
 - a callout transformer that turns `> [!NOTE]` blockquotes into callout nodes
-- optional math block and inline parsers when `markdown.math` is on
-- custom renderers for fenced code, links, images, headings, callouts, and math
+- math block and inline parsers, always registered so TeX fails the build while `markdown.math` is off
+- custom renderers for fenced code, links, images, headings, callouts, and math, which `internal/mathml` converts to MathML with Temml
 
 Hard wraps and raw HTML are both off by default; `markdown.hard_wraps` and `markdown.unsafe_html` turn them on.
 
@@ -109,7 +109,11 @@ External link attributes are controlled by `[markdown]` settings.
 
 ## Code Blocks
 
-Fenced code blocks are rendered by `internal/highlight` using the configured syntax theme. `parseCodeInfo` reads options from the info string, such as `go {title="main.go", hl_lines="2-3", linenos=true}`. `hl_lines` count from the first line of the block and are shifted by `linenostart` before they reach Chroma. A `mermaid` block is written as `<pre class="mermaid">` instead of being highlighted.
+Fenced code blocks are rendered by `internal/highlight` using the configured syntax theme. `parseCodeInfo` reads options from the info string, such as `go {title="main.go", hl_lines="2-3", linenos=true}`. `hl_lines` count from the first line of the block and are shifted by `linenostart` before they reach Chroma. A `mermaid` block is not highlighted: `internal/diagram` renders it to SVG with Pele, and the SVG is written inside `<div class="diagram">`. A diagram Pele cannot parse is a render error.
+
+Pele and Temml are JavaScript libraries run by `internal/jsengine` in goja, a JavaScript engine written in Go. Each library has a pool of at most four runtimes, started only when a site first needs one, and results are cached by input, so `nida serve` rebuilds only re-render diagrams and formulas that changed. A call that runs longer than 10 seconds is interrupted.
+
+The libraries and goja are pinned in `third_party/`. `third_party/js/package-lock.json` pins Pele and Temml, and Dependabot opens pull requests that bump it; `make vendor-js` then regenerates the embedded scripts, stylesheets, fonts, and version constants, and CI fails until it has been run. goja is a patched copy in `third_party/goja` that drops the collation tables behind `String.prototype.localeCompare`, which neither library calls; a weekly workflow opens an issue when upstream goja moves. See `third_party/README.md`.
 
 A code block can start with:
 

@@ -538,7 +538,7 @@ func (h *hugoSite) planConfig() {
 	}
 	if v, ok := h.get("markup.goldmark.extensions.passthrough.enable"); ok && v == true {
 		md.Set("math", true)
-		r.Add(Changed, file, 0, "Goldmark passthrough became `markdown.math`, which passes `$...$` and `$$...$$` through for KaTeX or MathJax.")
+		r.Add(Changed, file, 0, "Goldmark passthrough became `markdown.math`, which renders `$...$` and `$$...$$` to MathML at build time. Remove any KaTeX or MathJax scripts from your templates.")
 	}
 	if v, ok := h.get("markup.goldmark.extensions.typographer"); !ok || v != false {
 		if m, isMap := v.(map[string]any); !isMap || m["disable"] != true {

@@ -28,6 +28,10 @@ func DefaultSiteConfig() SiteConfig {
 		Home: HomeConfig{
 			Limit: 5,
 		},
+		Markdown: MarkdownConfig{
+			DiagramWidth: 720,
+			MathFont:     "latin-modern",
+		},
 		Sitemap: SitemapConfig{
 			Enabled:  true,
 			Filename: "sitemap.xml",

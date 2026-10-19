@@ -169,7 +169,7 @@ func (s pelicanSource) Plan(p *Plan) error {
 	site.planTheme()
 	if site.usesMath {
 		p.Config.Table("markdown").Set("math", true)
-		p.Report.Add(Review, "", 0, "Content uses math, so `markdown.math` is on. It passes TeX through; load KaTeX or MathJax from your templates (the built-in `nida-scripts` partial does).")
+		p.Report.Add(Review, "", 0, "Content uses math, so `markdown.math` is on. TeX renders to MathML at build time; the built-in `nida-scripts` partial adds its stylesheet.")
 	}
 	return nil
 }
@@ -551,7 +551,7 @@ func pluginHints(names []string) string {
 	hints := map[string]string{
 		"sitemap":               "Nida writes sitemap.xml itself",
 		"neighbors":             "use `.Page.PrevURL` and `.Page.NextURL`",
-		"render_math":           "set `markdown.math` and load KaTeX",
+		"render_math":           "set `markdown.math`",
 		"related_posts":         "use `.Index.Related`",
 		"i18n_subsites":         "Nida sites have one language",
 		"pelican-yaml-metadata": "YAML front matter is read natively",

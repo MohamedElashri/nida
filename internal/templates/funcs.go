@@ -13,7 +13,6 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/bundled"
 	"github.com/MohamedElashri/nida/internal/config"
-	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/highlight"
 	"github.com/MohamedElashri/nida/internal/markdown"
 )
@@ -279,49 +278,27 @@ func syntaxCSSFunc(cfg config.SiteConfig) func(...string) (template.CSS, error) 
 	}
 }
 
-// bundledScriptsFunc returns tags for the bundled libraries the sources need.
-// Sources are pages, sections, page lists (their summaries), HTML strings, or
-// a library name ("katex", "mermaid") to load it unconditionally.
+// bundledScriptsFunc returns tags for the bundled files a site needs, today
+// the math stylesheet. It is site-wide: with markdown.math on, every page
+// gets the stylesheet, so pages need no per-page detection. Arguments are
+// accepted for compatibility with templates that pass the page; the string
+// "math" loads the stylesheet even while markdown.math is off.
 func bundledScriptsFunc(cfg config.SiteConfig) func(...any) template.HTML {
 	basePath := config.BasePath(cfg.BaseURL)
 	return func(sources ...any) template.HTML {
-		var html []string
-		forced := map[string]bool{}
+		forced := false
 		for _, source := range sources {
-			switch v := source.(type) {
-			case content.Page:
-				html = append(html, v.BodyHTML, v.Summary)
-			case *content.Page:
-				if v != nil {
-					html = append(html, v.BodyHTML, v.Summary)
-				}
-			case content.Section:
-				html = append(html, v.BodyHTML)
-			case []content.Page:
-				for _, page := range v {
-					html = append(html, page.Summary)
-				}
-			case string:
-				forced[v] = true
-				html = append(html, v)
+			if name, ok := source.(string); ok && name == "math" {
+				forced = true
 			}
 		}
-		var tags strings.Builder
-		for _, lib := range bundled.Libraries {
-			if lib.Name == bundled.KaTeX.Name && !cfg.Markdown.Math && !forced[lib.Name] {
-				continue
-			}
-			needed := forced[lib.Name]
-			for _, h := range html {
-				if needed || strings.Contains(h, lib.Marker) {
-					needed = true
-					break
-				}
-			}
-			if needed {
-				tags.WriteString(string(lib.Tags(basePath)))
-			}
+		if !cfg.Markdown.Math && !forced {
+			return ""
 		}
-		return template.HTML(tags.String())
+		math, ok := bundled.Math(cfg.Markdown.MathFont)
+		if !ok {
+			return ""
+		}
+		return math.Tags(basePath)
 	}
 }

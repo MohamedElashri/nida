@@ -55,6 +55,8 @@ Nida warns about keys it does not recognize, for example `warning: unknown confi
 hard_wraps = false
 heading_anchors = false
 math = false
+math_font = "latin-modern"
+diagram_width = 720
 external_links_target_blank = false
 external_links_no_follow = false
 external_links_no_referrer = false
@@ -65,7 +67,9 @@ unsafe_html = false
 | --- | --- | --- | --- |
 | `markdown.hard_wraps` | boolean | `false` | Render single newlines inside a paragraph as `<br>`. Off by default, matching CommonMark: a single newline is a space and a blank line starts a new paragraph. |
 | `markdown.heading_anchors` | boolean | `false` | Append a `#` self-link to each heading. See [Writing Content](@/guide/writing.md#table-of-contents). |
-| `markdown.math` | boolean | `false` | Pass `$...$` and `$$...$$` TeX through for KaTeX or MathJax. See [Writing Content](@/guide/writing.md#math). |
+| `markdown.math` | boolean | `false` | Render `$...$` and `$$...$$` TeX to MathML at build time. While off, TeX in content fails the build. See [Writing Content](@/guide/writing.md#math). |
+| `markdown.math_font` | string | `latin-modern` | Site-wide math stylesheet: `latin-modern` ships Latin Modern Math (390 KB), `local` uses the reader's installed math fonts (10 KB), and `none` ships nothing. See [Math fonts](@/guide/writing.md#math-fonts). |
+| `markdown.diagram_width` | integer | `720` | Width in pixels that Mermaid diagrams are laid out for, usually your content column. Wider diagrams wrap labels or switch to a vertical layout instead of shrinking. `0` keeps each diagram's natural layout. See [Diagrams](@/guide/writing.md#diagrams). |
 | `markdown.external_links_target_blank` | boolean | `false` | Add `target="_blank"` to external HTTP(S) links. |
 | `markdown.external_links_no_follow` | boolean | `false` | Add `nofollow` to external link `rel` values. |
 | `markdown.external_links_no_referrer` | boolean | `false` | Add `noreferrer` to external link `rel` values. |

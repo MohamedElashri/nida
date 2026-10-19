@@ -2,7 +2,21 @@
 
 All notable changes to Nida are documented here.
 
-## [0.8.0] - Unreleased
+## [0.8.1] - Unreleased
+
+### Added
+* `markdown.diagram_width` (default `720`) lays Mermaid diagrams out for your content column. A wider diagram wraps its labels or switches to a top-down layout instead of shrinking until it is unreadable. `0` keeps each diagram's natural layout.
+* `markdown.math_font` picks the site-wide math stylesheet: `latin-modern` (default) ships Latin Modern Math for LaTeX-style math that looks the same everywhere, `local` uses the reader's installed math fonts and downloads only 10 KB, and `none` ships nothing so the theme can style MathML itself.
+
+### Changed
+* Math is converted to MathML at build time by [Temml](https://temml.org), bundled in the binary, instead of by KaTeX in the browser. Browsers render MathML natively, so pages load no math JavaScript. With `markdown.math` on, the `nida-scripts` partial adds the math stylesheet to every page, set by config instead of detected page by page. See [Math](https://melashri.net/nida/guide/writing/#math).
+* Mermaid diagrams are rendered to SVG at build time by [Pele](https://pele.run), bundled in the binary, instead of by Mermaid in the browser. Pages with diagrams load no script, diagrams appear without a flash or layout shift, and a dark-mode toggle restyles them instantly. Colors and fonts are CSS variables (`--pele-fg`, `--pele-surface`, `--pele-accent`, and others), so themes style diagrams with CSS. See [Diagrams](https://melashri.net/nida/guide/writing/#diagrams).
+* TeX or a `mermaid` block that does not parse now fails `nida build` and is reported by `nida check`, naming the page. Before, errors only showed in the browser.
+* **Breaking**: TeX in content now fails the build while `markdown.math` is off, instead of showing as raw dollar signs. `$$...$$` and `$...$` with `\`, `^`, `_`, `{`, or `}` count as TeX; other dollar signs, such as `$HOME` or `$5`, stay text. Write `\$` for a literal dollar sign.
+* **Breaking**: KaTeX is no longer bundled. Math is `<span class="math math-inline"><math>…</math></span>` and `<div class="math math-display"><math display="block">…</math></div>` instead of TeX in `\(…\)` and `\[…\]`, `vendor/katex-<version>/` is no longer written, and `bundledScripts` takes `"math"` instead of `"katex"`. Remove KaTeX or MathJax scripts from your templates.
+* **Breaking**: Mermaid.js is no longer bundled. Diagrams are `<div class="diagram"><svg class="pele …">` instead of `<pre class="mermaid">`, `vendor/mermaid-<version>/` is no longer written, and `bundledScripts` ignores `"mermaid"`. Themes that styled `pre.mermaid` should style `.diagram` and set the `--pele-*` variables instead. Pele follows Mermaid 12.1 syntax with its own layout and style, so diagrams look different from Mermaid's.
+
+## [0.8.0] - 2026-10-18
 
 ### Added
 * `nida migrate SOURCE DEST` converts a Hugo, Jekyll, Zola, Eleventy, or Pelican site into a new Nida site. It converts config, content, front matter, shortcodes, static files, and data. It keeps every page's old URL, picks templates that build, and writes a `MIGRATION.md` report listing every change and everything left to do. The source is never modified. See [Migrating to Nida](https://melashri.net/nida/guide/migrating/).

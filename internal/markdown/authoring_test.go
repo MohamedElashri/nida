@@ -95,8 +95,11 @@ func TestRenderMermaid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
-	if !strings.Contains(got, "<pre class=\"mermaid\">graph TD; A--&gt;B\n</pre>") {
-		t.Fatalf("expected mermaid pre, got %s", got)
+	if !strings.HasPrefix(got, `<div class="diagram"><svg `) || !strings.Contains(got, "pele-flowchart") {
+		t.Fatalf("expected an inline SVG diagram, got %s", got)
+	}
+	if _, err := Render("```mermaid\ngraph TD; A-->B[[\n```\n", config.DefaultSiteConfig(), nil); err == nil || !strings.Contains(err.Error(), "mermaid diagram") {
+		t.Fatalf("expected a diagram error, got %v", err)
 	}
 }
 
@@ -110,23 +113,42 @@ func TestRenderMath(t *testing.T) {
 		t.Fatalf("Render returned error: %v", err)
 	}
 	for _, want := range []string{
-		`<span class="math math-inline">\(e^{i\pi} + 1 = 0\)</span>`,
-		`<span class="math math-inline">\(a_1 * b_2\)</span>`,
+		`<span class="math math-inline"><math><mrow><msup><mi>e</mi>`,
+		`<msub><mi>a</mi><mn>1</mn></msub><mo>∗</mo>`,
 		"costs $5 and $10.",
-		`<div class="math math-display">\[\sum_{i=1}^n x_i &lt; y\]</div>`,
-		`<span class="math math-display">\[x^2\]</span>`,
+		`<div class="math math-display"><math display="block"`,
+		`<mo>&lt;</mo><mi>y</mi>`,
+		`<span class="math math-display"><math display="block"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected %q in\n%s", want, got)
 		}
 	}
 
-	plain, err := Render("$a_1$ and $b_1$\n", config.DefaultSiteConfig(), nil)
-	if err != nil {
-		t.Fatalf("Render returned error: %v", err)
+	if _, err := Render("$\\frac{1}{$\n", cfg, nil); err == nil || !strings.Contains(err.Error(), "math ") {
+		t.Fatalf("expected a math error, got %v", err)
 	}
-	if strings.Contains(plain, "math-inline") {
-		t.Fatalf("math must be opt-in, got %s", plain)
+
+}
+
+func TestRenderMathOff(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	for _, src := range []string{"Uses $a_1$ here.\n", "$$\nx^2\n$$\n", "Inline $$x$$ display.\n"} {
+		_, err := Render(src, cfg, nil)
+		if err == nil || !strings.Contains(err.Error(), "markdown.math is off") {
+			t.Fatalf("%q: expected TeX to fail while math is off, got %v", src, err)
+		}
+	}
+	got, err := Render("Set $HOME and $PATH, pay $5 or $10, and keep \\$x^2\\$ literal.\n", cfg, nil)
+	if err != nil {
+		t.Fatalf("plain dollar signs must stay text: %v", err)
+	}
+	if !strings.Contains(got, "Set $HOME and $PATH, pay $5 or $10, and keep $x^2$ literal.") || strings.Contains(got, "<math") {
+		t.Fatalf("unexpected output %s", got)
+	}
+	got, err = Render("Between $x and y$ there is text.\n", cfg, nil)
+	if err != nil || !strings.Contains(got, "Between $x and y$ there is text.") {
+		t.Fatalf("prose between dollar signs must stay text, got %s, %v", got, err)
 	}
 }
 
