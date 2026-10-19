@@ -20,9 +20,8 @@ type Library struct {
 	Name    string
 	Version string
 	// src is the directory under files/ that holds the library.
-	src     string
-	styles  []string
-	scripts []string
+	src    string
+	styles []string
 	// files lists every file written to the output, relative to src.
 	files []string
 }
@@ -32,15 +31,12 @@ func (l Library) Dir() string {
 	return "vendor/" + l.Name + "-" + l.Version
 }
 
-// Tags returns the link and script tags that load the library.
+// Tags returns the link tags that load the library's stylesheets.
 func (l Library) Tags(basePath string) template.HTML {
 	var b strings.Builder
 	prefix := basePath + "/" + l.Dir() + "/"
 	for _, name := range l.styles {
 		b.WriteString(`<link rel="stylesheet" href="` + template.HTMLEscapeString(prefix+name) + `">`)
-	}
-	for _, name := range l.scripts {
-		b.WriteString(`<script defer src="` + template.HTMLEscapeString(prefix+name) + `"></script>`)
 	}
 	return template.HTML(b.String())
 }

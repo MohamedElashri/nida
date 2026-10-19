@@ -68,8 +68,6 @@ var pinned = []struct{ url, to, sha256 string }{
 
 // versions are the Go constants that carry each package's version.
 var versions = []struct{ pkg, to, goPkg, name, doc string }{
-	{pkg: "pele", to: "internal/diagram/version.go", goPkg: "diagram", name: "PeleVersion",
-		doc: "PeleVersion is the bundled Pele release."},
 	{pkg: "temml", to: "internal/bundled/version.go", goPkg: "bundled", name: "TemmlVersion",
 		doc: "TemmlVersion is the bundled Temml release, whose script is in package\n// mathml and whose stylesheets and fonts are here."},
 }

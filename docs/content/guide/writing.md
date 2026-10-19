@@ -290,7 +290,7 @@ A site without math carries no files and gets no tags. In `<head>`, the font is 
 To load the stylesheet while `markdown.math` is off, for example for MathML your templates write themselves, pass `"math"`:
 
 ```html
-{{ bundledScripts .Page "math" }}
+{{ bundledScripts "math" }}
 ```
 
 To use your own math CSS instead, leave out the partial and add your own tags.

@@ -45,13 +45,6 @@ func quoteArg(value string) string {
 	return `"` + value + `"`
 }
 
-// EscapedShortcode returns text that renders as the literal shortcode
-// source, for generators' escaped shortcode syntax. Nida does not process
-// a shortcode whose first brace is an HTML entity.
-func EscapedShortcode(inner string) string {
-	return "&#123;{< " + strings.TrimSpace(inner) + " >}}"
-}
-
 // Placeholder makes sure a shortcode Nida does not have yet renders a
 // visible "needs a template" box with its inner content, instead of
 // failing the build, and reports the place it is used. Templates added

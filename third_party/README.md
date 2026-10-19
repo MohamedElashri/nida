@@ -16,7 +16,6 @@ in the lockfile, checks it against the lockfile's integrity hash, and writes:
 | File | From |
 | --- | --- |
 | `internal/diagram/files/pele.global.js.gz` | `pele/dist/pele.global.js`, gzipped |
-| `internal/diagram/version.go` | `PeleVersion` |
 | `internal/mathml/files/temml.min.js.gz` | `temml/dist/temml.min.js`, gzipped |
 | `internal/bundled/files/temml/` | Temml's stylesheets, `Temml.woff2`, and license |
 | `internal/bundled/version.go` | `TemmlVersion` |
