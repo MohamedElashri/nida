@@ -2,6 +2,7 @@ package safepath
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,6 +110,41 @@ func EnsureNoSymlinkPath(root, path string) error {
 			}
 			return err
 		}
+	}
+	return nil
+}
+
+// CopyFile copies src to dst, creating dst's directory. It refuses to read
+// or write through a symlink.
+func CopyFile(src, dst string) error {
+	if err := RejectSymlink(src); err != nil {
+		return fmt.Errorf("check source file %q: %w", src, err)
+	}
+	if err := RejectSymlink(dst); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("check output file %q: %w", dst, err)
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("open source file %q: %w", src, err)
+	}
+	defer func() { _ = in.Close() }()
+
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return fmt.Errorf("create output directory for %q: %w", dst, err)
+	}
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("create output file %q: %w", dst, err)
+	}
+	defer func() { _ = out.Close() }()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return fmt.Errorf("copy %q to %q: %w", src, dst, err)
+	}
+
+	if err := out.Close(); err != nil {
+		return fmt.Errorf("close output file %q: %w", dst, err)
 	}
 	return nil
 }

@@ -128,3 +128,11 @@ func TestFileHandlerServesExternalLiveReloadScript(t *testing.T) {
 		t.Fatalf("expected livereload client script, got %q", body)
 	}
 }
+
+func FileHandler(outputDir string) (http.Handler, error) {
+	return fileHandler(outputDir, false, nil)
+}
+
+func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
+	return fileHandlerWithBasePath(outputDir, "", injectLiveReload, reloader)
+}

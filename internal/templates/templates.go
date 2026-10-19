@@ -170,14 +170,6 @@ func (s Set) Execute(name string, data any) (string, error) {
 	return b.String(), nil
 }
 
-func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
-	cfg := config.DefaultSiteConfig()
-	if len(cfgs) > 0 {
-		cfg = cfgs[0]
-	}
-	return funcMapWith(siteRoot, cfg, i18n.Translations{})
-}
-
 func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) template.FuncMap {
 	return template.FuncMap{
 		"t":                 tr.T,

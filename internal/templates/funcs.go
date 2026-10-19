@@ -106,7 +106,8 @@ func last(n int, items any) (any, error) {
 // where keeps items whose field path (such as "Extra.tags") equals, or for
 // lists contains, the value. An optional "!=" operator inverts the match.
 func where(items any, field string, args ...any) (any, error) {
-	op, value := "==", any(nil)
+	op := "=="
+	var value any
 	switch len(args) {
 	case 1:
 		value = args[0]

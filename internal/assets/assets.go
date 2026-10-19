@@ -2,7 +2,6 @@ package assets
 
 import (
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -107,7 +106,7 @@ func copyDir(staticRoot, outputRoot string) error {
 			return fmt.Errorf("stat output path %q: %w", target, err)
 		}
 
-		return copyFile(path, target)
+		return safepath.CopyFile(path, target)
 	})
 }
 
@@ -200,7 +199,7 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 				continue
 			}
 
-			if err := copyFile(source, target); err != nil {
+			if err := safepath.CopyFile(source, target); err != nil {
 				return err
 			}
 		}
@@ -303,7 +302,7 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 				return fmt.Errorf("page resource %q of %s would overwrite the one of %s; rename one of them", res, page.URL, other)
 			}
 			written[dst] = page.URL
-			if err := copyFile(src, dst); err != nil {
+			if err := safepath.CopyFile(src, dst); err != nil {
 				return fmt.Errorf("copy page resource %q: %w", res, err)
 			}
 			if cfg.Pipeline.Images.Enabled {
@@ -314,38 +313,5 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 		}
 	}
 
-	return nil
-}
-
-func copyFile(src, dst string) error {
-	if err := safepath.RejectSymlink(src); err != nil {
-		return fmt.Errorf("check source file %q: %w", src, err)
-	}
-	if err := safepath.RejectSymlink(dst); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("check output file %q: %w", dst, err)
-	}
-	in, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("open static file %q: %w", src, err)
-	}
-	defer func() { _ = in.Close() }()
-
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return fmt.Errorf("create output directory for %q: %w", dst, err)
-	}
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("create output file %q: %w", dst, err)
-	}
-	defer func() { _ = out.Close() }()
-
-	if _, err := io.Copy(out, in); err != nil {
-		return fmt.Errorf("copy %q to %q: %w", src, dst, err)
-	}
-
-	if err := out.Close(); err != nil {
-		return fmt.Errorf("close output file %q: %w", dst, err)
-	}
 	return nil
 }

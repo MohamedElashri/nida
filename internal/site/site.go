@@ -126,7 +126,7 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 			sections[i].URL = url
 		}
 	}
-	builtSections, sectionMap := buildSectionTree(sections, sortedPages, cfg)
+	builtSections, sectionMap := buildSectionTree(sections, sortedPages)
 
 	for path, s := range sectionMap {
 		index.SectionLookup[path] = s
@@ -279,7 +279,7 @@ func extractTaxonomyValue(extra map[string]any, name string) string {
 	return ""
 }
 
-func buildSectionTree(sections []content.Section, allPages []content.Page, cfg config.SiteConfig) ([]content.Section, map[string]content.Section) {
+func buildSectionTree(sections []content.Section, allPages []content.Page) ([]content.Section, map[string]content.Section) {
 	ptrMap := make(map[string]*content.Section, len(sections))
 
 	for i := range sections {

@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/MohamedElashri/nida/internal/bundled"
 	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
@@ -31,7 +32,7 @@ func Validate(cfg SiteConfig) error {
 	}
 
 	switch cfg.Markdown.MathFont {
-	case "latin-modern", "local", "none":
+	case bundled.MathFontLatinModern, bundled.MathFontLocal, bundled.MathFontNone:
 	default:
 		problems = append(problems, `markdown.math_font must be "latin-modern", "local", or "none"`)
 	}

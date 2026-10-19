@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/i18n"
 )
 
 func TestLoadFixtureTemplates(t *testing.T) {
@@ -229,4 +230,12 @@ func availableNames(set Set) []string {
 	}
 	slices.Sort(names)
 	return names
+}
+
+func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
+	cfg := config.DefaultSiteConfig()
+	if len(cfgs) > 0 {
+		cfg = cfgs[0]
+	}
+	return funcMapWith(siteRoot, cfg, i18n.Translations{})
 }

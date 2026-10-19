@@ -1,5 +1,7 @@
 package config
 
+import "github.com/MohamedElashri/nida/internal/bundled"
+
 func DefaultSiteConfig() SiteConfig {
 	return SiteConfig{
 
@@ -30,7 +32,7 @@ func DefaultSiteConfig() SiteConfig {
 		},
 		Markdown: MarkdownConfig{
 			DiagramWidth: 720,
-			MathFont:     "latin-modern",
+			MathFont:     bundled.MathFontLatinModern,
 		},
 		Sitemap: SitemapConfig{
 			Enabled:  true,

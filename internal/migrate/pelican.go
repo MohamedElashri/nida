@@ -664,7 +664,7 @@ func (s *pelicanSite) collect() error {
 			}
 			return nil
 		}
-		kind := ""
+		var kind string
 		switch {
 		case underAny(inner, pagePaths) && !underAnyExcept(inner, pageExcludes, pagePaths):
 			kind = pelicanPage

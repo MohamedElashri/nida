@@ -27,14 +27,6 @@ type Instance struct {
 	reloader *reloadBroker
 }
 
-func FileHandler(outputDir string) (http.Handler, error) {
-	return fileHandler(outputDir, false, nil)
-}
-
-func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
-	return fileHandlerWithBasePath(outputDir, "", injectLiveReload, reloader)
-}
-
 func fileHandlerWithBasePath(outputDir, basePath string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
 	absOutputDir, err := filepath.Abs(outputDir)
 	if err != nil {

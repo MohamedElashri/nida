@@ -51,7 +51,7 @@ func Split(input []byte) (string, string, string, error) {
 	text := string(normalized)
 	text = strings.TrimLeft(text, "\n")
 
-	delimiter := ""
+	var delimiter string
 	switch {
 	case strings.HasPrefix(text, tomlDelimiter+"\n"):
 		delimiter = tomlDelimiter

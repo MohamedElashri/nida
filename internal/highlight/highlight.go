@@ -23,10 +23,6 @@ type Options struct {
 	LineStart int
 }
 
-func Render(code, language, theme string) (string, error) {
-	return RenderWithOptions(code, language, theme, Options{})
-}
-
 func RenderWithOptions(code, language, theme string, opts Options) (string, error) {
 	language = normalizeLanguage(language)
 	if language == "" {

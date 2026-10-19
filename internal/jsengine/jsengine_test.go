@@ -11,11 +11,12 @@ import (
 	"github.com/dop251/goja"
 )
 
-func gz(t *testing.T, src string) []byte {
+// libSource returns lib gzipped, as NewPool expects.
+func libSource(t *testing.T) []byte {
 	t.Helper()
 	var b bytes.Buffer
 	w := gzip.NewWriter(&b)
-	if _, err := w.Write([]byte(src)); err != nil {
+	if _, err := w.Write([]byte(lib)); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Close(); err != nil {
@@ -31,7 +32,7 @@ const lib = `var lib = {
 };`
 
 func TestPoolCallsEntryAndReportsThrownValues(t *testing.T) {
-	pool := NewPool("lib", gz(t, lib), "lib.echo")
+	pool := NewPool("lib", libSource(t), "lib.echo")
 	var got string
 	err := pool.Run(func(vm *VM) error {
 		v, err := vm.Entry(goja.Undefined(), vm.ToValue("x"))
@@ -44,7 +45,7 @@ func TestPoolCallsEntryAndReportsThrownValues(t *testing.T) {
 		t.Fatalf("got %q, %v", got, err)
 	}
 
-	err = NewPool("lib", gz(t, lib), "lib.fail").Run(func(vm *VM) error {
+	err = NewPool("lib", libSource(t), "lib.fail").Run(func(vm *VM) error {
 		_, err := vm.Entry(goja.Undefined())
 		return err
 	})
@@ -55,7 +56,7 @@ func TestPoolCallsEntryAndReportsThrownValues(t *testing.T) {
 }
 
 func TestPoolRejectsMissingEntry(t *testing.T) {
-	err := NewPool("lib", gz(t, lib), "lib.nope").Run(func(*VM) error { return nil })
+	err := NewPool("lib", libSource(t), "lib.nope").Run(func(*VM) error { return nil })
 	if err == nil || !strings.Contains(err.Error(), "lib.nope") {
 		t.Fatalf("expected a missing-entry error, got %v", err)
 	}
@@ -64,7 +65,7 @@ func TestPoolRejectsMissingEntry(t *testing.T) {
 func TestPoolInterruptsLongCalls(t *testing.T) {
 	defer func(old time.Duration) { timeout = old }(timeout)
 	timeout = 50 * time.Millisecond
-	pool := NewPool("lib", gz(t, lib), "lib.spin")
+	pool := NewPool("lib", libSource(t), "lib.spin")
 	err := pool.Run(func(vm *VM) error {
 		_, err := vm.Entry(goja.Undefined())
 		return err

@@ -74,7 +74,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 	}
 	seen := map[string]bool{}
 	for _, root := range roots {
-		if err := processStaticFiles(root, outputRoot, "", root, cfg, manifest, seen); err != nil {
+		if err := processStaticFiles(outputRoot, "", root, cfg, manifest, seen); err != nil {
 			return nil, err
 		}
 	}
@@ -88,7 +88,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 	return manifest, nil
 }
 
-func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest, seen map[string]bool) error {
+func processStaticFiles(outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest, seen map[string]bool) error {
 	entries, err := os.ReadDir(absDir)
 	if err != nil {
 		return fmt.Errorf("read dir %q: %w", absDir, err)
@@ -104,7 +104,7 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 		relPath := filepath.ToSlash(filepath.Join(relDir, name))
 
 		if entry.IsDir() {
-			if err := processStaticFiles(staticRoot, outputRoot, relPath, srcPath, cfg, manifest, seen); err != nil {
+			if err := processStaticFiles(outputRoot, relPath, srcPath, cfg, manifest, seen); err != nil {
 				return err
 			}
 			continue
@@ -152,7 +152,7 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 			}
 			manifest[relPath] = fpPath
 		} else {
-			if err := copyFile(srcPath, dstPath); err != nil {
+			if err := safepath.CopyFile(srcPath, dstPath); err != nil {
 				return fmt.Errorf("copy %q: %w", relPath, err)
 			}
 		}
