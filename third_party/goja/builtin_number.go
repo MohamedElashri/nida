@@ -1,3 +1,6 @@
+//go:build amd64 || arm64 || mips64 || mips64le || ppc64 || ppc64le || riscv64 || s390x || wasm
+// +build amd64 arm64 mips64 mips64le ppc64 ppc64le riscv64 s390x wasm
+
 package goja
 
 import (
@@ -57,11 +60,9 @@ func (r *Runtime) numberproto_toString(call FunctionCall) Value {
 	if numVal == nil {
 		panic(r.NewTypeError("Value is not a number"))
 	}
-	var radix int
+	var radix int64 = 10
 	if arg := call.Argument(0); arg != _undefined {
-		radix = int(arg.ToInteger())
-	} else {
-		radix = 10
+		radix = arg.ToInteger()
 	}
 
 	if radix < 2 || radix > 36 {
@@ -86,7 +87,7 @@ func (r *Runtime) numberproto_toString(call FunctionCall) Value {
 		return asciiString(fToStr(num, ftoa.ModeStandard, 0))
 	}
 
-	return asciiString(ftoa.FToBaseStr(num, radix))
+	return asciiString(ftoa.FToBaseStr(num, int(radix)))
 }
 
 func (r *Runtime) numberproto_toFixed(call FunctionCall) Value {

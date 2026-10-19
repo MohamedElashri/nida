@@ -1,3 +1,6 @@
+//go:build amd64 || arm64 || mips64 || mips64le || ppc64 || ppc64le || riscv64 || s390x || wasm
+// +build amd64 arm64 mips64 mips64le ppc64 ppc64le riscv64 s390x wasm
+
 // Package unistring contains an implementation of a hybrid ASCII/UTF-16 string.
 // For ASCII strings the underlying representation is equivalent to a normal Go string.
 // For unicode strings the underlying representation is UTF-16 as []uint16 with 0th element set to 0xFEFF.

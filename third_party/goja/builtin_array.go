@@ -1,3 +1,6 @@
+//go:build amd64 || arm64 || mips64 || mips64le || ppc64 || ppc64le || riscv64 || s390x || wasm
+// +build amd64 arm64 mips64 mips64le ppc64 ppc64le riscv64 s390x wasm
+
 package goja
 
 import (
@@ -196,7 +199,7 @@ func (r *Runtime) arrayproto_join(call FunctionCall) Value {
 	}
 	defer r.popFromStringStack()
 
-	l := int(toLength(o.self.getStr("length", nil)))
+	l := toLength(o.self.getStr("length", nil))
 	var sep String
 	if s := call.Argument(0); s != _undefined {
 		sep = s.toString()
@@ -214,9 +217,9 @@ func (r *Runtime) arrayproto_join(call FunctionCall) Value {
 		buf.WriteString(element0.toString())
 	}
 
-	for i := 1; i < l; i++ {
+	for i := int64(1); i < l; i++ {
 		buf.WriteString(sep)
-		element := o.self.getIdx(valueInt(int64(i)), nil)
+		element := o.self.getIdx(valueInt(i), nil)
 		if element != nil && element != _undefined && element != _null {
 			buf.WriteString(element.toString())
 		}

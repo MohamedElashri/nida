@@ -1,8 +1,12 @@
+//go:build amd64 || arm64 || mips64 || mips64le || ppc64 || ppc64le || riscv64 || s390x || wasm
+// +build amd64 arm64 mips64 mips64le ppc64 ppc64le riscv64 s390x wasm
+
 package goja
 
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"regexp/syntax"
 	"strings"
@@ -1095,7 +1099,12 @@ func (r *Runtime) regexpproto_stdSplitter(call FunctionCall) Value {
 	pattern := search.pattern // toUint32() may recompile the pattern, but we still need to use the original
 	limit := -1
 	if limitValue != _undefined {
-		limit = int(toUint32(limitValue))
+		l := toUint32(limitValue)
+		if l > math.MaxInt32 {
+			// No split has that many parts; the cap keeps int(l) exact on 32-bit.
+			l = math.MaxInt32
+		}
+		limit = int(l)
 	}
 
 	if limit == 0 {

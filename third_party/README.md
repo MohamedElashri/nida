@@ -43,9 +43,29 @@ tests expect.
 `goja/` is upstream goja at the version `go.mod` requires, without tests,
 with `goja.patch` applied. `go.mod` points goja here with a `replace`.
 
-The patch makes `String.prototype.localeCompare` compare code points instead
-of using `golang.org/x/text/collate`. Neither library calls `localeCompare`,
-and the collation tables would add 1.3 MB to the binary.
+The patch, described at its top:
+
+- makes `String.prototype.localeCompare` compare code points instead of
+  using `golang.org/x/text/collate`. Neither library calls `localeCompare`,
+  and the collation tables would add 1.3 MB to the binary.
+- fixes integer conversions that CodeQL flags and that go wrong where `int`
+  is 32 bits, such as a `toString` radix that truncates before its range
+  check.
+
+`scripts/vendorgoja` then adds a build constraint to every file so goja
+builds only on 64-bit platforms (amd64, arm64, mips64, ppc64, riscv64,
+s390x, and wasm), and writes `nida_requires_64bit.go`, which makes a build
+anywhere else fail with `undefined: nida_requires_a_64_bit_platform`. goja
+converts `int64` to `int` throughout, which only loses data where
+`int` is 32 bits. Each file carries both `//go:build` and `// +build`
+lines, because CodeQL reads only the second. `loong64` is left out because
+CodeQL does not know it, and would then ignore the whole constraint.
+
+CodeQL still reports goja's ECMAScript `ToInt8`, `ToUint8`, `ToInt16`,
+`ToUint16`, and `ToInt32` functions and its typed-array stores, which
+convert to smaller integer types on purpose: the specification requires
+the value to wrap around. Dismiss those alerts as false positives rather
+than patching them.
 
 Dependabot cannot update a replaced module, so it ignores goja. Instead
 `.github/workflows/goja.yml` checks upstream every Monday, tries the patch,
@@ -57,6 +77,9 @@ go test ./...
 ```
 
 If the patch no longer applies, edit `goja.patch` against the new upstream
-files (it is a plain unified diff with `a/` and `b/` paths) and run the
-command again. CI runs `go run ./scripts/vendorgoja -check`, which fails if
+files (it is a plain unified diff with `a/` and `b/` paths, made without the
+generated build constraints) and run the command again. Before changing the
+patch, run goja's own tests and the TC39 test262 suite against it: copy the
+upstream module with its tests, `git apply` the patch, run
+`.tc39_test262_checkout.sh`, then `go test ./...`. CI runs `go run ./scripts/vendorgoja -check`, which fails if
 `goja/` is edited by hand.

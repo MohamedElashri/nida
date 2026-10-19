@@ -1,7 +1,128 @@
-Nida patch for goja: String.prototype.localeCompare compares code points
-instead of using golang.org/x/text/collate. Pele and Temml never call
-localeCompare, and the collation tables add 1.3 MB to the nida binary.
+Nida patches for goja. scripts/vendorgoja applies this file to upstream
+goja, then limits every file to 64-bit platforms.
 
+1. String.prototype.localeCompare compares code points instead of using
+   golang.org/x/text/collate. Pele and Temml never call localeCompare, and
+   the collation tables add 1.3 MB to the nida binary.
+
+2. Integer conversions that CodeQL flags (go/incorrect-integer-conversion)
+   and that are wrong where int is 32 bits:
+   - Number.prototype.toString and BigInt.prototype.toString check the
+     radix before converting it to int, so 2**32 + 10 is a RangeError, not
+     radix 10.
+   - Array.prototype.join counts in int64.
+   - String.prototype.split caps its limit at MaxInt32 before converting.
+   - Shrinking an array compares indexes as int64.
+   - Array lengths are read with toUint32 instead of uint32(ToInteger()).
+
+--- a/array.go
++++ b/array.go
+@@ -88,7 +88,7 @@
+ 	if l <= a.length {
+ 		if a.propValueCount > 0 {
+ 			// Slow path
+-			for i := len(a.values) - 1; i >= int(l); i-- {
++			for i := len(a.values) - 1; int64(i) >= int64(l); i-- {
+ 				if prop, ok := a.values[i].(*valueProperty); ok {
+ 					if !prop.configurable {
+ 						l = uint32(i) + 1
+@@ -402,7 +402,7 @@
+ 	}
+ 
+ 	if descr.Value != nil {
+-		oldLen := uint32(prop.value.ToInteger())
++		oldLen := toUint32(prop.value)
+ 		if oldLen != newLen {
+ 			ret = setter(newLen, false)
+ 		}
+--- a/builtin_array.go
++++ b/builtin_array.go
+@@ -196,7 +196,7 @@
+ 	}
+ 	defer r.popFromStringStack()
+ 
+-	l := int(toLength(o.self.getStr("length", nil)))
++	l := toLength(o.self.getStr("length", nil))
+ 	var sep String
+ 	if s := call.Argument(0); s != _undefined {
+ 		sep = s.toString()
+@@ -214,9 +214,9 @@
+ 		buf.WriteString(element0.toString())
+ 	}
+ 
+-	for i := 1; i < l; i++ {
++	for i := int64(1); i < l; i++ {
+ 		buf.WriteString(sep)
+-		element := o.self.getIdx(valueInt(int64(i)), nil)
++		element := o.self.getIdx(valueInt(i), nil)
+ 		if element != nil && element != _undefined && element != _null {
+ 			buf.WriteString(element.toString())
+ 		}
+--- a/builtin_bigint.go
++++ b/builtin_bigint.go
+@@ -226,10 +226,11 @@
+ 	if radix == _undefined {
+ 		radixMV = 10
+ 	} else {
+-		radixMV = int(radix.ToInteger())
+-		if radixMV < 2 || radixMV > 36 {
++		mv := radix.ToInteger()
++		if mv < 2 || mv > 36 {
+ 			panic(r.newError(r.getRangeError(), "radix must be an integer between 2 and 36"))
+ 		}
++		radixMV = int(mv)
+ 	}
+ 
+ 	return asciiString(x.Text(radixMV))
+--- a/builtin_number.go
++++ b/builtin_number.go
+@@ -57,11 +57,9 @@
+ 	if numVal == nil {
+ 		panic(r.NewTypeError("Value is not a number"))
+ 	}
+-	var radix int
++	var radix int64 = 10
+ 	if arg := call.Argument(0); arg != _undefined {
+-		radix = int(arg.ToInteger())
+-	} else {
+-		radix = 10
++		radix = arg.ToInteger()
+ 	}
+ 
+ 	if radix < 2 || radix > 36 {
+@@ -86,7 +84,7 @@
+ 		return asciiString(fToStr(num, ftoa.ModeStandard, 0))
+ 	}
+ 
+-	return asciiString(ftoa.FToBaseStr(num, radix))
++	return asciiString(ftoa.FToBaseStr(num, int(radix)))
+ }
+ 
+ func (r *Runtime) numberproto_toFixed(call FunctionCall) Value {
+--- a/builtin_regexp.go
++++ b/builtin_regexp.go
+@@ -3,6 +3,7 @@
+ import (
+ 	"errors"
+ 	"fmt"
++	"math"
+ 	"regexp"
+ 	"regexp/syntax"
+ 	"strings"
+@@ -1095,7 +1096,12 @@
+ 	pattern := search.pattern // toUint32() may recompile the pattern, but we still need to use the original
+ 	limit := -1
+ 	if limitValue != _undefined {
+-		limit = int(toUint32(limitValue))
++		l := toUint32(limitValue)
++		if l > math.MaxInt32 {
++			// No split has that many parts; the cap keeps int(l) exact on 32-bit.
++			l = math.MaxInt32
++		}
++		limit = int(l)
+ 	}
+ 
+ 	if limit == 0 {
 --- a/builtin_string.go
 +++ b/builtin_string.go
 @@ -10,20 +10,9 @@
@@ -36,6 +157,26 @@ localeCompare, and the collation tables add 1.3 MB to the nida binary.
  }
  
  func (r *Runtime) stringproto_match(call FunctionCall) Value {
+--- a/object_template.go
++++ b/object_template.go
+@@ -396,7 +396,7 @@
+ 
+ func (a *templatedArrayObject) _setOwnIdx(idx uint32) {
+ 	lenProp := a.getLenProp()
+-	l := uint32(lenProp.value.ToInteger())
++	l := toUint32(lenProp.value)
+ 	if idx >= l {
+ 		lenProp.value = intToValue(int64(idx) + 1)
+ 	}
+@@ -404,7 +404,7 @@
+ 
+ func (a *templatedArrayObject) setLength(l uint32, throw bool) bool {
+ 	lenProp := a.getLenProp()
+-	oldLen := uint32(lenProp.value.ToInteger())
++	oldLen := toUint32(lenProp.value)
+ 	if l == oldLen {
+ 		return true
+ 	}
 --- a/runtime.go
 +++ b/runtime.go
 @@ -16,8 +16,6 @@

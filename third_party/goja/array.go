@@ -1,3 +1,6 @@
+//go:build amd64 || arm64 || mips64 || mips64le || ppc64 || ppc64le || riscv64 || s390x || wasm
+// +build amd64 arm64 mips64 mips64le ppc64 ppc64le riscv64 s390x wasm
+
 package goja
 
 import (
@@ -88,7 +91,7 @@ func (a *arrayObject) _setLengthInt(l uint32, throw bool) bool {
 	if l <= a.length {
 		if a.propValueCount > 0 {
 			// Slow path
-			for i := len(a.values) - 1; i >= int(l); i-- {
+			for i := len(a.values) - 1; int64(i) >= int64(l); i-- {
 				if prop, ok := a.values[i].(*valueProperty); ok {
 					if !prop.configurable {
 						l = uint32(i) + 1
@@ -402,7 +405,7 @@ func (r *Runtime) defineArrayLength(prop *valueProperty, descr PropertyDescripto
 	}
 
 	if descr.Value != nil {
-		oldLen := uint32(prop.value.ToInteger())
+		oldLen := toUint32(prop.value)
 		if oldLen != newLen {
 			ret = setter(newLen, false)
 		}

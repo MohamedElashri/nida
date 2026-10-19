@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"runtime"
 	"strings"
 	"sync"
@@ -151,10 +152,13 @@ func String(obj *goja.Object, name string) string {
 	return ""
 }
 
-// Int returns a property of a thrown value as an integer, or 0.
+// Int returns a property of a thrown value as an integer, or 0 when it is
+// missing or outside the int32 range, which no line or column number needs.
 func Int(obj *goja.Object, name string) int {
 	if v := obj.Get(name); v != nil && !goja.IsUndefined(v) && !goja.IsNull(v) {
-		return int(v.ToInteger())
+		if n := v.ToInteger(); n >= math.MinInt32 && n <= math.MaxInt32 {
+			return int(n)
+		}
 	}
 	return 0
 }

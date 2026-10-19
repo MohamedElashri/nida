@@ -1,3 +1,6 @@
+//go:build amd64 || arm64 || mips64 || mips64le || ppc64 || ppc64le || riscv64 || s390x || wasm
+// +build amd64 arm64 mips64 mips64le ppc64 ppc64le riscv64 s390x wasm
+
 package goja
 
 import (
@@ -226,10 +229,11 @@ func (r *Runtime) bigintproto_toString(call FunctionCall) Value {
 	if radix == _undefined {
 		radixMV = 10
 	} else {
-		radixMV = int(radix.ToInteger())
-		if radixMV < 2 || radixMV > 36 {
+		mv := radix.ToInteger()
+		if mv < 2 || mv > 36 {
 			panic(r.newError(r.getRangeError(), "radix must be an integer between 2 and 36"))
 		}
+		radixMV = int(mv)
 	}
 
 	return asciiString(x.Text(radixMV))

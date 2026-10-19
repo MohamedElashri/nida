@@ -1,3 +1,6 @@
+//go:build amd64 || arm64 || mips64 || mips64le || ppc64 || ppc64le || riscv64 || s390x || wasm
+// +build amd64 arm64 mips64 mips64le ppc64 ppc64le riscv64 s390x wasm
+
 package goja
 
 import (
@@ -396,7 +399,7 @@ func (a *templatedArrayObject) getLenProp() *valueProperty {
 
 func (a *templatedArrayObject) _setOwnIdx(idx uint32) {
 	lenProp := a.getLenProp()
-	l := uint32(lenProp.value.ToInteger())
+	l := toUint32(lenProp.value)
 	if idx >= l {
 		lenProp.value = intToValue(int64(idx) + 1)
 	}
@@ -404,7 +407,7 @@ func (a *templatedArrayObject) _setOwnIdx(idx uint32) {
 
 func (a *templatedArrayObject) setLength(l uint32, throw bool) bool {
 	lenProp := a.getLenProp()
-	oldLen := uint32(lenProp.value.ToInteger())
+	oldLen := toUint32(lenProp.value)
 	if l == oldLen {
 		return true
 	}
