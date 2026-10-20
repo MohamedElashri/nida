@@ -2,7 +2,7 @@
 
 All notable changes to Nida are documented here.
 
-## [0.8.1] - Unreleased
+## [0.8.1] - 2026-10-20
 
 ### Added
 * `markdown.diagram_width` (default `720`) lays Mermaid diagrams out for your content column. A wider diagram wraps its labels or switches to a top-down layout instead of shrinking until it is unreadable. `0` keeps each diagram's natural layout.
