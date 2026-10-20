@@ -10,9 +10,9 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"github.com/dop251/goja/unistring"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 
-	"github.com/dop251/goja/parser"
+	"github.com/MohamedElashri/nida/third_party/goja/parser"
 	"golang.org/x/text/unicode/norm"
 )
 

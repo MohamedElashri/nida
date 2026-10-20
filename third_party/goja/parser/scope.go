@@ -4,8 +4,8 @@
 package parser
 
 import (
-	"github.com/dop251/goja/ast"
-	"github.com/dop251/goja/unistring"
+	"github.com/MohamedElashri/nida/third_party/goja/ast"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
 type _scope struct {

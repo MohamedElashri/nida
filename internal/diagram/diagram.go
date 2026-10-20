@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/jsengine"
-	"github.com/dop251/goja"
+	"github.com/MohamedElashri/nida/third_party/goja"
 )
 
 //go:embed files/pele.global.js.gz

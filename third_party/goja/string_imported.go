@@ -12,8 +12,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"github.com/dop251/goja/parser"
-	"github.com/dop251/goja/unistring"
+	"github.com/MohamedElashri/nida/third_party/goja/parser"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
 // Represents a string imported from Go. The idea is to delay the scanning for unicode characters and converting

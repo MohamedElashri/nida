@@ -4,7 +4,7 @@
 package goja
 
 import (
-	"github.com/dop251/goja/unistring"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
 const propNameStack = "stack"

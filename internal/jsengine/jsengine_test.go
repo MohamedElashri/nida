@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/MohamedElashri/nida/third_party/goja"
 )
 
 // libSource returns lib gzipped, as NewPool expects.

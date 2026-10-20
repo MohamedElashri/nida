@@ -14,7 +14,7 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"github.com/dop251/goja/parser"
+	"github.com/MohamedElashri/nida/third_party/goja/parser"
 )
 
 func (r *Runtime) newRegexpObject(proto *Object) *regexpObject {

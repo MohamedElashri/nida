@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          current="$(go list -m -f '{{.Version}}' github.com/dop251/goja)"
+          current="$(cat third_party/goja.version)"
           latest="$(go run ./scripts/vendorgoja -outdated)"
           if [[ -z "${latest}" ]]; then
             echo "goja ${current} is the latest upstream commit"
@@ -41,7 +41,7 @@ jobs:
           fi
 
           if go run ./scripts/vendorgoja -update "${latest}" && go test ./internal/jsengine ./internal/diagram ./internal/mathml ./internal/markdown; then
-            status="The patch applies cleanly and the rendering tests pass. Run \`make goja-update GOJA=${latest}\`, then commit \`go.mod\`, \`go.sum\`, and \`third_party/goja\`."
+            status="The patch applies cleanly and the rendering tests pass. Run \`make goja-update GOJA=${latest}\`, then commit \`third_party/goja.version\`, \`third_party/goja\`, \`go.mod\`, and \`go.sum\`."
           else
             status="**The patch no longer applies, or the rendering tests fail.** See the [workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). Update \`third_party/goja.patch\` against the new version, then run \`make goja-update GOJA=${latest}\`."
           fi
