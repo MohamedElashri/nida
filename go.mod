@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
-	github.com/dlclark/regexp2/v2 v2.8.1
+	github.com/dlclark/regexp2/v2 v2.9.1
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904
 	github.com/pelletier/go-toml/v2 v2.4.3
