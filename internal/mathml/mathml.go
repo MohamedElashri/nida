@@ -28,11 +28,21 @@ var (
 // Error is TeX that Temml cannot parse.
 type Error struct {
 	TeX     string
+	Display bool
 	Message string
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("math $%s$: %s", e.TeX, e.Message)
+	return fmt.Sprintf("math %s: %s", delimit(e.TeX, e.Display), e.Message)
+}
+
+// delimit writes TeX the way it appears in Markdown: $...$ inline and
+// $$...$$ for display math.
+func delimit(tex string, display bool) string {
+	if display {
+		return "$$" + tex + "$$"
+	}
+	return "$" + tex + "$"
 }
 
 // Render returns the TeX as a <math> element. Display math is a block
@@ -58,15 +68,15 @@ func Render(tex string, display bool) (string, error) {
 		return nil
 	})
 	if err != nil {
-		return "", mathError(tex, err)
+		return "", mathError(tex, display, err)
 	}
 	cache.Put(key, out)
 	return out, nil
 }
 
-func mathError(tex string, err error) error {
+func mathError(tex string, display bool, err error) error {
 	if errors.Is(err, jsengine.ErrTimeout) {
-		return &Error{TeX: tex, Message: "rendering " + err.Error()}
+		return &Error{TeX: tex, Display: display, Message: "rendering " + err.Error()}
 	}
 	thrown := jsengine.Thrown(err)
 	if thrown == nil {
@@ -75,7 +85,7 @@ func mathError(tex string, err error) error {
 	msg := jsengine.String(thrown, "message")
 	if jsengine.String(thrown, "name") != "ParseError" {
 		// A bug inside Temml rather than a problem with the TeX.
-		return fmt.Errorf("math $%s$: Temml failed: %s", tex, msg)
+		return fmt.Errorf("math %s: Temml failed: %s", delimit(tex, display), msg)
 	}
 	// Temml underlines the problem with combining low lines, which
 	// terminals show poorly, and repeats the source after the position.
@@ -86,5 +96,5 @@ func mathError(tex string, err error) error {
 	if i := strings.Index(msg, " at end of input"); i >= 0 {
 		msg = msg[:i]
 	}
-	return &Error{TeX: tex, Message: strings.TrimSpace(msg)}
+	return &Error{TeX: tex, Display: display, Message: strings.TrimSpace(msg)}
 }

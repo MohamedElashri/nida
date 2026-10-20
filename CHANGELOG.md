@@ -15,7 +15,31 @@ All notable changes to Nida are documented here.
 * **Breaking**: TeX in content now fails the build while `markdown.math` is off, instead of showing as raw dollar signs. `$$...$$` and `$...$` with `\`, `^`, `_`, `{`, or `}` count as TeX; other dollar signs, such as `$HOME` or `$5`, stay text. Write `\$` for a literal dollar sign.
 * **Breaking**: KaTeX is no longer bundled. Math is `<span class="math math-inline"><math>…</math></span>` and `<div class="math math-display"><math display="block">…</math></div>` instead of TeX in `\(…\)` and `\[…\]`, `vendor/katex-<version>/` is no longer written, and `bundledScripts` takes `"math"` instead of `"katex"`. Remove KaTeX or MathJax scripts from your templates.
 * **Breaking**: Nida now builds only on 64-bit platforms (amd64, arm64, mips64, ppc64, riscv64, s390x, and wasm), because the JavaScript engine that renders math and diagrams converts 64-bit integers to `int`. Release binaries were already 64-bit only; `go install` on a 32-bit platform now fails with `undefined: nida_requires_a_64_bit_platform`.
+* `home.limit` now defaults to `0`, which lists every page, matching what homepages have always shown.
 * **Breaking**: Mermaid.js is no longer bundled. Diagrams are `<div class="diagram"><svg class="pele …">` instead of `<pre class="mermaid">`, `vendor/mermaid-<version>/` is no longer written, and `bundledScripts` ignores `"mermaid"`. Themes that styled `pre.mermaid` should style `.diagram` and set the `--pele-*` variables instead. Pele follows Mermaid 12.1 syntax with its own layout and style, so diagrams look different from Mermaid's.
+
+### Fixed
+* Slugs no longer put a hyphen between letters outside ASCII: `سلام عليكم` becomes `/سلام-عليكم/` instead of `/س-ل-ا-م-ع-ل-ي-ك-م/`, `Café` becomes `café` instead of `caf-é`, and combining marks such as Arabic harakat are dropped. This changes the URLs of such pages and taxonomy terms; add `aliases` to keep old links working.
+* `output_dir` can no longer be, contain, or sit inside the content, template, static, themes, or data directory, or `.git`. Every build empties `output_dir` first, so `output_dir = "content"` deleted the site's content.
+* `home.limit` now limits the homepage. Before, it had no effect.
+* `@/` links to drafts and future-dated pages are no longer resolved to a page the build leaves out; they are reported like any other broken link.
+* A bundle file named `index.html` no longer silently replaces its page; the build fails and names both.
+* Front matter with a UTF-8 byte order mark, as Windows editors save it, and empty front matter (`+++` then `+++`) now parse.
+* Feed titles keep text between `<` and `>`: `1 < 2 and 3 > 2` was shortened to `1 2`.
+* The sitemap no longer lists `404.html`, and its `lastmod` uses `updated` when that is later than `date`, as feeds do.
+* Two taxonomy terms that share a slug, such as `Go` and `go`, fail with an error naming both terms instead of an output path conflict.
+* `nida serve`:
+  * Serves sites whose `base_url` path has escaped characters, such as `/my%20blog/`.
+  * On Linux, rebuilds after a directory is moved into the site, and watches a directory deleted and created again.
+  * Keeps a site's static file over its theme's when the theme file changes, and falls back to the theme's file when the site's is deleted.
+  * Answers 404 for a directory without an `index.html` instead of listing it.
+* An unclosed `$$` math block fails with an error naming it, instead of passing the rest of the page to Temml. Display math errors show `$$...$$`.
+* A Mermaid error at the end of a diagram says so, instead of pointing past the last line with an empty excerpt.
+* `nida migrate`:
+  * A Hugo or Zola content file whose front matter does not parse is kept in `_migration/original/` instead of being copied into `content/`, where it stopped the new site from building and skipped the URL checks for every other page.
+  * Zola content files without front matter get a title from their file name, as Hugo files already did.
+  * Source folders whose names start with `..`, such as `..assets`, are migrated instead of being reported as outside the site.
+  * `--dry-run` with a source reached through a symlink skips the destination folder when it sits inside the source.
 
 ## [0.8.0] - 2026-10-18
 

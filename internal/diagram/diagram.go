@@ -90,13 +90,13 @@ func Render(source string, opts Options) (string, error) {
 		return nil
 	})
 	if err != nil {
-		return "", diagramError(err)
+		return "", diagramError(source, err)
 	}
 	cache.Put(key, svg)
 	return svg, nil
 }
 
-func diagramError(err error) error {
+func diagramError(source string, err error) error {
 	if errors.Is(err, jsengine.ErrTimeout) {
 		return &Error{Code: "limit", Message: "rendering " + err.Error()}
 	}
@@ -108,10 +108,19 @@ func diagramError(err error) error {
 		// A bug inside Pele rather than a problem with the diagram.
 		return fmt.Errorf("mermaid diagram: Pele failed: %s", jsengine.String(thrown, "message"))
 	}
-	return &Error{
+	e := &Error{
 		Code:    jsengine.String(thrown, "code"),
 		Message: jsengine.String(thrown, "message"),
 		Line:    jsengine.Int(thrown, "line"),
 		Column:  jsengine.Int(thrown, "column"),
 	}
+	// At the end of input, Pele points past the last line and shows an
+	// empty excerpt; say where the diagram stopped instead.
+	if last := strings.Count(strings.TrimRight(source, "\n"), "\n") + 1; e.Line > last {
+		if _, rest, ok := strings.Cut(e.Message, "\n^\n"); ok {
+			e.Message = "Parse error at the end of the diagram: " + rest
+		}
+		e.Line, e.Column = 0, 0
+	}
+	return e
 }

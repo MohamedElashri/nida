@@ -256,3 +256,61 @@ func writeContentFile(t *testing.T, path string, contents string) {
 		t.Fatalf("write content file: %v", err)
 	}
 }
+
+func TestSyncChangedKeepsSiteOverridesOfThemeFiles(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.Theme = "ink"
+	write := func(rel, data string) {
+		t.Helper()
+		full := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	output := func() string {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(dir, "public", "site.css"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	write("themes/ink/static/site.css", "theme")
+	write("static/site.css", "site")
+	write("static/old/a.txt", "a")
+
+	// A theme edit must not replace the site's override.
+	if err := SyncChanged(dir, cfg, []string{"static/site.css", "themes/ink/static/site.css"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := output(); got != "site" {
+		t.Fatalf("expected the site's file, got %q", got)
+	}
+
+	// Deleting the override falls back to the theme's file.
+	if err := os.Remove(filepath.Join(dir, "static", "site.css")); err != nil {
+		t.Fatal(err)
+	}
+	if err := SyncChanged(dir, cfg, []string{"static/site.css"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := output(); got != "theme" {
+		t.Fatalf("expected the theme's file after removing the override, got %q", got)
+	}
+
+	// A directory moved away, with files still in the output, is not an
+	// error.
+	if err := SyncChanged(dir, cfg, []string{"static/old/a.txt"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(dir, "static", "old")); err != nil {
+		t.Fatal(err)
+	}
+	if err := SyncChanged(dir, cfg, []string{"static/old"}); err != nil {
+		t.Fatalf("removed directory: %v", err)
+	}
+}

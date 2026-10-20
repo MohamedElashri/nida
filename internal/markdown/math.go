@@ -127,6 +127,7 @@ func (mathBlockParser) Continue(node ast.Node, reader text.Reader, _ parser.Cont
 	trimmed := bytes.TrimRight(line, " \t\r\n")
 	if bytes.HasSuffix(trimmed, []byte("$$")) {
 		n.TeX.Write(bytes.TrimSpace(trimmed[:len(trimmed)-2]))
+		n.closed = true
 		reader.AdvanceToEOL()
 		return parser.Close
 	}
@@ -178,11 +179,19 @@ func (r mathRenderer) renderBlock(w util.BufWriter, _ []byte, node ast.Node, ent
 	if !r.enabled {
 		return ast.WalkStop, mathOffError(tex, true)
 	}
+	if !n.closed {
+		return ast.WalkStop, fmt.Errorf("math $$ block starting with %q is never closed: end it with a line that ends in $$", firstLine(tex))
+	}
 	status, err := writeMath(w, "div", "math math-display", string(tex), true)
 	if err == nil {
 		_ = w.WriteByte('\n')
 	}
 	return status, err
+}
+
+func firstLine(tex []byte) string {
+	line, _, _ := bytes.Cut(tex, []byte("\n"))
+	return string(line)
 }
 
 // looksLikeTeX reports whether $...$ text is TeX rather than prose that

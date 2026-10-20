@@ -86,7 +86,7 @@ func (h *hugoSite) planContent() error {
 	// static/ to keep it.
 	for _, src := range resources {
 		rel := strings.TrimPrefix(src, dir+"/")
-		if hugoInBundle(rel, bundles) {
+		if inBundle(rel, bundles, ".") {
 			p.Copy(path.Join("content", rel), src)
 			continue
 		}
@@ -112,7 +112,7 @@ func (h *hugoSite) planContent() error {
 		tops := map[string]bool{}
 		for _, f := range files {
 			base := path.Base(f.rel)
-			if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && hugoInBundle(f.rel, bundles)) {
+			if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && inBundle(f.rel, bundles, ".")) {
 				continue
 			}
 			if top, _, _ := strings.Cut(sectionDir(f), "/"); top != "" {
@@ -135,7 +135,7 @@ func (h *hugoSite) planContent() error {
 	for _, f := range files {
 		// Markdown files inside a leaf bundle (other than index.md) are page
 		// resources in Hugo, not pages.
-		if base := path.Base(f.rel); !strings.HasPrefix(base, "index.") && !strings.HasPrefix(base, "_index.") && hugoInBundle(f.rel, bundles) {
+		if base := path.Base(f.rel); !strings.HasPrefix(base, "index.") && !strings.HasPrefix(base, "_index.") && inBundle(f.rel, bundles, ".") {
 			p.Copy(f.dest, f.src)
 			continue
 		}
@@ -182,15 +182,6 @@ func cutLang(stem string) (string, string, bool) {
 	return stem[:i], lang, true
 }
 
-func hugoInBundle(rel string, bundles map[string]bool) bool {
-	for dir := path.Dir(rel); dir != "."; dir = path.Dir(dir) {
-		if bundles[dir] {
-			return true
-		}
-	}
-	return false
-}
-
 func (h *hugoSite) convertFile(f hugoContentFile, index map[string]string, templatesUsed map[string]string) error {
 	p := h.p
 	data, err := p.ReadFile(f.src)
@@ -199,8 +190,8 @@ func (h *hugoSite) convertFile(f hugoContentFile, index map[string]string, templ
 	}
 	doc, err := ParseDocument(data)
 	if err != nil {
-		p.Report.Add(Manual, f.src, 1, "Front matter could not be parsed (%v); the file was copied unchanged and will not build.", err)
-		p.Copy(f.dest, f.src)
+		p.Report.Add(Manual, f.src, 1, "Front matter could not be parsed (%v); the file was kept in `%s/`.", err, preservedDir)
+		p.Preserve(f.src)
 		return nil
 	}
 	MoveCustomPath(doc, p.Report, f.src)
@@ -562,7 +553,7 @@ func (h *hugoSite) planPermalinks(files []hugoContentFile, bundles map[string]bo
 	dirs := map[string]bool{}
 	for _, f := range files {
 		base := path.Base(f.rel)
-		if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && hugoInBundle(f.rel, bundles)) {
+		if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && inBundle(f.rel, bundles, ".")) {
 			continue
 		}
 		if d := sectionDir(f); d != "" {

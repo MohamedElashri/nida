@@ -33,9 +33,10 @@ func Generate(cfg config.SiteConfig, state site.State, pages []render.Page) (*Ou
 
 	entries := make([]urlEntry, 0, len(pages))
 	seen := make(map[string]struct{}, len(pages))
+	lastMods := lastModified(state)
 
 	for _, page := range pages {
-		if page.CanonicalURL == "" {
+		if page.CanonicalURL == "" || page.URL == render.NotFoundURL {
 			continue
 		}
 		if _, ok := seen[page.CanonicalURL]; ok {
@@ -44,9 +45,7 @@ func Generate(cfg config.SiteConfig, state site.State, pages []render.Page) (*Ou
 		seen[page.CanonicalURL] = struct{}{}
 
 		entry := urlEntry{Loc: page.CanonicalURL}
-		if lastMod, ok := lastModified(page.URL, state); ok {
-			entry.LastMod = lastMod
-		}
+		entry.LastMod = lastMods[page.URL]
 		entries = append(entries, entry)
 	}
 
@@ -72,11 +71,18 @@ func Generate(cfg config.SiteConfig, state site.State, pages []render.Page) (*Ou
 	}, nil
 }
 
-func lastModified(route string, state site.State) (string, bool) {
+// lastModified maps page routes to the date each page last changed: its
+// updated date when later than its date, as in the feeds.
+func lastModified(state site.State) map[string]string {
+	out := make(map[string]string, len(state.Index.AllPages))
 	for _, item := range state.Index.AllPages {
-		if item.URL == route && !item.Date.IsZero() {
-			return item.Date.UTC().Format("2006-01-02"), true
+		changed := item.Date
+		if item.Updated.After(changed) {
+			changed = item.Updated
+		}
+		if !changed.IsZero() {
+			out[item.URL] = changed.UTC().Format("2006-01-02")
 		}
 	}
-	return "", false
+	return out
 }

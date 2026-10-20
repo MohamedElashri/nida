@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
 func assetURLFunc(cfg config.SiteConfig) func(string) (string, error) {
@@ -121,7 +122,7 @@ func splitAssetPath(value string) (string, string, error) {
 	if cleaned == "." || cleaned == "" {
 		return "", "", fmt.Errorf("asset path must not be empty")
 	}
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") || filepath.IsAbs(cleaned) {
+	if safepath.Escapes(cleaned) {
 		return "", "", fmt.Errorf("asset path must stay inside the static directory")
 	}
 	return cleaned, suffix, nil

@@ -104,124 +104,78 @@ func renderSectionPages(set templates.Set, cfg config.SiteConfig, theme Theme, i
 		sectionURL = "/"
 	}
 
-	var ctxPages []content.Page
-	if section.SectionPath == "" {
-		ctxPages = latestItems(index.AllPages, cfg.Home.Sections, cfg.Home.Limit)
-	} else {
-		ctxPages = section.Pages
-	}
-
 	perPage := section.PaginateBy
 	if perPage <= 0 {
 		perPage = cfg.Sections.PaginateBy
 	}
 	if perPage <= 0 {
+		// Validate requires paginate > 0, so every section paginates, and
+		// page 1 occupies sectionURL.
 		perPage = cfg.Paginate
 	}
 
-	var out string
-	var err error
+	var paginatePages []content.Page
+	if section.SectionPath == "" {
+		paginatePages = latestItems(index.AllPages, cfg.Home.Sections, cfg.Home.Limit)
+	} else {
+		paginatePages = section.Pages
+	}
 
-	// Without pagination, render the section once. With it, page 1 of the
-	// paginated output already occupies sectionURL.
-	paginateSection := perPage > 0
-	if !paginateSection {
-		canonical := route.CanonicalURL(cfg.BaseURL, sectionURL)
+	totalPages := max(1, (len(paginatePages)+perPage-1)/perPage)
+	paginatePath := section.PaginatePath
+	if paginatePath == "" {
+		paginatePath = "page"
+	}
+
+	for pageNum := 1; pageNum <= totalPages; pageNum++ {
+		start := (pageNum - 1) * perPage
+		end := min(start+perPage, len(paginatePages))
+		pageURL := sectionURL
+		if pageNum > 1 {
+			pageURL = sectionURL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
+		}
+
+		paginator := buildPaginator(sectionURL, paginatePath, pageNum, totalPages, paginatePages[start:end])
 
 		ctx := templateContext{
 			Title:        section.Title,
 			Description:  section.Description,
 			HomeURL:      "/",
-			CurrentURL:   sectionURL,
-			CanonicalURL: canonical,
+			CurrentURL:   pageURL,
+			CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 			Config:       cfg,
 			Theme:        theme,
 			Index:        index,
 			Section:      section,
-			Pages:        ctxPages,
+			Pages:        paginatePages[start:end],
+			Paginator:    paginator,
 			Robots:       cfg.RobotsMeta,
 		}
 
-		out, err = renderTemplate(set, templateName, ctx)
+		out, err := renderTemplate(set, templateName, ctx)
 		if err != nil {
-			return nil, fmt.Errorf("render section %q: %w", section.SectionPath, err)
+			return nil, fmt.Errorf("render section %q page %d: %w", section.SectionPath, pageNum, err)
 		}
-	}
 
-	if out != "" {
 		pages = append(pages, Page{
-			URL:          sectionURL,
-			CanonicalURL: route.CanonicalURL(cfg.BaseURL, sectionURL),
+			URL:          pageURL,
+			CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
 			TemplateName: templateName,
 			Title:        section.Title,
 			Content:      out,
 		})
 	}
 
-	if paginateSection {
-		var paginatePages []content.Page
-		if section.SectionPath == "" {
-			paginatePages = latestItems(index.AllPages, cfg.Home.Sections, 0)
-		} else {
-			paginatePages = section.Pages
-		}
-
-		totalPages := max(1, (len(paginatePages)+perPage-1)/perPage)
-		paginatePath := section.PaginatePath
-		if paginatePath == "" {
-			paginatePath = "page"
-		}
-
-		for pageNum := 1; pageNum <= totalPages; pageNum++ {
-			start := (pageNum - 1) * perPage
-			end := min(start+perPage, len(paginatePages))
-			pageURL := sectionURL
-			if pageNum > 1 {
-				pageURL = sectionURL + paginatePath + "/" + strconv.Itoa(pageNum) + "/"
-			}
-
-			paginator := buildPaginator(sectionURL, paginatePath, pageNum, totalPages, paginatePages[start:end])
-
-			ctx := templateContext{
-				Title:        section.Title,
-				Description:  section.Description,
-				HomeURL:      "/",
-				CurrentURL:   pageURL,
-				CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
-				Config:       cfg,
-				Theme:        theme,
-				Index:        index,
-				Section:      section,
-				Pages:        paginatePages[start:end],
-				Paginator:    paginator,
-				Robots:       cfg.RobotsMeta,
-			}
-
-			out, err = renderTemplate(set, templateName, ctx)
-			if err != nil {
-				return nil, fmt.Errorf("render section %q page %d: %w", section.SectionPath, pageNum, err)
-			}
-
-			pages = append(pages, Page{
-				URL:          pageURL,
-				CanonicalURL: route.CanonicalURL(cfg.BaseURL, pageURL),
-				TemplateName: templateName,
-				Title:        section.Title,
-				Content:      out,
-			})
-		}
-
-		// Generate page/1/ redirect to canonical section URL
-		pageOneURL := sectionURL + paginatePath + "/1/"
-		canonicalSectionURL := route.CanonicalURL(cfg.BaseURL, sectionURL)
-		pages = append(pages, Page{
-			URL:          pageOneURL,
-			CanonicalURL: canonicalSectionURL,
-			TemplateName: "redirect",
-			Title:        "Redirect",
-			Content:      redirectHTML(canonicalSectionURL),
-		})
-	}
+	// Generate page/1/ redirect to canonical section URL
+	pageOneURL := sectionURL + paginatePath + "/1/"
+	canonicalSectionURL := route.CanonicalURL(cfg.BaseURL, sectionURL)
+	pages = append(pages, Page{
+		URL:          pageOneURL,
+		CanonicalURL: canonicalSectionURL,
+		TemplateName: "redirect",
+		Title:        "Redirect",
+		Content:      redirectHTML(canonicalSectionURL),
+	})
 
 	return pages, nil
 }
@@ -484,15 +438,19 @@ func renderTemplate(set templates.Set, name string, data templateContext) (strin
 	return out, nil
 }
 
+// NotFoundURL is the route of the 404 page, which search engines must not
+// index.
+const NotFoundURL = "/404.html"
+
 func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme) (Page, error) {
 	title := "Page not found"
-	canonical := route.CanonicalURL(cfg.BaseURL, "/404.html")
+	canonical := route.CanonicalURL(cfg.BaseURL, NotFoundURL)
 	if set.Has("404") {
 		out, err := renderTemplate(set, "404", templateContext{
 			Title:        title,
 			Description:  cfg.Description,
 			HomeURL:      "/",
-			CurrentURL:   "/404.html",
+			CurrentURL:   NotFoundURL,
 			CanonicalURL: canonical,
 			Config:       cfg,
 			Theme:        theme,
@@ -502,7 +460,7 @@ func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme) (
 			return Page{}, err
 		}
 		return Page{
-			URL:          "/404.html",
+			URL:          NotFoundURL,
 			CanonicalURL: canonical,
 			TemplateName: "404",
 			Title:        title,
@@ -510,7 +468,7 @@ func renderNotFoundPage(set templates.Set, cfg config.SiteConfig, theme Theme) (
 		}, nil
 	}
 	return Page{
-		URL:          "/404.html",
+		URL:          NotFoundURL,
 		CanonicalURL: canonical,
 		TemplateName: "builtin-404",
 		Title:        title,

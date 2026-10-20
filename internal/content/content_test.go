@@ -95,8 +95,17 @@ func TestDeriveSlug(t *testing.T) {
 }
 
 func TestDeriveSlugNonASCII(t *testing.T) {
-	if got := DeriveSlug("البنية"); got == "" {
-		t.Fatalf("expected non-empty slug for Arabic input")
+	for in, want := range map[string]string{
+		"البنية":      "البنية",
+		"سلام عليكم":  "سلام-عليكم",
+		"مَرْحَبًا":   "مرحبا",
+		"Café Noir":   "café-noir",
+		"日本語":         "日本語",
+		"ϕ-meson ℓ=2": "ph-meson-l-2",
+	} {
+		if got := DeriveSlug(in); got != want {
+			t.Errorf("DeriveSlug(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

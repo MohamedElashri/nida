@@ -188,3 +188,43 @@ func containsAll(value string, parts ...string) bool {
 	}
 	return true
 }
+
+func TestRenderSiteHomeLimit(t *testing.T) {
+	dir := t.TempDir()
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Title = "Example"
+	cfg.Home.Limit = 2
+	files := map[string]string{
+		"templates/base.html":  `{{ define "base" }}{{ template "content" . }}{{ end }}`,
+		"templates/index.html": `{{ define "index" }}{{ range .Pages }}{{ .Title }};{{ end }}{{ end }}`,
+		"templates/post.html":  `{{ define "post" }}post{{ end }}`,
+		"templates/page.html":  `{{ define "page" }}page{{ end }}`,
+		"templates/list.html":  `{{ define "list" }}list{{ end }}`,
+		"content/_index.md":    "+++\ntitle = \"Home\"\n+++\n",
+	}
+	for i := 1; i <= 4; i++ {
+		files["content/posts/p"+string(rune('0'+i))+".md"] = "+++\ntitle = \"P" + string(rune('0'+i)) + "\"\ndate = 2024-01-0" + string(rune('0'+i)) + "\n+++\nx\n"
+	}
+	for name, data := range files {
+		full := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	state, err := site.Load(dir, cfg)
+	if err != nil {
+		t.Fatalf("site.Load: %v", err)
+	}
+	pages, err := RenderSite(dir, cfg, state)
+	if err != nil {
+		t.Fatalf("RenderSite returned error: %v", err)
+	}
+	if got := strings.TrimSpace(findPage(t, pages, "/").Content); got != "P4;P3;" {
+		t.Fatalf("expected the two newest pages on the homepage, got %q", got)
+	}
+}

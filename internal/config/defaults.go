@@ -27,9 +27,6 @@ func DefaultSiteConfig() SiteConfig {
 			Filename: "rss.xml",
 			Limit:    20,
 		},
-		Home: HomeConfig{
-			Limit: 5,
-		},
 		Markdown: MarkdownConfig{
 			DiagramWidth: 720,
 			MathFont:     bundled.MathFontLatinModern,

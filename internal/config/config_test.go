@@ -271,3 +271,33 @@ filename = "feed.xml"
 		t.Fatalf("expected filename conflict error, got %v", err)
 	}
 }
+
+func TestValidateRejectsOutputOverSources(t *testing.T) {
+	for _, output := range []string{"content", "content/out", "static/", "data", ".git", "templates/x/.."} {
+		cfg := validConfig()
+		cfg.OutputDir = output
+		if err := Validate(cfg); err == nil || !strings.Contains(err.Error(), "overlaps") {
+			t.Errorf("output_dir %q: expected an overlap error, got %v", output, err)
+		}
+	}
+	cfg := validConfig()
+	cfg.ContentDir = "src/content"
+	cfg.OutputDir = "src"
+	if err := Validate(cfg); err == nil || !strings.Contains(err.Error(), "overlaps content_dir") {
+		t.Errorf("output_dir holding content_dir: expected an overlap error, got %v", err)
+	}
+	for _, output := range []string{"public", "dist", "contents", "build/site"} {
+		cfg := validConfig()
+		cfg.OutputDir = output
+		if err := Validate(cfg); err != nil {
+			t.Errorf("output_dir %q: %v", output, err)
+		}
+	}
+}
+
+func validConfig() SiteConfig {
+	cfg := DefaultSiteConfig()
+	cfg.Title = "Site"
+	cfg.BaseURL = "https://example.com/"
+	return cfg
+}

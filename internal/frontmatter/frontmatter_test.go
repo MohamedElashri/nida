@@ -161,3 +161,19 @@ tags = ["rust", "zola"]
 		t.Fatalf("expected flattened tags, got %#v", doc.Metadata.Extra["tags"])
 	}
 }
+
+func TestSplitAcceptsEmptyBlocksAndByteOrderMark(t *testing.T) {
+	for in, want := range map[string][2]string{
+		"+++\n+++\nbody\n":                       {"", "body\n"},
+		"---\n---\n":                             {"", ""},
+		"+++\n+++":                               {"", ""},
+		"+++\r\n+++\r\nbody":                     {"", "body"},
+		"\xef\xbb\xbf+++\ntitle = \"x\"\n+++\nb": {`title = "x"`, "b"},
+		"+++\na = 1\n+++":                        {"a = 1", ""},
+	} {
+		raw, _, body, err := Split([]byte(in))
+		if err != nil || raw != want[0] || body != want[1] {
+			t.Errorf("Split(%q) = %q, %q, %v; want %q, %q", in, raw, body, err, want[0], want[1])
+		}
+	}
+}

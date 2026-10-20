@@ -65,13 +65,19 @@ func width(t *testing.T, svg string) int {
 }
 
 func TestRenderReportsDiagramErrors(t *testing.T) {
-	_, err := Render("flowchart LR\n  A --> B[[", Options{})
+	_, err := Render("sequenceDiagram\n  Alice->>+\n", Options{})
 	var diagErr *Error
-	if !errors.As(err, &diagErr) || diagErr.Code != "syntax" || diagErr.Line == 0 {
-		t.Fatalf("expected a syntax error with a line, got %#v", err)
+	if !errors.As(err, &diagErr) || diagErr.Code != "syntax" || diagErr.Line != 2 {
+		t.Fatalf("expected a syntax error on line 2, got %#v", err)
 	}
-	if !strings.HasPrefix(err.Error(), "mermaid diagram") {
+	if !strings.HasPrefix(err.Error(), "mermaid diagram") || !strings.Contains(err.Error(), "Alice->>+") {
 		t.Fatalf("unexpected message %q", err.Error())
+	}
+
+	// Pele places end-of-input errors past the last line.
+	_, err = Render("flowchart LR\n  A --> B[[\n", Options{})
+	if !errors.As(err, &diagErr) || diagErr.Line != 0 || !strings.HasPrefix(err.Error(), "mermaid diagram: Parse error at the end of the diagram: Expecting") {
+		t.Fatalf("expected an end-of-diagram error, got %#v", err)
 	}
 
 	_, err = Render("not a diagram", Options{})

@@ -66,15 +66,18 @@ func TestPoolInterruptsLongCalls(t *testing.T) {
 	defer func(old time.Duration) { timeout = old }(timeout)
 	timeout = 50 * time.Millisecond
 	pool := NewPool("lib", libSource(t), "lib.spin")
-	err := pool.Run(func(vm *VM) error {
-		_, err := vm.Entry(goja.Undefined())
-		return err
-	})
-	if !errors.Is(err, ErrTimeout) {
-		t.Fatalf("expected a timeout, got %v", err)
+	// More timeouts than the pool has runtimes: each interrupted runtime is
+	// dropped, and its slot must be freed for a new one.
+	for range cap(pool.slots) + 1 {
+		err := pool.Run(func(vm *VM) error {
+			_, err := vm.Entry(goja.Undefined())
+			return err
+		})
+		if !errors.Is(err, ErrTimeout) {
+			t.Fatalf("expected a timeout, got %v", err)
+		}
 	}
-	// The runtime goes back to the pool and must work again.
 	if err := pool.Run(func(vm *VM) error { _, err := vm.RunString("1"); return err }); err != nil {
-		t.Fatalf("runtime unusable after timeout: %v", err)
+		t.Fatalf("pool unusable after timeouts: %v", err)
 	}
 }

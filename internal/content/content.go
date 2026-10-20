@@ -344,11 +344,12 @@ func DeriveSlug(value string) string {
 			b.WriteRune(r)
 			lastHyphen = false
 		case unicode.IsLetter(r) || unicode.IsNumber(r):
-			if !lastHyphen && b.Len() > 0 {
-				b.WriteByte('-')
-			}
 			b.WriteRune(unicode.ToLower(r))
 			lastHyphen = false
+		case unicode.Is(unicode.Mn, r):
+			// Combining marks, such as Arabic harakat, belong to the
+			// letter before them, so they are dropped rather than
+			// splitting the word.
 		case r == '-' || r == '_' || r == ' ':
 			if !lastHyphen && b.Len() > 0 {
 				b.WriteByte('-')

@@ -97,13 +97,9 @@ func BuildIndex(pages []content.Page, sections []content.Section, cfg config.Sit
 	now := time.Now()
 	filtered := make([]content.Page, 0, len(sortedPages))
 	for _, p := range sortedPages {
-		if p.Draft && !cfg.Drafts {
-			continue
+		if published(p, cfg, now) {
+			filtered = append(filtered, p)
 		}
-		if !cfg.Future && p.Date.After(now) {
-			continue
-		}
-		filtered = append(filtered, p)
 	}
 	sortedPages = filtered
 
@@ -198,7 +194,13 @@ func ResolveSectionURL(section content.Section) (string, error) {
 func BuildPathLookup(pages []content.Page, sections []content.Section, cfg config.SiteConfig) markdown.PathLookup {
 	lookup := make(markdown.PathLookup)
 
+	now := time.Now()
 	for _, page := range pages {
+		// A link to a page the build leaves out stays unresolved, so it
+		// is reported instead of pointing at a missing page.
+		if !published(page, cfg, now) {
+			continue
+		}
 		url, err := routePage(page, cfg)
 		if err != nil {
 			continue
@@ -225,6 +227,12 @@ func BuildPathLookup(pages []content.Page, sections []content.Section, cfg confi
 	}
 
 	return lookup
+}
+
+// published reports whether the build includes a page: drafts need
+// --drafts and future-dated pages need --future.
+func published(page content.Page, cfg config.SiteConfig, now time.Time) bool {
+	return (!page.Draft || cfg.Drafts) && (cfg.Future || !page.Date.After(now))
 }
 
 func routePage(page content.Page, cfg config.SiteConfig) (string, error) {

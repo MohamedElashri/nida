@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -576,7 +577,7 @@ func (s *jekyllSite) addDoc(d *jekyllDoc, rel string) error {
 		d.doc = doc
 	}
 	s.applyDefaults(d)
-	d.vars = cloneMap(doc.Values())
+	d.vars = maps.Clone(doc.Values())
 	if v, ok := doc.Get("date"); ok {
 		if t, _, err := ParseDate(v); err == nil {
 			d.date, d.hasDate = t, true
@@ -602,14 +603,6 @@ func (s *jekyllSite) addDoc(d *jekyllDoc, rel string) error {
 	s.docs = append(s.docs, d)
 	s.byOrigin[rel] = d
 	return nil
-}
-
-func cloneMap(m map[string]any) map[string]any {
-	out := make(map[string]any, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
-	return out
 }
 
 // isFalse reads YAML 1.1 booleans, which Jekyll's YAML parser accepts.

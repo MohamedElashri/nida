@@ -235,7 +235,7 @@ var rootOnlyDirs = map[string]bool{"vendor": true, ".bundle": true, ".cache": tr
 func (p *Plan) Walk(dir string, fn func(rel string) error) error {
 	start, ok := p.sourcePath(dir)
 	if !ok {
-		p.Report.Add(Manual, dir, 0, "Not migrated: `%s` leads outside the source site through a symlink.", dir)
+		p.Report.Add(Manual, dir, 0, "Not migrated: `%s` leads outside the source site.", dir)
 		return nil
 	}
 	if _, err := os.Stat(start); os.IsNotExist(err) {

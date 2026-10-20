@@ -172,6 +172,8 @@ $$
 
 Prices stay as plain text: in `$5 and $10`, a `$` followed by a digit does not close a formula. Write `\$` for a dollar sign that would otherwise start math.
 
+Inside a table, a `|` ends the cell even within math, so write `\lvert x \rvert` or `\mid` instead of `|x|`.
+
 TeX that does not parse fails the build, and `nida check` reports it with the page and the formula:
 
 ```text

@@ -49,6 +49,9 @@ func Parse(input []byte) (Document, error) {
 func Split(input []byte) (string, string, string, error) {
 	normalized := bytes.ReplaceAll(input, []byte("\r\n"), []byte("\n"))
 	text := string(normalized)
+	// Windows editors such as Notepad may start the file with a byte
+	// order mark.
+	text = strings.TrimPrefix(text, "\ufeff")
 	text = strings.TrimLeft(text, "\n")
 
 	var delimiter string
@@ -61,17 +64,19 @@ func Split(input []byte) (string, string, string, error) {
 		return "", "", "", fmt.Errorf("expected front matter opening delimiter %q or %q", tomlDelimiter, yamlDelimiter)
 	}
 
-	remaining := text[len(delimiter)+1:]
+	// Keep the newline after the opening delimiter, so an empty block's
+	// closing delimiter is found too.
+	remaining := text[len(delimiter):]
 	closeIndex := strings.Index(remaining, "\n"+delimiter+"\n")
 	if closeIndex == -1 {
 		if strings.HasSuffix(remaining, "\n"+delimiter) {
-			raw := remaining[:len(remaining)-len("\n"+delimiter)]
-			return raw, delimiter, "", nil
+			raw := remaining[1 : len(remaining)-len(delimiter)]
+			return strings.TrimSuffix(raw, "\n"), delimiter, "", nil
 		}
 		return "", "", "", fmt.Errorf("missing front matter closing delimiter %q", delimiter)
 	}
 
-	raw := remaining[:closeIndex]
+	raw := remaining[1:max(closeIndex, 1)]
 	body := remaining[closeIndex+len("\n"+delimiter+"\n"):]
 	return raw, delimiter, body, nil
 }

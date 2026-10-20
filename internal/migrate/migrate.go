@@ -122,6 +122,10 @@ func Run(opts Options) (*Result, error) {
 	plan := newPlan(root, report)
 	if within(realRoot, realDest) {
 		plan.skip = append(plan.skip, dest, realDest)
+		// The walk builds paths from root, which may itself be a symlink.
+		if rel, err := filepath.Rel(realRoot, realDest); err == nil {
+			plan.skip = append(plan.skip, filepath.Join(root, rel))
+		}
 	}
 	if err := src.Plan(plan); err != nil {
 		return nil, fmt.Errorf("read %s site: %w", src.Title(), err)
@@ -462,5 +466,5 @@ func realPath(p string) string {
 // within reports whether path is inside dir.
 func within(dir, path string) bool {
 	rel, err := filepath.Rel(dir, path)
-	return err == nil && rel != "." && !strings.HasPrefix(rel, "..")
+	return err == nil && rel != "." && !safepath.Escapes(rel)
 }

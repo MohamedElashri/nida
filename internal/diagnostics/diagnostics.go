@@ -191,7 +191,7 @@ func pathEscapes(path string, roots ...string) bool {
 			continue
 		}
 		rel, err := filepath.Rel(cleanRoot, cleanPath)
-		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
+		if err == nil && !safepath.Escapes(rel) {
 			return false
 		}
 	}

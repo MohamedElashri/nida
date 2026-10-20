@@ -52,6 +52,7 @@ When adding a config field, decide whether it is display text, a URL, a relative
 - valid server port
 - unique non-empty taxonomy names
 - safe relative paths for configured directories and filenames
+- an `output_dir` that is not, does not hold, and is not inside a source directory (content, templates, static, themes, data) or `.git`, since every build empties it first
 - safe theme name
 - safe SCSS entry path when SCSS is enabled
 

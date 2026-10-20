@@ -233,7 +233,7 @@ func renderAtom(cfg config.SiteConfig, feed spec) (*Output, error) {
 	updated := latestUpdated(items)
 	doc := atomDocument{
 		Lang:  cfg.Language,
-		Title: content.PlainText(feed.Title),
+		Title: oneLine(feed.Title),
 		Generator: &atomGenerator{
 			URI:     "https://github.com/MohamedElashri/nida",
 			Version: buildinfo.Version,
@@ -255,7 +255,7 @@ func renderAtom(cfg config.SiteConfig, feed spec) (*Output, error) {
 		link := route.CanonicalURL(cfg.BaseURL, item.URL)
 
 		doc.Entries = append(doc.Entries, atomEntry{
-			Title:      content.PlainText(item.Title),
+			Title:      oneLine(item.Title),
 			Link:       atomLink{Href: link, Rel: "alternate", Type: "text/html"},
 			ID:         link,
 			Authors:    atomEntryAuthors(item, cfg),
@@ -337,9 +337,9 @@ func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
 	}
 
 	channel := rssChannel{
-		Title:       content.PlainText(feed.Title),
+		Title:       oneLine(feed.Title),
 		Link:        feed.AltURL,
-		Description: content.PlainText(cfg.Description),
+		Description: oneLine(cfg.Description),
 		Language:    cfg.Language,
 		Generator:   "Nida " + buildinfo.Version,
 		AtomLink:    rssAtomLink{Href: selfURL, Rel: "self", Type: "application/rss+xml"},
@@ -355,7 +355,7 @@ func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
 	for _, item := range feed.Items {
 		link := route.CanonicalURL(cfg.BaseURL, item.URL)
 		entry := rssItem{
-			Title:       content.PlainText(item.Title),
+			Title:       oneLine(item.Title),
 			Link:        link,
 			GUID:        rssGUID{IsPermaLink: "true", Value: link},
 			Description: itemSummary(item),
@@ -393,10 +393,17 @@ func renderRSS(cfg config.SiteConfig, feed spec) (*Output, error) {
 // itemSummary prefers the author-written description and falls back to the
 // rendered summary so feed readers always get a short teaser.
 func itemSummary(item content.Page) string {
-	if summary := content.PlainText(strings.TrimSpace(item.Description)); summary != "" {
+	if summary := oneLine(item.Description); summary != "" {
 		return summary
 	}
 	return content.PlainText(item.Summary)
+}
+
+// oneLine collapses whitespace in plain text from config or front matter.
+// Unlike content.PlainText it keeps "<" and ">", which encoding/xml
+// escapes.
+func oneLine(text string) string {
+	return strings.Join(strings.Fields(text), " ")
 }
 
 func itemUpdated(item content.Page) time.Time {
@@ -486,15 +493,11 @@ func parseAuthorsExtra(raw any) []atomAuthor {
 }
 
 func feedURL(baseURL, filename string) (string, error) {
-	baseURL = strings.TrimSpace(baseURL)
 	filename = strings.Trim(strings.TrimSpace(filename), "/")
 	if filename == "" {
 		return "", fmt.Errorf("feed filename is required")
 	}
-	if !strings.HasSuffix(baseURL, "/") {
-		baseURL += "/"
-	}
-	return baseURL + filename, nil
+	return route.CanonicalURL(baseURL, "/"+filename), nil
 }
 
 var htmlURLRegex = regexp.MustCompile(`(?i)(href|src)=["']([^"']+)["']`)

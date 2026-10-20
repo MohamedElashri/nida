@@ -280,6 +280,24 @@ func TestBuildIndexExcludesFutureDatedPages(t *testing.T) {
 	}
 }
 
+func TestBuildPathLookupSkipsUnpublishedPages(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	pages := []content.Page{
+		{RelativePath: "posts/past.md", Slug: "past", Date: mustDate(t, "2020-01-01T00:00:00Z"), SectionPath: "posts"},
+		{RelativePath: "posts/draft.md", Slug: "draft", Draft: true, SectionPath: "posts"},
+		{RelativePath: "posts/later.md", Slug: "later", Date: time.Now().Add(48 * time.Hour), SectionPath: "posts"},
+	}
+	lookup := BuildPathLookup(pages, nil, cfg)
+	if lookup["posts/past.md"] == "" || lookup["posts/draft.md"] != "" || lookup["posts/later.md"] != "" {
+		t.Fatalf("expected only the published page, got %v", lookup)
+	}
+	cfg.Drafts, cfg.Future = true, true
+	if lookup := BuildPathLookup(pages, nil, cfg); len(lookup) != 6 {
+		t.Fatalf("expected every page with drafts and future on, got %v", lookup)
+	}
+}
+
 func TestIndexGetPageAndSection(t *testing.T) {
 	index := SiteIndex{
 		AllPages: []content.Page{

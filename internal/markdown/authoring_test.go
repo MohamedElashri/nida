@@ -125,10 +125,20 @@ func TestRenderMath(t *testing.T) {
 		}
 	}
 
-	if _, err := Render("$\\frac{1}{$\n", cfg, nil); err == nil || !strings.Contains(err.Error(), "math ") {
+	if _, err := Render("$\\frac{1}{$\n", cfg, nil); err == nil || !strings.Contains(err.Error(), "math $\\frac{1}{$:") {
 		t.Fatalf("expected a math error, got %v", err)
 	}
-
+	if _, err := Render("$$\n\\frac{1}{\n$$\n", cfg, nil); err == nil || !strings.Contains(err.Error(), "math $$\\frac{1}{$$:") {
+		t.Fatalf("expected a display math error with $$, got %v", err)
+	}
+	for _, src := range []string{"$$\nx + 1\n\n## Heading\n", "> $$\n> x\n\nText.\n"} {
+		if _, err := Render(src, cfg, nil); err == nil || !strings.Contains(err.Error(), `starting with "x`) {
+			t.Fatalf("%q: expected an unclosed block error, got %v", src, err)
+		}
+	}
+	if _, err := Render("> $$\n> x\n> $$\n", cfg, nil); err != nil {
+		t.Fatalf("display math in a blockquote: %v", err)
+	}
 }
 
 func TestRenderMathOff(t *testing.T) {

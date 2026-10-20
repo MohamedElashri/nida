@@ -105,7 +105,7 @@ The homepage template receives recent pages in `.Pages`.
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `home.sections` | array of strings | empty | Root sections to list on the homepage. Empty includes every section. Nested sections match by root, so `posts/2026` matches `posts`. |
-| `home.limit` | integer | `5` | Number of pages in `.Pages` on the homepage. `0` lists all of them. When the homepage paginates, `home.sections` also filters the paginated list. |
+| `home.limit` | integer | `0` | Most recent pages the homepage lists, split into pages of `paginate`. `0` lists all of them. |
 
 ## Taxonomies
 

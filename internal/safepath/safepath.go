@@ -27,10 +27,17 @@ func ValidateRelative(field, value string, allowDot bool) error {
 	if value == "." && !allowDot {
 		return fmt.Errorf("%s must not resolve to the current directory", field)
 	}
-	if value == ".." || strings.HasPrefix(value, ".."+string(filepath.Separator)) {
+	if Escapes(value) {
 		return fmt.Errorf("%s must not escape its root", field)
 	}
 	return nil
+}
+
+// Escapes reports whether a relative path leads outside its root: it is
+// "..", starts with "../", or is absolute.
+func Escapes(rel string) bool {
+	rel = filepath.Clean(filepath.FromSlash(rel))
+	return rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel)
 }
 
 func Join(root, relative string) (string, error) {
@@ -47,7 +54,7 @@ func Join(root, relative string) (string, error) {
 	}
 
 	cleanRel := filepath.Clean(filepath.FromSlash(relative))
-	if cleanRel == ".." || strings.HasPrefix(cleanRel, ".."+string(filepath.Separator)) {
+	if Escapes(cleanRel) {
 		return "", fmt.Errorf("path %q escapes root %q", relative, absRoot)
 	}
 
@@ -56,7 +63,7 @@ func Join(root, relative string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("check path %q under %q: %w", joined, absRoot, err)
 	}
-	if relToRoot == ".." || strings.HasPrefix(relToRoot, ".."+string(filepath.Separator)) || filepath.IsAbs(relToRoot) {
+	if Escapes(relToRoot) {
 		return "", fmt.Errorf("path %q escapes root %q", relative, absRoot)
 	}
 
@@ -88,7 +95,7 @@ func EnsureNoSymlinkPath(root, path string) error {
 	if err != nil {
 		return fmt.Errorf("check path %q under %q: %w", absPath, absRoot, err)
 	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+	if Escapes(rel) {
 		return fmt.Errorf("path %q escapes root %q", absPath, absRoot)
 	}
 	if err := RejectSymlink(absRoot); err != nil && !os.IsNotExist(err) {

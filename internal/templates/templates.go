@@ -409,7 +409,7 @@ func pathUnderAnyRoot(roots []string, path string) bool {
 		if err != nil {
 			continue
 		}
-		if rel == "." || (!strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)) {
+		if !safepath.Escapes(rel) {
 			return true
 		}
 	}

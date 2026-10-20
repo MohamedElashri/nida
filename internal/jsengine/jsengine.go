@@ -68,12 +68,16 @@ func (p *Pool) Run(fn func(vm *VM) error) error {
 	if err != nil {
 		return err
 	}
-	defer func() { p.idle <- vm }()
-
 	timer := time.AfterFunc(timeout, func() { vm.Interrupt("timeout") })
 	err = fn(vm)
-	timer.Stop()
-	vm.ClearInterrupt()
+	if !timer.Stop() {
+		// The timer fired, perhaps just after fn returned, and may still
+		// interrupt the runtime. An interrupted library may also be left
+		// half-updated, so the runtime is dropped rather than reused.
+		<-p.slots
+	} else {
+		p.idle <- vm
+	}
 
 	var interrupted *goja.InterruptedError
 	if errors.As(err, &interrupted) {
