@@ -352,3 +352,24 @@ func TestGenerateAllWritesSectionAndTermFeeds(t *testing.T) {
 		t.Fatalf("Filenames and GenerateAll disagree: %v vs %d outputs", Filenames(cfg, index), len(outputs))
 	}
 }
+
+func TestFeedsKeepAngleBracketsInTitles(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.RSS.Enabled = true
+	index := site.SiteIndex{AllPages: []content.Page{{
+		Title: "Why 1 < 2 and  3 > 2",
+		URL:   "/posts/compare/",
+		Date:  mustDate(t, "2026-04-12T10:00:00Z"),
+	}}}
+
+	outputs, err := GenerateAll(cfg, index)
+	if err != nil {
+		t.Fatalf("GenerateAll returned error: %v", err)
+	}
+	for _, out := range outputs {
+		if !strings.Contains(string(out.Content), "<title>Why 1 &lt; 2 and 3 &gt; 2</title>") {
+			t.Fatalf("%s lost the title text:\n%s", out.Filename, out.Content)
+		}
+	}
+}

@@ -86,7 +86,7 @@ func (h *hugoSite) planContent() error {
 	// static/ to keep it.
 	for _, src := range resources {
 		rel := strings.TrimPrefix(src, dir+"/")
-		if hugoInBundle(rel, bundles) {
+		if inBundle(rel, bundles, ".") {
 			p.Copy(path.Join("content", rel), src)
 			continue
 		}
@@ -112,7 +112,7 @@ func (h *hugoSite) planContent() error {
 		tops := map[string]bool{}
 		for _, f := range files {
 			base := path.Base(f.rel)
-			if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && hugoInBundle(f.rel, bundles)) {
+			if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && inBundle(f.rel, bundles, ".")) {
 				continue
 			}
 			if top, _, _ := strings.Cut(sectionDir(f), "/"); top != "" {
@@ -135,7 +135,7 @@ func (h *hugoSite) planContent() error {
 	for _, f := range files {
 		// Markdown files inside a leaf bundle (other than index.md) are page
 		// resources in Hugo, not pages.
-		if base := path.Base(f.rel); !strings.HasPrefix(base, "index.") && !strings.HasPrefix(base, "_index.") && hugoInBundle(f.rel, bundles) {
+		if base := path.Base(f.rel); !strings.HasPrefix(base, "index.") && !strings.HasPrefix(base, "_index.") && inBundle(f.rel, bundles, ".") {
 			p.Copy(f.dest, f.src)
 			continue
 		}
@@ -182,15 +182,6 @@ func cutLang(stem string) (string, string, bool) {
 	return stem[:i], lang, true
 }
 
-func hugoInBundle(rel string, bundles map[string]bool) bool {
-	for dir := path.Dir(rel); dir != "."; dir = path.Dir(dir) {
-		if bundles[dir] {
-			return true
-		}
-	}
-	return false
-}
-
 func (h *hugoSite) convertFile(f hugoContentFile, index map[string]string, templatesUsed map[string]string) error {
 	p := h.p
 	data, err := p.ReadFile(f.src)
@@ -199,8 +190,8 @@ func (h *hugoSite) convertFile(f hugoContentFile, index map[string]string, templ
 	}
 	doc, err := ParseDocument(data)
 	if err != nil {
-		p.Report.Add(Manual, f.src, 1, "Front matter could not be parsed (%v); the file was copied unchanged and will not build.", err)
-		p.Copy(f.dest, f.src)
+		p.Report.Add(Manual, f.src, 1, "Front matter could not be parsed (%v); the file was kept in `%s/`.", err, preservedDir)
+		p.Preserve(f.src)
 		return nil
 	}
 	MoveCustomPath(doc, p.Report, f.src)
@@ -562,7 +553,7 @@ func (h *hugoSite) planPermalinks(files []hugoContentFile, bundles map[string]bo
 	dirs := map[string]bool{}
 	for _, f := range files {
 		base := path.Base(f.rel)
-		if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && hugoInBundle(f.rel, bundles)) {
+		if strings.HasPrefix(base, "_index.") || (!strings.HasPrefix(base, "index.") && inBundle(f.rel, bundles, ".")) {
 			continue
 		}
 		if d := sectionDir(f); d != "" {
@@ -638,7 +629,7 @@ func (h *hugoSite) alignSlug(doc *Document, f hugoContentFile) {
 	}
 	section := sectionDir(f)
 	top, _, _ := strings.Cut(section, "/")
-	want := ""
+	var want string
 	if pattern, ok := h.pagePermalinks[top]; ok && top != "" {
 		m := hugoToken.FindAllString(pattern, -1)
 		var slugTok string
@@ -879,22 +870,22 @@ func unquoteHugo(s string) string {
 	return s
 }
 
-func argValue(args []Arg, key string, pos int) (string, bool) {
+func argValue(args []Arg, key string, pos int) string {
 	for _, a := range args {
 		if a.Key == key {
-			return a.Value, true
+			return a.Value
 		}
 	}
 	n := 0
 	for _, a := range args {
 		if a.Key == "" {
 			if n == pos {
-				return a.Value, true
+				return a.Value
 			}
 			n++
 		}
 	}
-	return "", false
+	return ""
 }
 
 // codeRegions returns the byte ranges of body that are code.
@@ -993,7 +984,7 @@ func (h *hugoSite) convertBody(doc *Document, f hugoContentFile, index map[strin
 			last = tags[closeIdx].end
 			i = closeIdx
 		case "details":
-			summary, _ := argValue(t.args, "summary", 0)
+			summary := argValue(t.args, "summary", 0)
 			if summary == "" {
 				summary = "Details"
 			}
@@ -1059,8 +1050,8 @@ func findClosing(tags []hugoShortcode, open int, name string) int {
 // hugoHighlight turns {{< highlight lang "opts" >}} into a fenced code
 // block with Nida's info string options.
 func hugoHighlight(t hugoShortcode, code string, r *Report, file string, line int) string {
-	lang, _ := argValue(t.args, "lang", 0)
-	opts, _ := argValue(t.args, "options", 1)
+	lang := argValue(t.args, "lang", 0)
+	opts := argValue(t.args, "options", 1)
 	var info []string
 	for _, opt := range splitHighlightOpts(opts) {
 		key, value, _ := strings.Cut(opt, "=")
@@ -1111,10 +1102,10 @@ func splitHighlightOpts(opts string) []string {
 
 func hugoFigure(t hugoShortcode, r *Report, file string, line int) string {
 	var args []Arg
-	get := func(key string) string { v, _ := argValue(t.args, key, -1); return v }
+	get := func(key string) string { return argValue(t.args, key, -1) }
 	src := get("src")
 	if src == "" {
-		src, _ = argValue(t.args, "", 0)
+		src = argValue(t.args, "", 0)
 	}
 	args = append(args, Arg{Key: "src", Value: src})
 	caption := get("caption")
@@ -1145,7 +1136,7 @@ func hugoFigure(t hugoShortcode, r *Report, file string, line int) string {
 }
 
 func hugoYouTube(t hugoShortcode, r *Report, file string, line int) string {
-	id, _ := argValue(t.args, "id", 0)
+	id := argValue(t.args, "id", 0)
 	args := []Arg{{Key: "id", Value: id}}
 	for _, a := range t.args {
 		switch a.Key {
@@ -1161,7 +1152,7 @@ func hugoYouTube(t hugoShortcode, r *Report, file string, line int) string {
 
 // resolveRef turns {{< ref "path" >}} into an @/ content link.
 func (h *hugoSite) resolveRef(t hugoShortcode, f hugoContentFile, index map[string]string, line int) string {
-	target, _ := argValue(t.args, "path", 0)
+	target := argValue(t.args, "path", 0)
 	for _, a := range t.args {
 		if a.Key == "lang" || a.Key == "outputFormat" {
 			h.p.Report.Add(Review, f.src, line, "`%s` option `%s` was dropped.", t.name, a.Key)
@@ -1240,7 +1231,7 @@ func (h *hugoSite) findContent(target string, f hugoContentFile, index map[strin
 // paramValue inlines {{< param "key" >}}: the page's front matter value,
 // else the site param. Dotted keys reach into maps.
 func (h *hugoSite) paramValue(t hugoShortcode, doc *Document, f hugoContentFile, line int) string {
-	key, _ := argValue(t.args, "", 0)
+	key := argValue(t.args, "", 0)
 	lookup := func(m map[string]any) (any, bool) {
 		var cur any = m
 		for _, part := range strings.Split(key, ".") {

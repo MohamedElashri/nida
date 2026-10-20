@@ -313,7 +313,7 @@ func (z zolaSource) planContent(p *Plan, slugMode string) error {
 
 	return p.Walk("content", func(rel string) error {
 		if !strings.EqualFold(path.Ext(rel), ".md") {
-			if inBundle(rel, bundles) {
+			if inBundle(rel, bundles, "content") {
 				p.Copy(rel, rel)
 			} else {
 				// Zola serves assets beside section files at the same path;
@@ -328,8 +328,8 @@ func (z zolaSource) planContent(p *Plan, slugMode string) error {
 		}
 		doc, err := ParseDocument(data)
 		if err != nil {
-			p.Report.Add(Manual, rel, 1, "Front matter could not be parsed (%v); the file was copied unchanged.", err)
-			p.Copy(rel, rel)
+			p.Report.Add(Manual, rel, 1, "Front matter could not be parsed (%v); the file was kept in `%s/`.", err, preservedDir)
+			p.Preserve(rel)
 			return nil
 		}
 		isSection := path.Base(rel) == "_index.md"
@@ -339,6 +339,14 @@ func (z zolaSource) planContent(p *Plan, slugMode string) error {
 					templatesUsed[name] = rel
 				}
 			}
+		}
+		if doc.Format == NoFrontMatter {
+			stem := strings.TrimSuffix(path.Base(rel), ".md")
+			if stem == "index" || stem == "_index" {
+				stem = path.Base(path.Dir(rel))
+			}
+			_ = doc.Set("title", titleFromSlug(stem))
+			p.Report.Add(Review, rel, 0, "The file had no front matter, which Nida requires; its title was set from the file name.")
 		}
 		if isSection {
 			z.convertSection(p, doc, rel)
@@ -355,8 +363,10 @@ func (z zolaSource) planContent(p *Plan, slugMode string) error {
 	})
 }
 
-func inBundle(rel string, bundles map[string]bool) bool {
-	for dir := path.Dir(rel); dir != "." && dir != "content"; dir = path.Dir(dir) {
+// inBundle reports whether a directory between rel and stop, such as
+// "content", holds a page bundle.
+func inBundle(rel string, bundles map[string]bool, stop string) bool {
+	for dir := path.Dir(rel); dir != "." && dir != stop; dir = path.Dir(dir) {
 		if bundles[dir] {
 			return true
 		}

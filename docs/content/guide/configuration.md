@@ -133,7 +133,7 @@ heading_anchors = true
 math = true
 ```
 
-`heading_anchors` adds `#` links to headings and `math` passes TeX through for KaTeX or MathJax. See [Writing Content](@/guide/writing.md) for the syntax and [Markdown](@/reference/config.md#markdown) for every option, including external link attributes and hard wraps.
+`heading_anchors` adds `#` links to headings and `math` renders TeX to MathML at build time. See [Writing Content](@/guide/writing.md) for the syntax and [Markdown](@/reference/config.md#markdown) for every option, including external link attributes and hard wraps.
 
 > [!WARNING]
 > Raw HTML in Markdown is off by default. Turn on `unsafe_html` only when you trust everyone who writes content. Shortcodes are the safer way to add custom HTML.

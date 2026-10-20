@@ -16,6 +16,7 @@ import (
 var (
 	detailsStartRe = regexp.MustCompile(`^\{%\s*details\s*\(([^}]*)\)\s*%\}`)
 	detailsEndRe   = regexp.MustCompile(`\{%\s*end\s*%\}`)
+	detailsOpenRe  = regexp.MustCompile(`\{%\s*details\s*\(([^}]*)\)\s*%\}`)
 	summaryAttrRe  = regexp.MustCompile(`summary\s*=\s*"([^"]*)"`)
 )
 
@@ -152,7 +153,7 @@ func processShortcodes(source string, cfg config.SiteConfig, env Env) (shortcode
 			out.WriteString(source[last:i])
 			args := source[i+match[2] : i+match[3]]
 			bodyStart := i + match[1]
-			endStart, endEnd := findOutsideCode(source, bodyStart, detailsEndRe, code)
+			endStart, endEnd := findDetailsEnd(source, bodyStart, code)
 			if endStart < 0 {
 				return shortcodeResult{}, fmt.Errorf("render markdown: unclosed details shortcode")
 			}
@@ -348,6 +349,26 @@ func findOutsideCode(source string, from int, re *regexp.Regexp, code codeSpans)
 		from = code.skip(start)
 	}
 	return -1, -1
+}
+
+// findDetailsEnd finds the {% end %} that closes a details block whose body
+// starts at from, skipping the ends of details blocks nested inside it.
+func findDetailsEnd(source string, from int, code codeSpans) (int, int) {
+	for depth := 1; ; {
+		endStart, endEnd := findOutsideCode(source, from, detailsEndRe, code)
+		if endStart < 0 {
+			return -1, -1
+		}
+		if openStart, openEnd := findOutsideCode(source, from, detailsOpenRe, code); openStart >= 0 && openStart < endStart {
+			depth++
+			from = openEnd
+			continue
+		}
+		if depth--; depth == 0 {
+			return endStart, endEnd
+		}
+		from = endEnd
+	}
 }
 
 // standsAlone reports whether source[start:end] is the only thing on its

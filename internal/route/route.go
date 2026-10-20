@@ -135,3 +135,23 @@ func CanonicalURL(baseURL, route string) string {
 	}
 	return base.String()
 }
+
+// SplitSuffix splits a URL reference into its path and its query and
+// fragment suffix: "a/b?x=1#top" gives "a/b" and "?x=1#top".
+func SplitSuffix(value string) (string, string) {
+	if i := strings.IndexAny(value, "?#"); i >= 0 {
+		return value[:i], value[i:]
+	}
+	return value, ""
+}
+
+// IsAbsoluteURL reports whether a reference names its own scheme or host,
+// such as https://example.com/, mailto:a@b.c, or //cdn.example.com/x.js,
+// rather than a path on the site.
+func IsAbsoluteURL(value string) bool {
+	if strings.HasPrefix(value, "//") {
+		return true
+	}
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.Scheme != ""
+}

@@ -39,6 +39,12 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      - name: Check bundled JavaScript matches third_party/js
+        run: go run ./scripts/vendorjs -check
+
+      - name: Check patched goja matches upstream plus third_party/goja.patch
+        run: go run ./scripts/vendorgoja -check
+
       - name: Run tests
         run: go test ./...
 

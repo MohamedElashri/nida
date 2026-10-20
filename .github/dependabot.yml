@@ -9,6 +9,16 @@ updates:
     directory: "/" 
     schedule:
       interval: "weekly"
+    ignore:
+      # goja is a patched copy in third_party/goja, updated by
+      # scripts/vendorgoja and watched by .github/workflows/goja.yml.
+      - dependency-name: "github.com/dop251/goja"
+  # Pele and Temml are embedded in the binary. After a bump, CI fails until
+  # someone runs `make vendor-js` on the branch and pushes the result.
+  - package-ecosystem: "npm"
+    directory: "/third_party/js"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

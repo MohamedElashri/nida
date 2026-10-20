@@ -10,6 +10,7 @@ on:
       - "scripts/generate_release_notes.go"
       - "cmd/**"
       - "internal/**"
+      - "third_party/**"
       - "go.mod"
       - "go.sum"
       - ".github/workflows/pages.yml"

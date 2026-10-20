@@ -1,0 +1,11 @@
+version: "2"
+
+linters:
+  # The standard set (errcheck, govet, ineffassign, staticcheck, unused),
+  # plus checks for parameters and assignments that are never used.
+  enable:
+    - unparam
+    - wastedassign
+  exclusions:
+    paths:
+      - third_party

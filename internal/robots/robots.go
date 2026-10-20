@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/route"
 )
 
 type Output struct {
@@ -35,11 +36,8 @@ func defaultRobots(cfg config.SiteConfig) string {
 	b.WriteString("User-agent: *\n")
 	b.WriteString("Allow: /\n")
 	if cfg.Sitemap.Enabled && strings.TrimSpace(cfg.Sitemap.Filename) != "" {
-		baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 		b.WriteString("\nSitemap: ")
-		b.WriteString(baseURL)
-		b.WriteString("/")
-		b.WriteString(strings.TrimLeft(cfg.Sitemap.Filename, "/"))
+		b.WriteString(route.CanonicalURL(strings.TrimSpace(cfg.BaseURL), "/"+strings.TrimLeft(cfg.Sitemap.Filename, "/")))
 	}
 	return b.String()
 }

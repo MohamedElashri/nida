@@ -60,6 +60,10 @@ func TestTemplateStringFuncs(t *testing.T) {
 		`{{ markdownify "Use *this*" }}`:              "Use <em>this</em>",
 		`{{ absURL "posts/a/" }}`:                     "https://example.com/blog/posts/a/",
 		`{{ relURL "/posts/a/" }}`:                    "/blog/posts/a/",
+		`{{ absURL "page/?x=1#top" }}`:                "https://example.com/blog/page/?x=1#top",
+		`{{ absURL "tags/c%23/" }}`:                   "https://example.com/blog/tags/c%23/",
+		`{{ absURL "" }}`:                             "https://example.com/blog",
+		`{{ relURL "a/?next=../b" }}`:                 "/blog/a/?next=../b",
 		`{{ relURL "https://other.org/x" }}`:          "https://other.org/x",
 		`{{ title "hello wide world" }}`:              "Hello Wide World",
 	}
@@ -177,29 +181,30 @@ func TestSyntaxCSS(t *testing.T) {
 	}
 }
 
-func TestBundledScriptsOnlyWhenNeeded(t *testing.T) {
+func TestBundledScriptsFollowSiteConfig(t *testing.T) {
 	cfg := config.DefaultSiteConfig()
 	cfg.BaseURL = "https://example.com/docs/"
-	math := content.Page{BodyHTML: `<span class="math math-inline">\(x\)</span>`}
-	diagram := content.Page{BodyHTML: "<pre class=\"mermaid\">graph LR</pre>"}
 	plain := content.Page{BodyHTML: "<p>text</p>"}
 
 	if got := execute(t, cfg, `{{ bundledScripts . }}`, plain); got != "" {
-		t.Fatalf("plain pages need no scripts, got %s", got)
-	}
-	if got := execute(t, cfg, `{{ bundledScripts . }}`, math); got != "" {
-		t.Fatalf("KaTeX must stay off while markdown.math is off, got %s", got)
+		t.Fatalf("nothing is needed while markdown.math is off, got %s", got)
 	}
 	cfg.Markdown.Math = true
-	got := execute(t, cfg, `{{ bundledScripts . }}`, math)
-	if !strings.Contains(got, `/docs/vendor/katex-`) || strings.Contains(got, "mermaid") {
-		t.Fatalf("expected only KaTeX tags, got %s", got)
+	got := execute(t, cfg, `{{ bundledScripts . }}`, plain)
+	if !strings.Contains(got, `href="/docs/vendor/temml-`) || !strings.Contains(got, "Temml-Latin-Modern.css") || strings.Contains(got, "<script") {
+		t.Fatalf("expected the Latin Modern stylesheet on every page, got %s", got)
 	}
-	got = execute(t, cfg, `{{ bundledScripts . "katex" }}`, diagram)
-	if !strings.Contains(got, "mermaid.min.js") || !strings.Contains(got, "katex.min.js") {
-		t.Fatalf("expected mermaid detected and katex forced, got %s", got)
+	cfg.Markdown.MathFont = "local"
+	if got := execute(t, cfg, `{{ bundledScripts . }}`, []content.Page{plain}); !strings.Contains(got, "/vendor/temml-local-") {
+		t.Fatalf("expected the local-font stylesheet, got %s", got)
 	}
-	if got := execute(t, cfg, `{{ bundledScripts . }}`, []content.Page{{Summary: "<p>x</p>", BodyHTML: "<pre class=\"mermaid\">a</pre>"}}); got != "" {
-		t.Fatalf("lists should only look at summaries, got %s", got)
+	cfg.Markdown.MathFont = "none"
+	if got := execute(t, cfg, `{{ bundledScripts . }}`, plain); got != "" {
+		t.Fatalf(`math_font = "none" must add nothing, got %s`, got)
+	}
+	cfg.Markdown.Math = false
+	cfg.Markdown.MathFont = "local"
+	if got := execute(t, cfg, `{{ bundledScripts . "math" }}`, plain); !strings.Contains(got, "Temml-Local.css") {
+		t.Fatalf("expected the stylesheet forced, got %s", got)
 	}
 }

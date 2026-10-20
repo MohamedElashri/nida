@@ -20,7 +20,7 @@ func TestGenerateGolden(t *testing.T) {
 		Index: site.SiteIndex{
 			AllPages: []content.Page{
 				{URL: "/posts/hello-world/", Date: mustDate(t, "2026-04-12T10:00:00Z")},
-				{URL: "/about/", Date: mustDate(t, "2026-04-12T10:30:00Z")},
+				{URL: "/about/", Date: mustDate(t, "2026-04-12T10:30:00Z"), Updated: mustDate(t, "2026-05-01T09:00:00Z")},
 			},
 		},
 	}
@@ -30,6 +30,7 @@ func TestGenerateGolden(t *testing.T) {
 		{URL: "/about/", CanonicalURL: "https://example.com/about/"},
 		{URL: "/posts/hello-world/", CanonicalURL: "https://example.com/posts/hello-world/"},
 		{URL: "/tags/intro/", CanonicalURL: "https://example.com/tags/intro/"},
+		{URL: "/404.html", CanonicalURL: "https://example.com/404.html"},
 	}
 
 	out, err := Generate(cfg, state, pages)

@@ -67,7 +67,6 @@
   var copyLabel = document.body.dataset.copyLabel || "Copy";
   var copiedLabel = document.body.dataset.copiedLabel || "Copied";
   document.querySelectorAll(".prose pre").forEach(function (pre) {
-    if (pre.classList.contains("mermaid")) return;
     var wrap = document.createElement("div");
     wrap.className = "code-wrap";
     pre.parentNode.insertBefore(wrap, pre);

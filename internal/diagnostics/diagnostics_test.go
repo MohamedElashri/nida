@@ -99,3 +99,16 @@ func writeFile(t *testing.T, root, rel, body string) string {
 	}
 	return path
 }
+
+func TestCheckAcceptsThemeAndEscapedImages(t *testing.T) {
+	dir := t.TempDir()
+	page := writeDiagnosticPage(t, dir, "content/posts/hello/index.md", `![Theme](/img/theme.png) ![Space](/my%20pic.png)`)
+	writeFile(t, dir, "themes/ink/static/img/theme.png", "image")
+	writeFile(t, dir, "static/my pic.png", "image")
+	cfg := testConfig()
+	cfg.Theme = "ink"
+
+	if err := Check(dir, cfg, []content.Page{page}, nil, markdown.PathLookup{}); err != nil {
+		t.Fatalf("expected no diagnostics error, got %v", err)
+	}
+}

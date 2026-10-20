@@ -23,5 +23,8 @@ public/
 # Local development binaries
 .tmp/
 
+# Pins only; nothing is installed. See third_party/README.md.
+third_party/js/node_modules/
+
 # Migration test fixtures are real sites; never ignore their files.
 !internal/migrate/testdata/**

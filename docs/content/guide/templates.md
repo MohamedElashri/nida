@@ -80,7 +80,7 @@ Use `.BasePath` for route links that need to work under a project path such as G
 <a href="{{ .BasePath }}/guide/">Guide</a>
 ```
 
-For processed responsive images, `imageSrcset` uses `pipeline.images.widths`, while `imagePresetSrcset` and `imagePresetSizes` use a named image preset:
+For processed responsive images, `imageSrcset` uses `pipeline.images.widths`, while `imagePresetSrcset` and `imagePresetSizes` use a named image preset. Widths at or above the original image's are left out, since the pipeline does not upscale, and the original is listed as the widest candidate:
 
 ```html
 <img
@@ -292,7 +292,7 @@ On top of Go's built-in template functions, Nida provides:
 | `documentDirection` | `documentDirection .Config.Language` | `rtl` or `ltr` for a language code. |
 | `now` | `(now).Year` | The build time. |
 | `sortDesc` | `range sortDesc $names` | Sort a list of strings in reverse. |
-| `bundledScripts` | `bundledScripts .Page` | Tags for the bundled KaTeX and Mermaid when the page needs them. See [Bundled scripts](@/guide/writing.md#bundled-scripts). |
+| `bundledScripts` | `bundledScripts`, `bundledScripts "math"` | The bundled math stylesheet when `markdown.math` is on, on every page; `"math"` adds it even while math is off. Other arguments, such as `.Page` from older templates, are ignored. Math and diagrams are rendered at build time, so it returns no scripts. See [Bundled files](@/guide/writing.md#bundled-files). |
 | `syntaxCSS` | `<style>{{ syntaxCSS }}</style>` | Highlighting CSS for `syntax_theme`, or for a named [Chroma style](https://xyproto.github.io/splash/docs/) such as `syntaxCSS "github-dark"`. |
 | `add`, `sub` | `add .Paginator.CurrentIndex 1` | Integer math. |
 | `asset`, `assetURL` | `asset "style.css"` | URL for a static file, with the base path and fingerprint applied. |

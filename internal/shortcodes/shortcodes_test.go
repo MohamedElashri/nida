@@ -122,7 +122,8 @@ func TestShortcodesInHeadingsKeepCleanIDsAndTOC(t *testing.T) {
 
 func TestShortcodesCanUsePartials(t *testing.T) {
 	cfg, env := setup(t, map[string]string{
-		"templates/partials/icons.html": `{{ define "icon" }}<i>{{ . }}</i>{{ end }}`,
+		// Text outside the define must not replace the shortcode.
+		"templates/partials/icons.html": `Icons\n{{ define "icon" }}<i>{{ . }}</i>{{ end }}`,
 		"templates/shortcodes/tip.html": `<p>{{ template "icon" "star" }} {{ .Get 0 }}</p>`,
 	})
 	if got := render(t, cfg, env, "{{< tip \"hi\" >}}\n"); !strings.Contains(got, "<p><i>star</i> hi</p>") {

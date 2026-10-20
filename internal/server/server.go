@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -25,14 +27,6 @@ type Instance struct {
 	server   *http.Server
 	listener net.Listener
 	reloader *reloadBroker
-}
-
-func FileHandler(outputDir string) (http.Handler, error) {
-	return fileHandler(outputDir, false, nil)
-}
-
-func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
-	return fileHandlerWithBasePath(outputDir, "", injectLiveReload, reloader)
 }
 
 func fileHandlerWithBasePath(outputDir, basePath string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
@@ -104,6 +98,13 @@ func (f noSymlinkFS) Open(name string) (http.File, error) {
 	}
 	if err := safepath.EnsureNoSymlinkPath(f.root, target); err != nil {
 		return nil, fs.ErrPermission
+	}
+	// Like a static host, serve a directory only through its index.html,
+	// never as a listing, such as the bundle files a removed page leaves.
+	if info, err := os.Stat(target); err == nil && info.IsDir() {
+		if _, err := os.Stat(filepath.Join(target, "index.html")); err != nil {
+			return nil, fs.ErrNotExist
+		}
 	}
 	return http.Dir(f.root).Open(name)
 }
@@ -189,7 +190,7 @@ func isHTMLResponse(res *http.Response, body []byte) bool {
 }
 
 func injectReloadSnippet(body []byte, basePath string) []byte {
-	snippet := []byte(`<script src="` + normalizeBasePath(basePath) + `/_nida/livereload.js"></script>`)
+	snippet := []byte(`<script src="` + basePath + `/_nida/livereload.js"></script>`)
 	lower := strings.ToLower(string(body))
 	index := strings.LastIndex(lower, "</body>")
 	if index == -1 {
@@ -207,7 +208,7 @@ func liveReloadScriptHandler(basePath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
-		_, _ = io.WriteString(w, strings.ReplaceAll(liveReloadScript, "{{BASE_PATH}}", normalizeBasePath(basePath)))
+		_, _ = io.WriteString(w, strings.ReplaceAll(liveReloadScript, "{{BASE_PATH}}", basePath))
 	}
 }
 
@@ -218,40 +219,29 @@ const liveReloadScript = `
 })();
 `
 
+// withBasePath serves the site under basePath, the escaped path that
+// config.BasePath returns, as it is published.
 func withBasePath(handler http.Handler, basePath string) http.Handler {
-	basePath = normalizeBasePath(basePath)
 	if basePath == "" {
 		return handler
 	}
+	// Request paths arrive decoded, so compare them with the decoded base
+	// path; "/my%20blog" is requested as "/my blog".
+	if decoded, err := url.PathUnescape(basePath); err == nil {
+		basePath = decoded
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		originalPath := r.URL.Path
-		if originalPath == basePath {
-			clone := r.Clone(r.Context())
-			clone.URL.Path = "/"
-			handler.ServeHTTP(w, clone)
+		rest, ok := strings.CutPrefix(r.URL.Path, basePath)
+		if !ok || (rest != "" && !strings.HasPrefix(rest, "/")) {
+			handler.ServeHTTP(w, r)
 			return
 		}
-		if strings.HasPrefix(originalPath, basePath+"/") {
-			clone := r.Clone(r.Context())
-			clone.URL.Path = strings.TrimPrefix(originalPath, basePath)
-			if clone.URL.Path == "" {
-				clone.URL.Path = "/"
-			}
-			handler.ServeHTTP(w, clone)
-			return
-		}
-		handler.ServeHTTP(w, r)
+		clone := r.Clone(r.Context())
+		clone.URL.Path = cmp.Or(rest, "/")
+		clone.URL.RawPath = ""
+		handler.ServeHTTP(w, clone)
 	})
-}
-
-func normalizeBasePath(basePath string) string {
-	basePath = strings.TrimSpace(basePath)
-	if basePath == "" || basePath == "/" {
-		return ""
-	}
-	basePath = "/" + strings.Trim(basePath, "/")
-	return path.Clean(basePath)
 }
 
 type reloadBroker struct {

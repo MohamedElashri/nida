@@ -1,56 +1,53 @@
 package bundled
 
 import (
-	"bytes"
 	"regexp"
 	"strings"
 	"testing"
 )
 
-func TestFilesDecompressAndFontsResolve(t *testing.T) {
-	files, err := KaTeX.Files()
-	if err != nil {
-		t.Fatal(err)
-	}
-	byPath := map[string][]byte{}
-	for _, f := range files {
-		byPath[f.Path] = f.Content
-	}
-	css := byPath["vendor/katex-"+KaTeX.Version+"/katex.min.css"]
-	if !bytes.Contains(css, []byte(".katex")) {
-		t.Fatalf("expected decompressed CSS, got %d bytes", len(css))
-	}
-	for _, m := range regexp.MustCompile(`url\((fonts/[^)]+)\)`).FindAllSubmatch(css, -1) {
-		if _, ok := byPath["vendor/katex-"+KaTeX.Version+"/"+string(m[1])]; !ok {
-			t.Fatalf("CSS references missing font %s", m[1])
+func TestMathFilesResolve(t *testing.T) {
+	for _, lib := range Libraries {
+		files, err := lib.Files()
+		if err != nil {
+			t.Fatal(err)
+		}
+		byPath := map[string][]byte{}
+		for _, f := range files {
+			byPath[f.Path] = f.Content
+		}
+		css := byPath[lib.Dir()+"/"+lib.styles[0]]
+		if !strings.Contains(string(css), "math {") {
+			t.Fatalf("%s: expected the Temml stylesheet, got %d bytes", lib.Name, len(css))
+		}
+		for _, m := range regexp.MustCompile(`url\('(?:\./)?([^']+\.woff2)'\)`).FindAllStringSubmatch(string(css), -1) {
+			if _, ok := byPath[lib.Dir()+"/"+m[1]]; !ok {
+				t.Fatalf("%s: CSS references missing font %s", lib.Name, m[1])
+			}
+		}
+		if _, ok := byPath[lib.Dir()+"/LICENSE"]; !ok {
+			t.Fatalf("%s: expected the license to be shipped", lib.Name)
 		}
 	}
-	if _, ok := byPath["vendor/katex-"+KaTeX.Version+"/LICENSE"]; !ok {
-		t.Fatal("expected the license to be shipped")
-	}
-
-	mermaid, err := Mermaid.Files()
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, f := range mermaid {
-		if strings.HasSuffix(f.Path, "/mermaid.min.js") && bytes.Contains(f.Content, []byte(`globalThis["mermaid"]`)) {
-			found = true
+	local, _ := MathLocal.Files()
+	for _, f := range local {
+		if strings.HasSuffix(f.Path, "latinmodernmath.woff2") {
+			t.Fatal("the local font option must not ship Latin Modern")
 		}
-	}
-	if !found {
-		t.Fatal("expected mermaid.min.js exposing the mermaid global")
 	}
 }
 
 func TestUsedDetectsLinkedLibraries(t *testing.T) {
-	pages := []string{`<p>no scripts</p>`, `<script defer src="/blog/` + Mermaid.Dir() + `/mermaid.min.js"></script>`}
+	pages := []string{`<p>no styles</p>`, `<link rel="stylesheet" href="/blog/` + MathLocal.Dir() + `/Temml-Local.css">`}
 	used := Used(pages)
-	if len(used) != 1 || used[0].Name != "mermaid" {
+	if len(used) != 1 || used[0].Name != "temml-local" {
 		t.Fatalf("unexpected libraries %+v", used)
 	}
-	if got := string(KaTeX.Tags("/blog")); !strings.Contains(got, `href="/blog/vendor/katex-`) || !strings.Contains(got, "nida-katex.js") {
+	if _, ok := Math("none"); ok {
+		t.Fatal(`math_font = "none" must ship no stylesheet`)
+	}
+	lib, _ := Math("latin-modern")
+	if got := string(lib.Tags("/blog")); got != `<link rel="stylesheet" href="/blog/vendor/temml-`+TemmlVersion+`/Temml-Latin-Modern.css">` {
 		t.Fatalf("unexpected tags %s", got)
 	}
 }

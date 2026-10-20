@@ -1,6 +1,7 @@
 package taxonomies
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -94,4 +95,15 @@ func mustDate(t *testing.T, value string) time.Time {
 		t.Fatalf("parse date %q: %v", value, err)
 	}
 	return parsed
+}
+
+func TestBuildRejectsTermsSharingASlug(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com"
+	cfg.Taxonomies = []config.TaxonomyConfig{{Name: "tags", Render: true}}
+	pages := []content.Page{{RelativePath: "a.md", URL: "/a/", Extra: map[string]any{"tags": []any{"Go", "go"}}}}
+	_, _, err := BuildAll(cfg, pages)
+	if err == nil || !strings.Contains(err.Error(), `terms "Go" and "go"`) {
+		t.Fatalf("expected an error naming both terms, got %v", err)
+	}
 }

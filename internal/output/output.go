@@ -17,6 +17,9 @@ import (
 
 type Artifact struct {
 	Path string
+	// Name describes the artifact in conflict errors; it defaults to
+	// "artifact" and the path.
+	Name string
 }
 
 func WriteSite(siteRoot string, cfg config.SiteConfig, pages []render.Page) error {
@@ -94,7 +97,7 @@ func removeEmptyParents(outputDir, removedPath string) error {
 	dir := filepath.Clean(filepath.Dir(removedPath))
 	for dir != outputDir {
 		rel, err := filepath.Rel(outputDir, dir)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		if err != nil || safepath.Escapes(rel) {
 			return fmt.Errorf("refuse to remove directory %q outside output root %q", dir, outputDir)
 		}
 
@@ -186,10 +189,14 @@ func ValidateWritePlan(siteRoot string, cfg config.SiteConfig, pages []render.Pa
 		if err != nil {
 			return fmt.Errorf("resolve artifact output path for %q: %w", artifact.Path, err)
 		}
-		if existing, ok := seen[targetPath]; ok {
-			return fmt.Errorf("output path conflict for %q between %s and artifact %q", targetPath, existing, artifact.Path)
+		name := artifact.Name
+		if name == "" {
+			name = fmt.Sprintf("artifact %q", artifact.Path)
 		}
-		seen[targetPath] = fmt.Sprintf("artifact %q", artifact.Path)
+		if existing, ok := seen[targetPath]; ok {
+			return fmt.Errorf("output path conflict for %q between %s and %s", targetPath, existing, name)
+		}
+		seen[targetPath] = name
 	}
 
 	return nil
@@ -234,7 +241,7 @@ func pagePath(outputDir, route string) (string, error) {
 	}
 
 	clean := filepath.Clean(trimmed)
-	if clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+	if safepath.Escapes(clean) {
 		return "", fmt.Errorf("unsafe route %q", route)
 	}
 

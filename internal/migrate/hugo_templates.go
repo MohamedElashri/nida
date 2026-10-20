@@ -188,7 +188,7 @@ func (t *hugoTr) translate() error {
 
 	// Taxonomy layouts: Hugo 0.73+ uses taxonomy.html for the term list and
 	// term.html for one term; older themes used terms.html and taxonomy.html.
-	termsFile, termFile := "", ""
+	var termsFile, termFile string
 	if term, ok := t.find("_default/term.html", "term.html"); ok {
 		termFile = term
 		termsFile, _ = t.find("_default/taxonomy.html", "taxonomy.html", "_default/terms.html", "terms.html")
@@ -349,7 +349,7 @@ func (t *hugoTr) translateBase(rel string) error {
 	var b strings.Builder
 	sc := t.entryScope(rel, main, "any")
 	body := t.list(sc, main.Root)
-	// Nida's bundled KaTeX and Mermaid load through nida-scripts.
+	// Nida's bundled math stylesheet loads through nida-scripts.
 	if i := strings.LastIndex(body, "</body>"); i >= 0 {
 		body = body[:i] + "{{ template \"nida-scripts\" . }}\n" + body[i:]
 	}
@@ -545,7 +545,7 @@ func (t *hugoTr) node(sc *scope, n parse.Node) string {
 	case *parse.IfNode:
 		c := sc.child()
 		cond := t.pipe(c, n.Pipe)
-		decl := t.declPrefix(c, n.Pipe)
+		decl := t.declPrefix(n.Pipe)
 		t.declare(c, n.Pipe, cond)
 		out := "{{ if " + decl + unwrap(cond.condExpr()) + " }}" + t.list(c, n.List)
 		if n.ElseList != nil {
@@ -555,7 +555,7 @@ func (t *hugoTr) node(sc *scope, n parse.Node) string {
 	case *parse.WithNode:
 		c := sc.child()
 		v := t.pipe(c, n.Pipe)
-		decl := t.declPrefix(c, n.Pipe)
+		decl := t.declPrefix(n.Pipe)
 		t.declare(c, n.Pipe, v)
 		inner := c.child()
 		inner.dot = v.withExpr(".")
@@ -590,7 +590,7 @@ func (v hval) condExpr() string {
 
 // declPrefix renders "$x := " for a pipeline with declarations, recording
 // the variables' kinds in sc.
-func (t *hugoTr) declPrefix(sc *scope, p *parse.PipeNode) string {
+func (t *hugoTr) declPrefix(p *parse.PipeNode) string {
 	if len(p.Decl) == 0 {
 		return ""
 	}
@@ -625,7 +625,7 @@ func (t *hugoTr) action(sc *scope, n *parse.ActionNode) string {
 	}
 	v := t.pipe(sc, p)
 	if len(p.Decl) > 0 {
-		decl := t.declPrefix(sc, p)
+		decl := t.declPrefix(p)
 		expr := v.expr
 		if v.k == kFallback {
 			expr = `""`

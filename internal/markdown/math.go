@@ -2,7 +2,9 @@ package markdown
 
 import (
 	"bytes"
+	"fmt"
 
+	"github.com/MohamedElashri/nida/internal/mathml"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
@@ -10,8 +12,10 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-// Math passes $...$ and $$...$$ TeX through untouched, wrapped in \( \) and
-// \[ \] delimiters for KaTeX or MathJax.
+// Math reads $...$ and $$...$$ TeX without Markdown touching it, and renders
+// it to MathML at build time with package mathml. With markdown.math off,
+// TeX is an error, while dollar signs that do not look like TeX, such as
+// "$HOME and $PATH", stay text.
 
 var (
 	kindMathInline = ast.NewNodeKind("MathInline")
@@ -123,6 +127,7 @@ func (mathBlockParser) Continue(node ast.Node, reader text.Reader, _ parser.Cont
 	trimmed := bytes.TrimRight(line, " \t\r\n")
 	if bytes.HasSuffix(trimmed, []byte("$$")) {
 		n.TeX.Write(bytes.TrimSpace(trimmed[:len(trimmed)-2]))
+		n.closed = true
 		reader.AdvanceToEOL()
 		return parser.Close
 	}
@@ -137,37 +142,79 @@ func (mathBlockParser) CanInterruptParagraph() bool { return true }
 
 func (mathBlockParser) CanAcceptIndentedLine() bool { return false }
 
-type mathRenderer struct{}
-
-func (mathRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(kindMathInline, renderMathInline)
-	reg.Register(kindMathBlock, renderMathBlock)
+type mathRenderer struct {
+	enabled bool
 }
 
-func renderMathInline(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r mathRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(kindMathInline, r.renderInline)
+	reg.Register(kindMathBlock, r.renderBlock)
+}
+
+func (r mathRenderer) renderInline(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 	n := node.(*mathInline)
-	if n.Display {
-		_, _ = w.WriteString(`<span class="math math-display">\[`)
-		_, _ = w.Write(util.EscapeHTML(n.TeX))
-		_, _ = w.WriteString(`\]</span>`)
-	} else {
-		_, _ = w.WriteString(`<span class="math math-inline">\(`)
-		_, _ = w.Write(util.EscapeHTML(n.TeX))
-		_, _ = w.WriteString(`\)</span>`)
+	if !r.enabled {
+		if !n.Display && !looksLikeTeX(n.TeX) {
+			_, _ = w.Write(util.EscapeHTML([]byte("$" + string(n.TeX) + "$")))
+			return ast.WalkSkipChildren, nil
+		}
+		return ast.WalkStop, mathOffError(n.TeX, n.Display)
 	}
-	return ast.WalkSkipChildren, nil
+	class := "math math-inline"
+	if n.Display {
+		class = "math math-display"
+	}
+	return writeMath(w, "span", class, string(n.TeX), n.Display)
 }
 
-func renderMathBlock(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r mathRenderer) renderBlock(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 	n := node.(*mathBlock)
-	_, _ = w.WriteString(`<div class="math math-display">\[`)
-	_, _ = w.Write(util.EscapeHTML(bytes.TrimSpace(n.TeX.Bytes())))
-	_, _ = w.WriteString("\\]</div>\n")
+	tex := bytes.TrimSpace(n.TeX.Bytes())
+	if !r.enabled {
+		return ast.WalkStop, mathOffError(tex, true)
+	}
+	if !n.closed {
+		return ast.WalkStop, fmt.Errorf("math $$ block starting with %q is never closed: end it with a line that ends in $$", firstLine(tex))
+	}
+	status, err := writeMath(w, "div", "math math-display", string(tex), true)
+	if err == nil {
+		_ = w.WriteByte('\n')
+	}
+	return status, err
+}
+
+func firstLine(tex []byte) string {
+	line, _, _ := bytes.Cut(tex, []byte("\n"))
+	return string(line)
+}
+
+// looksLikeTeX reports whether $...$ text is TeX rather than prose that
+// happens to sit between dollar signs.
+func looksLikeTeX(tex []byte) bool {
+	return bytes.ContainsAny(tex, `\^_{}`)
+}
+
+func mathOffError(tex []byte, display bool) error {
+	delim := "$"
+	if display {
+		delim = "$$"
+	}
+	return fmt.Errorf("math %s%s%s found, but markdown.math is off: set math = true under [markdown] in config.toml, or write \\$ for a literal dollar sign", delim, bytes.TrimSpace(tex), delim)
+}
+
+func writeMath(w util.BufWriter, tag, class, tex string, display bool) (ast.WalkStatus, error) {
+	out, err := mathml.Render(tex, display)
+	if err != nil {
+		return ast.WalkStop, err
+	}
+	if _, err := w.WriteString("<" + tag + ` class="` + class + `">` + out + "</" + tag + ">"); err != nil {
+		return ast.WalkStop, err
+	}
 	return ast.WalkSkipChildren, nil
 }

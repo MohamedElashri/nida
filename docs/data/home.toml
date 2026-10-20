@@ -43,7 +43,7 @@ url = "/reference/"
 icon = "pen"
 title = "Writing that scales"
 text = "Markdown with the extras technical writing needs, rendered without a CDN."
-items = ["Callouts", "Math", "Mermaid", "Code titles", "Shortcodes"]
+items = ["Callouts", "Math", "Diagrams", "Code titles", "Shortcodes"]
 
 [[features]]
 icon = "layers"

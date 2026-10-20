@@ -1,5 +1,7 @@
 package config
 
+import "github.com/MohamedElashri/nida/internal/bundled"
+
 func DefaultSiteConfig() SiteConfig {
 	return SiteConfig{
 
@@ -25,8 +27,9 @@ func DefaultSiteConfig() SiteConfig {
 			Filename: "rss.xml",
 			Limit:    20,
 		},
-		Home: HomeConfig{
-			Limit: 5,
+		Markdown: MarkdownConfig{
+			DiagramWidth: 720,
+			MathFont:     bundled.MathFontLatinModern,
 		},
 		Sitemap: SitemapConfig{
 			Enabled:  true,

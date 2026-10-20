@@ -128,3 +128,53 @@ func TestFileHandlerServesExternalLiveReloadScript(t *testing.T) {
 		t.Fatalf("expected livereload client script, got %q", body)
 	}
 }
+
+func FileHandler(outputDir string) (http.Handler, error) {
+	return fileHandler(outputDir, false, nil)
+}
+
+func fileHandler(outputDir string, injectLiveReload bool, reloader *reloadBroker) (http.Handler, error) {
+	return fileHandlerWithBasePath(outputDir, "", injectLiveReload, reloader)
+}
+
+func TestWithBasePathStripsDecodedBasePath(t *testing.T) {
+	seen := ""
+	handler := withBasePath(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { seen = r.URL.Path }), "/my%20blog")
+	for target, want := range map[string]string{
+		"/my%20blog":              "/",
+		"/my%20blog/":             "/",
+		"/my%20blog/posts/a%20b/": "/posts/a b/",
+		"/my%20blogger/":          "/my blogger/",
+		"/other/":                 "/other/",
+	} {
+		seen = ""
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, target, nil))
+		if seen != want {
+			t.Errorf("%s: handler saw %q, want %q", target, seen, want)
+		}
+	}
+}
+
+func TestFileHandlerDoesNotListDirectories(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "posts", "gone"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "posts", "gone", "note.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := FileHandler(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/posts/gone/", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for a directory without index.html, got %d: %s", rec.Code, rec.Body)
+	}
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/posts/gone/note.txt", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected the file itself to be served, got %d", rec.Code)
+	}
+}

@@ -344,11 +344,12 @@ func DeriveSlug(value string) string {
 			b.WriteRune(r)
 			lastHyphen = false
 		case unicode.IsLetter(r) || unicode.IsNumber(r):
-			if !lastHyphen && b.Len() > 0 {
-				b.WriteByte('-')
-			}
 			b.WriteRune(unicode.ToLower(r))
 			lastHyphen = false
+		case unicode.In(r, unicode.Mn, unicode.Mc) && b.Len() > 0 && !lastHyphen:
+			// Marks, such as Devanagari vowel signs or Arabic harakat,
+			// belong to the letter before them, as in heading IDs.
+			b.WriteRune(r)
 		case r == '-' || r == '_' || r == ' ':
 			if !lastHyphen && b.Len() > 0 {
 				b.WriteByte('-')

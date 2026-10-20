@@ -517,24 +517,6 @@ func pyString(v any) string {
 	return s
 }
 
-// pyStrings returns a list or tuple of strings; a single string is a list
-// of one.
-func pyStrings(v any) []string {
-	switch x := v.(type) {
-	case string:
-		return []string{x}
-	case []any:
-		var out []string
-		for _, item := range x {
-			if s, ok := item.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
-	return nil
-}
-
 // pyTruthy follows Python truthiness for literal values.
 func pyTruthy(v any) bool {
 	switch x := v.(type) {

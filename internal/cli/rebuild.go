@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -18,6 +20,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/pipeline"
 	"github.com/MohamedElashri/nida/internal/render"
 	"github.com/MohamedElashri/nida/internal/robots"
+	"github.com/MohamedElashri/nida/internal/route"
 	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/MohamedElashri/nida/internal/searchindex"
 	"github.com/MohamedElashri/nida/internal/shortcodes"
@@ -88,6 +91,19 @@ func buildArtifactList(cfg config.SiteConfig, index site.SiteIndex) []output.Art
 	}
 	if cfg.Search.Enabled {
 		artifacts = append(artifacts, output.Artifact{Path: cfg.Search.Filename})
+	}
+	// Bundle files, so one named index.html cannot replace a page.
+	// Bundles sharing a file name are reported when they are copied.
+	seen := map[string]bool{}
+	for _, page := range index.AllPages {
+		dir := strings.TrimPrefix(route.Dir(page.URL), "/")
+		for _, res := range page.Resources {
+			name := path.Join(dir, filepath.ToSlash(res))
+			if !seen[name] {
+				seen[name] = true
+				artifacts = append(artifacts, output.Artifact{Path: name, Name: fmt.Sprintf("bundle file %q of page %q", res, page.URL)})
+			}
+		}
 	}
 	return artifacts
 }
@@ -345,7 +361,14 @@ func rebuildMode(cfg config.SiteConfig, changedPaths []string) string {
 		case strings.HasPrefix(path, templatePrefix):
 			needsFull = true
 		case staticPrefix != "" && strings.HasPrefix(path, staticPrefix):
-			needsAssets = true
+			// The pipeline compiles, minifies, and fingerprints static
+			// files and rewrites pages to match, so only a build updates
+			// them.
+			if cfg.Pipeline.Active() {
+				needsFull = true
+			} else {
+				needsAssets = true
+			}
 		case strings.HasPrefix(path, contentPrefix):
 			if !strings.HasSuffix(path, ".md") {
 				needsFull = true

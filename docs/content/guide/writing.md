@@ -145,7 +145,7 @@ To make a long block collapsible, start it with `[!COLLAPSE] Show label | Hide l
 
 ## Math {{< since "0.7.0" >}}
 
-Enable math to pass TeX through to KaTeX or MathJax without Markdown changing underscores or asterisks inside formulas:
+Enable math to write TeX without Markdown changing underscores or asterisks inside formulas:
 
 ```toml
 [markdown]
@@ -162,19 +162,49 @@ $$
 $$
 ```
 
-Inline math becomes `<span class="math math-inline">\(...\)</span>` and display math becomes `<div class="math math-display">\[...\]</div>`. Nida ships [KaTeX](https://katex.org) and renders these in the browser with no CDN; see [Bundled scripts](#bundled-scripts).
+Nida converts the TeX to [MathML](https://developer.mozilla.org/docs/Web/MathML) while it builds the site, using [Temml](https://temml.org), which is bundled in the binary. Every current browser renders MathML natively, so pages load no math JavaScript. Inline math becomes `<span class="math math-inline"><math>...</math></span>` and display math becomes `<div class="math math-display"><math display="block">...</math></div>`. Temml supports about the same TeX as MathJax, including `\begin{align}`, `\operatorname`, and `\mathscr`; see its [function list](https://temml.org/docs/en/supported.html).
 
-Prices stay as plain text: in `$5 and $10`, a `$` followed by a digit does not close a formula.
-
-This page loads KaTeX, so the examples above render like this: Euler's identity is $e^{i\pi} + 1 = 0$, and
+Rendered on this page: Euler's identity is $e^{i\pi} + 1 = 0$, and
 
 $$
 \sum_{i=1}^{n} i = \frac{n(n+1)}{2}
 $$
 
+Prices stay as plain text: in `$5 and $10`, a `$` followed by a digit does not close a formula. Write `\$` for a dollar sign that would otherwise start math.
+
+Inside a table, a `|` ends the cell even within math, so write `\lvert x \rvert` or `\mid` instead of `|x|`.
+
+TeX that does not parse fails the build, and `nida check` reports it with the page and the formula:
+
+```text
+render "posts/proof.md" markdown: render markdown: math $\frac{1}{$: Unexpected end of input in a macro argument, expected '}'
+```
+
+With `math` off, TeX is an error too, so a formula never reaches readers as raw dollar signs:
+
+```text
+render "posts/proof.md" markdown: render markdown: math $x^2$ found, but markdown.math is off: set math = true under [markdown] in config.toml, or write \$ for a literal dollar sign
+```
+
+Only `$$...$$` and `$...$` containing TeX characters (`\`, `^`, `_`, `{`, or `}`) count, so text such as `$HOME and $PATH` stays text.
+
+### Math fonts
+
+Browsers need a math font to draw MathML well. With `math` on, the [`nida-scripts` partial](#bundled-files) adds one small stylesheet to every page of the site, and the browser downloads the font only on pages that show math. `markdown.math_font` picks the font:
+
+| Value | Font | Download |
+| --- | --- | --- |
+| `latin-modern` (default) | [Latin Modern Math](https://www.gust.org.pl/projects/e-foundry/lm-math), the look of LaTeX, the same in every browser | 9 KB stylesheet, 390 KB font, both cached |
+| `local` | The reader's installed math font, such as Cambria Math on Windows or STIX Two Math on macOS | 9 KB stylesheet, 10 KB font |
+| `none` | None from Nida: the theme styles MathML itself | nothing |
+
+With `local`, math looks different on each system, and Linux readers without a math font installed get a poorer fallback.
+
+Before 0.8.1, Nida passed TeX through as `\(...\)` and loaded KaTeX in the browser. KaTeX is no longer bundled: remove any KaTeX or MathJax scripts and CSS from your templates.
+
 ## Diagrams {{< since "0.7.0" >}}
 
-A `mermaid` code block becomes `<pre class="mermaid">` with the diagram source, which [Mermaid](https://mermaid.js.org) renders in the browser:
+A `mermaid` code block becomes a diagram. Nida renders it to SVG while it builds the site, using [Pele](https://pele.run), a Mermaid renderer bundled in the binary. The page gets finished SVG inside `<div class="diagram">`, with no script to load and nothing to download:
 
 ````markdown
 ```mermaid
@@ -193,31 +223,79 @@ graph LR
   B --> D[Feeds and sitemap]
 ```
 
-## Bundled scripts {{< since "0.7.0" >}}
+Pele supports every diagram type built into Mermaid 12.1, including flowcharts, sequence, class, state, entity relationship, Gantt, pie, and mindmap diagrams. It reads Mermaid syntax but draws with its own layout and style, so a diagram can look different from the same source on mermaid.live.
 
-Nida ships KaTeX and Mermaid inside its binary, so math and diagrams work offline and without third-party requests. Add the built-in partial once, before `</body>` in your base template:
+Diagrams are laid out for a 720 pixel column. A diagram wider than that wraps its labels, and a flowchart switches to a top-down layout when that is narrower, so it stays readable instead of shrinking. Set `markdown.diagram_width` to your theme's content width, or to `0` to keep every diagram's natural layout and let the browser scale it down.
+
+A diagram that does not parse fails the build, and `nida check` reports it, with the page and the line inside the diagram:
+
+```text
+render "posts/flow.md" markdown: render markdown: mermaid diagram: Parse error on line 2: ...
+```
+
+Before 0.8.1, Nida wrote `<pre class="mermaid">` and loaded Mermaid in the browser. That script is gone: remove any `mermaid` argument from `bundledScripts` calls and any CSS for `pre.mermaid`.
+
+### Styling diagrams
+
+Diagram colors and fonts are CSS variables, so a theme styles diagrams with CSS alone. Set them on `.pele`, the class of every diagram's `<svg>`, or on any parent:
+
+```css
+.pele {
+  --pele-bg: #ffffff;        /* backgrounds, behind edge labels */
+  --pele-fg: #1a1d23;        /* text */
+  --pele-muted: #6b7280;     /* secondary text */
+  --pele-line: #4a5160;      /* edges and arrowheads */
+  --pele-surface: #f7f8fa;   /* node fill */
+  --pele-surface-alt: #eff1f4; /* subgraph fill */
+  --pele-border: #cfd4dc;    /* node and subgraph borders */
+  --pele-accent: #0f6fde;    /* highlights */
+  --pele-font: inherit;
+  --pele-radius: 6px;
+}
+```
+
+Charts use `--pele-series-1` through `--pele-series-8`, and `--pele-critical` marks critical tasks. Without any variables, diagrams use Pele's neutral light colors. See [Pele's theming reference](https://pele.run/theming) for every variable and class name.
+
+Because the colors are variables, dark mode is a second set of values. Nothing is rendered again when the reader switches:
+
+```css
+[data-theme="dark"] .pele {
+  --pele-bg: #0f1115;
+  --pele-fg: #e6e8ec;
+  --pele-line: #b4bac5;
+  --pele-surface: #151820;
+  --pele-surface-alt: #1c2029;
+  --pele-border: #353b47;
+  --pele-accent: #5aa2ff;
+}
+```
+
+Use `@media (prefers-color-scheme: dark)` instead if your theme follows the reader's system setting. Nida measures label text at build time with average font metrics, so a much wider or narrower `--pele-font` can leave labels slightly loose or tight in their boxes. Colors set in the diagram source, such as `style A fill:#f9f`, override the theme.
+
+## Bundled files {{< since "0.7.0" >}}
+
+Math and diagrams are rendered at build time, so Nida ships no JavaScript for them. Sites with math still need the math stylesheet and font, which are bundled in the binary so they work offline and without third-party requests. Add the built-in partial once, in `<head>` or before `</body>` in your base template:
 
 ```html
 {{ template "nida-scripts" . }}
-</body>
+</head>
 ```
 
-It adds script tags only on pages that need them:
+What it adds is set for the whole site by config, not decided page by page:
 
-| Library | Loaded when | Written to |
+| Files | Added when | Written to |
 | --- | --- | --- |
-| KaTeX | `markdown.math` is on and the page has math | `vendor/katex-<version>/` |
-| Mermaid | the page has a `mermaid` code block | `vendor/mermaid-<version>/` |
+| Math stylesheet and fonts | `markdown.math` is on and `markdown.math_font` is not `none` | `vendor/temml-<version>/`, or `vendor/temml-local-<version>/` with `math_font = "local"` |
 
-A library's files are written to the output only if at least one page loads it, so a site without diagrams carries no Mermaid files. Mermaid follows the page's `data-theme="dark"` attribute, or the reader's color scheme. List pages check page summaries, not full bodies.
+A site without math carries no files and gets no tags. In `<head>`, the font is ready before the math is drawn; before `</body>`, math can shift slightly once the font arrives.
 
-To load a library on a page where Nida can't detect it, call the function directly with its name:
+To load the stylesheet while `markdown.math` is off, for example for MathML your templates write themselves, pass `"math"`:
 
 ```html
-{{ bundledScripts .Page "mermaid" }}
+{{ bundledScripts "math" }}
 ```
 
-To use your own copy or a CDN instead, leave out the partial and add your own tags.
+To use your own math CSS instead, leave out the partial and add your own tags.
 
 ## Shortcodes {{< since "0.7.0" >}}
 

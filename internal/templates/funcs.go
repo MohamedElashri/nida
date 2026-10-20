@@ -13,9 +13,9 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/bundled"
 	"github.com/MohamedElashri/nida/internal/config"
-	"github.com/MohamedElashri/nida/internal/content"
 	"github.com/MohamedElashri/nida/internal/highlight"
 	"github.com/MohamedElashri/nida/internal/markdown"
+	"github.com/MohamedElashri/nida/internal/route"
 )
 
 // dict builds a map from alternating keys and values, mainly so partials can
@@ -107,7 +107,8 @@ func last(n int, items any) (any, error) {
 // where keeps items whose field path (such as "Extra.tags") equals, or for
 // lists contains, the value. An optional "!=" operator inverts the match.
 func where(items any, field string, args ...any) (any, error) {
-	op, value := "==", any(nil)
+	op := "=="
+	var value any
 	switch len(args) {
 	case 1:
 		value = args[0]
@@ -216,22 +217,19 @@ func markdownifyFunc(cfg config.SiteConfig) func(string) (template.HTML, error) 
 	}
 }
 
-// absURLFunc joins a site-relative path onto base_url.
+// absURLFunc joins a site-relative path onto base_url. Like relURL, it
+// keeps a query, a fragment, and percent-escapes as written.
 func absURLFunc(cfg config.SiteConfig) func(string) string {
+	rel := relURLFunc(cfg)
 	return func(value string) string {
-		if isAbsoluteURL(value) {
+		if route.IsAbsoluteURL(value) {
 			return value
 		}
 		base, err := url.Parse(strings.TrimSpace(cfg.BaseURL))
-		if err != nil {
+		if err != nil || base.Host == "" {
 			return value
 		}
-		joined := path.Join("/", base.Path, value)
-		if strings.HasSuffix(value, "/") && joined != "/" {
-			joined += "/"
-		}
-		base.Path = joined
-		return base.String()
+		return base.Scheme + "://" + base.Host + rel(value)
 	}
 }
 
@@ -240,20 +238,16 @@ func absURLFunc(cfg config.SiteConfig) func(string) string {
 func relURLFunc(cfg config.SiteConfig) func(string) string {
 	basePath := config.BasePath(cfg.BaseURL)
 	return func(value string) string {
-		if isAbsoluteURL(value) {
+		if route.IsAbsoluteURL(value) {
 			return value
 		}
+		value, suffix := route.SplitSuffix(value)
 		joined := path.Join("/", basePath, value)
 		if strings.HasSuffix(value, "/") && joined != "/" {
 			joined += "/"
 		}
-		return joined
+		return joined + suffix
 	}
-}
-
-func isAbsoluteURL(value string) bool {
-	parsed, err := url.Parse(value)
-	return err == nil && (parsed.Scheme != "" || strings.HasPrefix(value, "//"))
 }
 
 // jsonify encodes a value as JSON for use in scripts, such as JSON-LD.
@@ -279,49 +273,27 @@ func syntaxCSSFunc(cfg config.SiteConfig) func(...string) (template.CSS, error) 
 	}
 }
 
-// bundledScriptsFunc returns tags for the bundled libraries the sources need.
-// Sources are pages, sections, page lists (their summaries), HTML strings, or
-// a library name ("katex", "mermaid") to load it unconditionally.
+// bundledScriptsFunc returns tags for the bundled files a site needs, today
+// the math stylesheet. It is site-wide: with markdown.math on, every page
+// gets the stylesheet, so pages need no per-page detection. Arguments are
+// accepted for compatibility with templates that pass the page; the string
+// "math" loads the stylesheet even while markdown.math is off.
 func bundledScriptsFunc(cfg config.SiteConfig) func(...any) template.HTML {
 	basePath := config.BasePath(cfg.BaseURL)
 	return func(sources ...any) template.HTML {
-		var html []string
-		forced := map[string]bool{}
+		forced := false
 		for _, source := range sources {
-			switch v := source.(type) {
-			case content.Page:
-				html = append(html, v.BodyHTML, v.Summary)
-			case *content.Page:
-				if v != nil {
-					html = append(html, v.BodyHTML, v.Summary)
-				}
-			case content.Section:
-				html = append(html, v.BodyHTML)
-			case []content.Page:
-				for _, page := range v {
-					html = append(html, page.Summary)
-				}
-			case string:
-				forced[v] = true
-				html = append(html, v)
+			if name, ok := source.(string); ok && name == "math" {
+				forced = true
 			}
 		}
-		var tags strings.Builder
-		for _, lib := range bundled.Libraries {
-			if lib.Name == bundled.KaTeX.Name && !cfg.Markdown.Math && !forced[lib.Name] {
-				continue
-			}
-			needed := forced[lib.Name]
-			for _, h := range html {
-				if needed || strings.Contains(h, lib.Marker) {
-					needed = true
-					break
-				}
-			}
-			if needed {
-				tags.WriteString(string(lib.Tags(basePath)))
-			}
+		if !cfg.Markdown.Math && !forced {
+			return ""
 		}
-		return template.HTML(tags.String())
+		math, ok := bundled.Math(cfg.Markdown.MathFont)
+		if !ok {
+			return ""
+		}
+		return math.Tags(basePath)
 	}
 }

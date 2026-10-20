@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/MohamedElashri/nida/internal/buildinfo"
+	"github.com/MohamedElashri/nida/internal/bundled"
 	"github.com/MohamedElashri/nida/internal/config"
 )
 
@@ -343,7 +345,7 @@ func TestLoadCommandConfigAppliesBuildOverrides(t *testing.T) {
 	}
 }
 
-func TestBuildWritesBundledLibrariesOnlyWhenUsed(t *testing.T) {
+func TestBuildRendersMathAndDiagramsAtBuildTime(t *testing.T) {
 	dir := t.TempDir()
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	if code := run(stdout, stderr, []string{"init", dir}); code != 0 {
@@ -363,19 +365,75 @@ func TestBuildWritesBundledLibrariesOnlyWhenUsed(t *testing.T) {
 	if code := run(stdout, stderr, []string{"build", "--site", dir}); code != 0 {
 		t.Fatalf("build failed: %s", stderr.String())
 	}
-	matches, _ := filepath.Glob(filepath.Join(dir, "public", "vendor", "mermaid-*", "mermaid.min.js"))
-	if len(matches) != 1 {
-		t.Fatalf("expected mermaid to be written, got %v", matches)
-	}
-	if katex, _ := filepath.Glob(filepath.Join(dir, "public", "vendor", "katex-*")); len(katex) != 0 {
-		t.Fatalf("KaTeX is unused and must not be written, got %v", katex)
+	if _, err := os.Stat(filepath.Join(dir, "public", "vendor")); !os.IsNotExist(err) {
+		t.Fatalf("diagrams render at build time and need no bundled files, stat err=%v", err)
 	}
 	html, err := os.ReadFile(filepath.Join(dir, "public", "posts", "diagram", "index.html"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(html), "/vendor/mermaid-") {
-		t.Fatal("expected the diagram page to load the bundled script")
+	if !strings.Contains(string(html), `class="pele pele-flowchart"`) || strings.Contains(string(html), "/vendor/") {
+		t.Fatalf("expected an inline SVG diagram and no bundled scripts, got %s", html)
+	}
+
+	if err := os.WriteFile(post, []byte("+++\ntitle = \"Diagram\"\ndate = 2025-01-01\n+++\n\n```mermaid\ngraph LR\n  A --> B[[\n```\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr.Reset()
+	if code := run(stdout, stderr, []string{"build", "--site", dir}); code == 0 {
+		t.Fatal("expected a broken diagram to fail the build")
+	}
+	if !strings.Contains(stderr.String(), "diagram.md") || !strings.Contains(stderr.String(), "mermaid diagram") {
+		t.Fatalf("expected the error to name the page and the diagram, got %s", stderr.String())
+	}
+	if err := os.Remove(post); err != nil {
+		t.Fatal(err)
+	}
+
+	mathPost := filepath.Join(dir, "content", "posts", "math.md")
+	if err := os.WriteFile(mathPost, []byte("+++\ntitle = \"Math\"\ndate = 2025-01-01\n+++\n\nEuler: $e^{i\\pi} + 1 = 0$\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr.Reset()
+	if code := run(stdout, stderr, []string{"build", "--site", dir}); code == 0 || !strings.Contains(stderr.String(), "markdown.math is off") {
+		t.Fatalf("expected TeX to fail the build while math is off, got %s", stderr.String())
+	}
+
+	cfgPath := filepath.Join(dir, "config.toml")
+	cfgData, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, append(cfgData, []byte("\n[markdown]\nmath = true\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr.Reset()
+	if code := run(stdout, stderr, []string{"build", "--site", dir}); code != 0 {
+		t.Fatalf("build failed: %s", stderr.String())
+	}
+	html, err = os.ReadFile(filepath.Join(dir, "public", "posts", "math", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), "<math>") || !strings.Contains(string(html), "/vendor/temml-"+bundled.TemmlVersion+"/Temml-Latin-Modern.css") {
+		t.Fatalf("expected MathML and the math stylesheet, got %s", html)
+	}
+	about, err := os.ReadFile(filepath.Join(dir, "public", "about", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(about), "Temml-Latin-Modern.css") {
+		t.Fatal("expected the math stylesheet site-wide, on pages without math too")
+	}
+	var written []string
+	_ = filepath.WalkDir(filepath.Join(dir, "public", "vendor"), func(path string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			written = append(written, filepath.Base(path))
+		}
+		return nil
+	})
+	if !slices.Contains(written, "latinmodernmath.woff2") || slices.ContainsFunc(written, func(name string) bool { return strings.HasSuffix(name, ".js") }) {
+		t.Fatalf("expected the math stylesheet and fonts and no scripts, got %v", written)
 	}
 }
 

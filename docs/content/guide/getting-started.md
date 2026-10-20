@@ -32,7 +32,7 @@ brew install nida
 ```
 {{< /tab >}}
 {{< tab "Go" >}}
-With Go installed, build and install the latest version:
+With Go installed, build and install the latest version. Nida needs a 64-bit platform, such as amd64 or arm64:
 
 ```bash
 go install github.com/MohamedElashri/nida/cmd/nida@latest

@@ -12,6 +12,7 @@ import (
 
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/diagram"
 	"github.com/MohamedElashri/nida/internal/highlight"
 	"github.com/MohamedElashri/nida/internal/parallel"
 	"github.com/yuin/goldmark"
@@ -55,7 +56,7 @@ func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
 	pathLookup := env.Lookup
 	options := []renderer.Option{
 		renderer.WithNodeRenderers(
-			util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme}, 500),
+			util.Prioritized(&fencedCodeRenderer{theme: cfg.SyntaxTheme, diagramWidth: cfg.Markdown.DiagramWidth}, 500),
 			util.Prioritized(&linkRenderer{cfg: cfg.Markdown, pathLookup: pathLookup, basePath: config.BasePath(cfg.BaseURL)}, 600),
 			util.Prioritized(&imageRenderer{pathLookup: pathLookup, basePath: config.BasePath(cfg.BaseURL), images: env.Images, page: env.Page}, 700),
 			util.Prioritized(&headingRenderer{anchors: cfg.Markdown.HeadingAnchors}, 500),
@@ -74,13 +75,13 @@ func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
 		parser.WithAttribute(),
 		parser.WithASTTransformers(util.Prioritized(calloutTransformer{translate: env.Translate}, 100)),
 	}
-	if cfg.Markdown.Math {
-		parserOptions = append(parserOptions,
-			parser.WithBlockParsers(util.Prioritized(mathBlockParser{}, 150)),
-			parser.WithInlineParsers(util.Prioritized(mathInlineParser{}, 150)),
-		)
-		options = append(options, renderer.WithNodeRenderers(util.Prioritized(mathRenderer{}, 500)))
-	}
+	// Math is parsed even when it is off, so TeX in a site without math
+	// fails the build instead of showing up as raw dollar signs.
+	parserOptions = append(parserOptions,
+		parser.WithBlockParsers(util.Prioritized(mathBlockParser{}, 150)),
+		parser.WithInlineParsers(util.Prioritized(mathInlineParser{}, 150)),
+	)
+	options = append(options, renderer.WithNodeRenderers(util.Prioritized(mathRenderer{enabled: cfg.Markdown.Math}, 500)))
 
 	return goldmark.New(
 		goldmark.WithExtensions(extension.GFM, extension.Footnote),
@@ -92,7 +93,7 @@ func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
 func renderMarkdownCore(source string, cfg config.SiteConfig, env Env) (Result, error) {
 	engine := newEngine(cfg, env)
 	src := []byte(source)
-	ctx := parser.NewContext(parser.WithIDs(newHeadingIDs()))
+	ctx := parser.NewContext(parser.WithIDs(newHeadingIDs(src)))
 	doc := engine.Parser().Parse(text.NewReader(src), parser.WithContext(ctx))
 
 	var buf bytes.Buffer
@@ -255,15 +256,11 @@ func RenderItem(item content.Page, cfg config.SiteConfig, env Env) (content.Page
 	return item, nil
 }
 
-// RenderItems renders pages concurrently; results keep the input order.
-func RenderItems(items []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {
-	return parallel.Map(items, func(item content.Page) (content.Page, error) {
-		return RenderItem(item, cfg, env)
-	})
-}
-
+// RenderPages renders pages concurrently; results keep the input order.
 func RenderPages(pages []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {
-	return RenderItems(pages, cfg, env)
+	return parallel.Map(pages, func(page content.Page) (content.Page, error) {
+		return RenderItem(page, cfg, env)
+	})
 }
 
 func RenderSections(sections []content.Section, cfg config.SiteConfig, env Env) ([]content.Section, error) {
@@ -285,7 +282,8 @@ func RenderSections(sections []content.Section, cfg config.SiteConfig, env Env) 
 }
 
 type fencedCodeRenderer struct {
-	theme string
+	theme        string
+	diagramWidth int
 }
 
 func (r *fencedCodeRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -310,9 +308,11 @@ func (r *fencedCodeRenderer) renderFencedCodeBlock(w util.BufWriter, source []by
 	}
 
 	if strings.EqualFold(info.Language, "mermaid") {
-		// Mermaid reads the diagram source from the element text.
-		_, err := w.WriteString(`<pre class="mermaid">` + stdhtml.EscapeString(code) + "</pre>\n")
+		svg, err := diagram.Render(code, diagram.Options{MaxWidth: r.diagramWidth})
 		if err != nil {
+			return ast.WalkStop, err
+		}
+		if _, err := w.WriteString(`<div class="diagram">` + svg + "</div>\n"); err != nil {
 			return ast.WalkStop, err
 		}
 		return ast.WalkSkipChildren, nil

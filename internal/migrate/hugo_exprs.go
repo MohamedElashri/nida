@@ -332,11 +332,11 @@ func (t *hugoTr) step(sc *scope, n parse.Node, v hval, f string, args []hval) hv
 	case kCtx:
 		return t.ctxField(sc, n, v, f, args, miss)
 	case kShort:
-		return t.shortField(sc, n, v, f, args, miss)
+		return t.shortField(v, f, args, miss)
 	case kPage:
-		return t.pageField(sc, n, v.expr, f, args, miss)
+		return t.pageField(sc, v.expr, f, args, miss)
 	case kSection:
-		return t.sectionField(sc, n, v.expr, f, args, miss)
+		return t.sectionField(v.expr, f, miss)
 	case kSite:
 		return t.siteField(sc, n, f, args, miss)
 	case kPageList, kSectionList, kTermList, kWeighted:
@@ -372,7 +372,7 @@ func (t *hugoTr) step(sc *scope, n parse.Node, v hval, f string, args []hval) hv
 	case kTaxMap:
 		return hval{expr: call("index", paren(v.expr), strconv.Quote(f)), k: kTermMap}
 	case kPaginator:
-		return t.paginatorField(sc, n, v, f, miss)
+		return t.paginatorField(v, f, miss)
 	case kPager:
 		switch f {
 		case "URL", "RelPermalink":
@@ -673,17 +673,17 @@ func (t *hugoTr) ctxField(sc *scope, n parse.Node, v hval, f string, args []hval
 		return hval{expr: "false", k: kBool}
 	}
 	if listy {
-		return t.sectionField(sc, n, section, f, args, miss)
+		return t.sectionField(section, f, miss)
 	}
 	if v.flavor == "term" || v.flavor == "terms" {
 		return miss()
 	}
-	return t.pageField(sc, n, page, f, args, miss)
+	return t.pageField(sc, page, f, args, miss)
 }
 
 // pageField maps a field of a Hugo page that is a content.Page in Nida,
 // such as each page in a range over .Pages.
-func (t *hugoTr) pageField(sc *scope, n parse.Node, p, f string, args []hval, miss func() hval) hval {
+func (t *hugoTr) pageField(sc *scope, p, f string, args []hval, miss func() hval) hval {
 	switch f {
 	case "Title", "LinkTitle", "Name":
 		return hval{expr: sel(p, "Title"), k: kString}
@@ -789,7 +789,7 @@ func neighbor(p, dir string) hval {
 	return hval{expr: call("and", url, d), k: kDirect}
 }
 
-func (t *hugoTr) sectionField(sc *scope, n parse.Node, s, f string, args []hval, miss func() hval) hval {
+func (t *hugoTr) sectionField(s, f string, miss func() hval) hval {
 	switch f {
 	case "Title", "LinkTitle", "Name":
 		return hval{expr: sel(s, "Title"), k: kString}
@@ -936,7 +936,7 @@ func (t *hugoTr) groupBy(sc *scope, n parse.Node, v hval, layout hval) hval {
 	return listOf(call("groupByMonth", v.arg()), kGroupList, hval{k: kGroup, name: "month", base: l})
 }
 
-func (t *hugoTr) paginatorField(sc *scope, n parse.Node, v hval, f string, miss func() hval) hval {
+func (t *hugoTr) paginatorField(v hval, f string, miss func() hval) hval {
 	// .Paginator is nil when a section fits on one page, so every field is
 	// guarded with and/or, which stop at the first falsy value.
 	pg := sel(v.expr, "Paginator")
@@ -974,7 +974,7 @@ func (t *hugoTr) feedFormat(sc *scope) hval {
 		`"Rel"`, `"alternate"`, `"Name"`, `"atom"`, `"MediaType"`, call("dict", `"Type"`, `"application/atom+xml"`)), k: kDirect}
 }
 
-func (t *hugoTr) shortField(sc *scope, n parse.Node, v hval, f string, args []hval, miss func() hval) hval {
+func (t *hugoTr) shortField(v hval, f string, args []hval, miss func() hval) hval {
 	e := v.expr
 	switch f {
 	case "Get":

@@ -964,10 +964,37 @@ kbd {
   border-radius: var(--radius);
 }
 
-.prose pre.mermaid {
+/* Mermaid diagrams, rendered to SVG by Nida at build time */
+
+.pele {
+  --pele-bg: var(--bg-soft);
+  --pele-fg: var(--text);
+  --pele-muted: var(--text-3);
+  --pele-line: var(--text-2);
+  --pele-surface: var(--surface);
+  --pele-surface-alt: var(--bg-mute);
+  --pele-border: var(--border-strong);
+  --pele-accent: var(--accent);
+  --pele-critical: var(--caution);
+  --pele-font: var(--font-sans);
+  --pele-font-mono: var(--font-mono);
+  --pele-radius: 6px;
+  --pele-series-1: var(--note);
+  --pele-series-2: var(--warning);
+  --pele-series-3: var(--tip);
+  --pele-series-4: var(--caution);
+  --pele-series-5: var(--important);
+}
+
+.prose .diagram {
   display: flex;
   justify-content: center;
+  margin: 1.4em 0;
+  padding: 20px;
+  overflow-x: auto;
   background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .math-display {

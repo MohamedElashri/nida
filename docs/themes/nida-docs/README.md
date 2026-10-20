@@ -13,7 +13,7 @@ dark mode, translations, and data files.
 | `edit_url` | site config | Shows an "Edit this page" link. |
 | `updated_from_git` | site config | Shows a "Last updated" date. |
 | `[search] enabled` | site config | Enables the search dialog (Ctrl K or `/`). |
-| `[markdown] math` | site config | Renders TeX. KaTeX and Mermaid load automatically on pages that use them, from files bundled with Nida. |
+| `[markdown] math` | site config | Renders TeX to MathML at build time. With math on, every page gets Nida's bundled math stylesheet. Mermaid diagrams are rendered to SVG at build time and follow the light and dark color schemes. |
 
 ## Data files
 

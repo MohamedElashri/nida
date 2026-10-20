@@ -15,7 +15,7 @@ Pages can link to each other by source path, such as `[Templates](@/guide/templa
 
 ## Writing
 
-GitHub-flavored Markdown with footnotes, plus summaries, tables of contents, heading anchors, callouts, code block titles and line highlighting, math, Mermaid diagrams, and shortcodes. Images get their dimensions and, with the image pipeline, responsive variants. See [Writing Content](@/guide/writing.md).
+GitHub-flavored Markdown with footnotes, plus summaries, tables of contents, heading anchors, callouts, code block titles and line highlighting, math rendered to MathML and Mermaid diagrams rendered to SVG, both at build time with no JavaScript, and shortcodes. Images get their dimensions and, with the image pipeline, responsive variants. See [Writing Content](@/guide/writing.md).
 
 ## Templates and themes
 

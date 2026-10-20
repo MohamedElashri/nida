@@ -41,7 +41,7 @@ func RewriteOutputFiles(siteRoot string, cfg config.SiteConfig, manifest Manifes
 			return fmt.Errorf("read %q: %w", path, err)
 		}
 
-		rewritten := RewriteHTML(string(data), manifest)
+		rewritten := rewriteHTML(string(data), manifest, config.BasePath(cfg.BaseURL))
 		if rewritten == string(data) {
 			return nil
 		}

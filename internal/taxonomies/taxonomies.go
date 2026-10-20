@@ -3,6 +3,7 @@ package taxonomies
 import (
 	"cmp"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -77,11 +78,18 @@ func buildCollection(tc config.TaxonomyConfig, termMap map[string][]content.Page
 		Terms:        make([]Term, 0, len(termMap)),
 	}
 
-	for termName, termItems := range termMap {
+	termNames := slices.Sorted(maps.Keys(termMap))
+	bySlug := make(map[string]string, len(termNames))
+	for _, termName := range termNames {
+		termItems := termMap[termName]
 		slug := content.DeriveSlug(termName)
 		if slug == "" {
 			return Collection{}, fmt.Errorf("build %s taxonomy: empty slug for term %q", tc.Name, termName)
 		}
+		if other, ok := bySlug[slug]; ok {
+			return Collection{}, fmt.Errorf("build %s taxonomy: terms %q and %q would share the URL slug %q; spell them the same way, or rename one", tc.Name, other, termName, slug)
+		}
+		bySlug[slug] = termName
 
 		termURL, err := expandPattern(pattern, slug)
 		if err != nil {

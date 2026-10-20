@@ -2,13 +2,19 @@ package templates
 
 import (
 	"fmt"
+	"image"
+	"os"
 	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/route"
+	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
 
 func assetURLFunc(cfg config.SiteConfig) func(string) (string, error) {
@@ -35,19 +41,21 @@ func imageVariantFunc(cfg config.SiteConfig) func(string, int) (string, error) {
 	}
 }
 
-func imageSrcsetFunc(cfg config.SiteConfig) func(string) (string, error) {
+func imageSrcsetFunc(siteRoot string, cfg config.SiteConfig) func(string) (string, error) {
+	widthOf := staticImageWidths(siteRoot, cfg)
 	return func(value string) (string, error) {
-		return imageSrcset(value, cfg.Pipeline.Images.Widths, cfg)
+		return imageSrcset(value, cfg.Pipeline.Images.Widths, cfg, widthOf)
 	}
 }
 
-func imagePresetSrcsetFunc(cfg config.SiteConfig) func(string, string) (string, error) {
+func imagePresetSrcsetFunc(siteRoot string, cfg config.SiteConfig) func(string, string) (string, error) {
+	widthOf := staticImageWidths(siteRoot, cfg)
 	return func(name, value string) (string, error) {
 		preset, ok := cfg.Pipeline.Images.Presets[strings.TrimSpace(name)]
 		if !ok {
 			return "", fmt.Errorf("unknown image preset %q", name)
 		}
-		return imageSrcset(value, preset.Widths, cfg)
+		return imageSrcset(value, preset.Widths, cfg, widthOf)
 	}
 }
 
@@ -61,15 +69,26 @@ func imagePresetSizesFunc(cfg config.SiteConfig) func(string) (string, error) {
 	}
 }
 
-func imageSrcset(value string, widths []int, cfg config.SiteConfig) (string, error) {
+// imageSrcset lists the width variants of a static image. The pipeline
+// only writes variants narrower than the original, so when the original's
+// width is known, wider ones are left out and the original is the last
+// candidate.
+func imageSrcset(value string, widths []int, cfg config.SiteConfig, widthOf func(string) int) (string, error) {
 	assetURL := assetURLFunc(cfg)
 	uniqueWidths := uniquePositiveWidths(widths)
 	if len(uniqueWidths) == 0 {
 		return "", fmt.Errorf("image srcset needs at least one width")
 	}
+	original := 0
+	if assetPath, _, err := splitAssetPath(value); err == nil {
+		original = widthOf(assetPath)
+	}
 
-	candidates := make([]string, 0, len(uniqueWidths))
+	candidates := make([]string, 0, len(uniqueWidths)+1)
 	for _, width := range uniqueWidths {
+		if original > 0 && width >= original {
+			continue
+		}
 		variant, err := imageVariantPath(value, width)
 		if err != nil {
 			return "", err
@@ -80,7 +99,56 @@ func imageSrcset(value string, widths []int, cfg config.SiteConfig) (string, err
 		}
 		candidates = append(candidates, u+" "+strconv.Itoa(width)+"w")
 	}
+	if original > 0 {
+		u, err := assetURL(value)
+		if err != nil {
+			return "", err
+		}
+		candidates = append(candidates, u+" "+strconv.Itoa(original)+"w")
+	}
 	return strings.Join(candidates, ", "), nil
+}
+
+// staticImageWidths returns a cached lookup of the pixel width of a static
+// image, searching the site's static directory and then its themes', or 0
+// when the image is missing or unreadable.
+func staticImageWidths(siteRoot string, cfg config.SiteConfig) func(string) int {
+	var roots []string
+	if absSiteRoot, err := filepath.Abs(siteRoot); err == nil {
+		if root, err := safepath.Join(absSiteRoot, cfg.StaticDir); err == nil {
+			roots = append(roots, root)
+		}
+		if dirs, err := themes.Dirs(absSiteRoot, cfg, "static"); err == nil {
+			for i := len(dirs) - 1; i >= 0; i-- {
+				roots = append(roots, dirs[i])
+			}
+		}
+	}
+	var mu sync.Mutex
+	widths := map[string]int{}
+	return func(assetPath string) int {
+		mu.Lock()
+		defer mu.Unlock()
+		if width, ok := widths[assetPath]; ok {
+			return width
+		}
+		width := 0
+		for _, root := range roots {
+			file, err := safepath.Join(root, assetPath)
+			if err != nil || safepath.RejectSymlink(file) != nil {
+				continue
+			}
+			if f, err := os.Open(file); err == nil {
+				if header, _, err := image.DecodeConfig(f); err == nil {
+					width = header.Width
+				}
+				_ = f.Close()
+				break
+			}
+		}
+		widths[assetPath] = width
+		return width
+	}
 }
 
 func imageVariantPath(value string, width int) (string, error) {
@@ -108,20 +176,13 @@ func splitAssetPath(value string) (string, string, error) {
 		return "", "", fmt.Errorf("asset path must be site-relative, got %q", value)
 	}
 
-	suffixIndex := len(trimmed)
-	for _, marker := range []string{"?", "#"} {
-		if index := strings.Index(trimmed, marker); index >= 0 && index < suffixIndex {
-			suffixIndex = index
-		}
-	}
-	cleanValue := trimmed[:suffixIndex]
-	suffix := trimmed[suffixIndex:]
+	cleanValue, suffix := route.SplitSuffix(trimmed)
 	cleanValue = strings.TrimPrefix(cleanValue, "/")
 	cleaned := filepath.ToSlash(filepath.Clean(filepath.FromSlash(cleanValue)))
 	if cleaned == "." || cleaned == "" {
 		return "", "", fmt.Errorf("asset path must not be empty")
 	}
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") || filepath.IsAbs(cleaned) {
+	if safepath.Escapes(cleaned) {
 		return "", "", fmt.Errorf("asset path must stay inside the static directory")
 	}
 	return cleaned, suffix, nil

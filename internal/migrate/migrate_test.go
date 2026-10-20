@@ -616,3 +616,18 @@ func TestCleanOldURL(t *testing.T) {
 		t.Error("an escaped slash must not become a separator")
 	}
 }
+
+func TestWithinAcceptsNamesStartingWithDots(t *testing.T) {
+	root := "site"
+	for path, want := range map[string]bool{
+		filepath.Join("site", "..assets"):  true,
+		filepath.Join("site", "a", "b"):    true,
+		"site":                             false,
+		filepath.Join("site", "..", "out"): false,
+		"other":                            false,
+	} {
+		if got := within(root, path); got != want {
+			t.Errorf("within(%q, %q) = %t, want %t", root, path, got, want)
+		}
+	}
+}

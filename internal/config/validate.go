@@ -3,8 +3,10 @@ package config
 import (
 	"errors"
 	"net/url"
+	"path/filepath"
 	"strings"
 
+	"github.com/MohamedElashri/nida/internal/bundled"
 	"github.com/MohamedElashri/nida/internal/safepath"
 )
 
@@ -28,6 +30,15 @@ func Validate(cfg SiteConfig) error {
 
 	if cfg.Paginate <= 0 {
 		problems = append(problems, "paginate must be greater than 0")
+	}
+
+	switch cfg.Markdown.MathFont {
+	case bundled.MathFontLatinModern, bundled.MathFontLocal, bundled.MathFontNone:
+	default:
+		problems = append(problems, `markdown.math_font must be "latin-modern", "local", or "none"`)
+	}
+	if cfg.Markdown.DiagramWidth < 0 {
+		problems = append(problems, "markdown.diagram_width must not be negative")
 	}
 
 	if cfg.RSS.Enabled && cfg.RSS.Limit <= 0 {
@@ -83,6 +94,7 @@ func Validate(cfg SiteConfig) error {
 			problems = append(problems, err.Error())
 		}
 	}
+	problems = append(problems, outputOverlaps(cfg)...)
 	if strings.TrimSpace(cfg.Theme) != "" {
 		if err := safepath.ValidateRelative("theme", cfg.Theme, false); err != nil {
 			problems = append(problems, err.Error())
@@ -119,4 +131,42 @@ func Validate(cfg SiteConfig) error {
 	}
 
 	return errors.New(strings.Join(problems, "; "))
+}
+
+// outputOverlaps reports source directories that output_dir would delete.
+// Every build empties output_dir first, so it must not be, hold, or sit
+// inside a directory the site is built from, or the Git repository.
+func outputOverlaps(cfg SiteConfig) []string {
+	output := cleanSlash(cfg.OutputDir)
+	if output == "" || output == "." {
+		return nil
+	}
+	sources := []struct{ field, dir string }{
+		{"content_dir", cfg.ContentDir},
+		{"template_dir", cfg.TemplateDir},
+		{"static_dir", cfg.StaticDir},
+		{"themes_dir", cfg.ThemesDir},
+		{"data_dir", cfg.DataDir},
+		{"the Git repository", ".git"},
+	}
+	var problems []string
+	for _, source := range sources {
+		dir := cleanSlash(source.dir)
+		if dir == "" || dir == "." {
+			continue
+		}
+		if output == dir || within(output, dir) || within(dir, output) {
+			problems = append(problems, "output_dir "+cfg.OutputDir+" overlaps "+source.field+" "+source.dir+": every build deletes output_dir first")
+		}
+	}
+	return problems
+}
+
+func cleanSlash(dir string) string {
+	return filepath.ToSlash(safepath.CleanRelative(dir))
+}
+
+// within reports whether path is inside dir.
+func within(path, dir string) bool {
+	return strings.HasPrefix(path, dir+"/")
 }

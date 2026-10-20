@@ -95,8 +95,11 @@ func TestRenderMermaid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render returned error: %v", err)
 	}
-	if !strings.Contains(got, "<pre class=\"mermaid\">graph TD; A--&gt;B\n</pre>") {
-		t.Fatalf("expected mermaid pre, got %s", got)
+	if !strings.HasPrefix(got, `<div class="diagram"><svg `) || !strings.Contains(got, "pele-flowchart") {
+		t.Fatalf("expected an inline SVG diagram, got %s", got)
+	}
+	if _, err := Render("```mermaid\ngraph TD; A-->B[[\n```\n", config.DefaultSiteConfig(), nil); err == nil || !strings.Contains(err.Error(), "mermaid diagram") {
+		t.Fatalf("expected a diagram error, got %v", err)
 	}
 }
 
@@ -110,23 +113,52 @@ func TestRenderMath(t *testing.T) {
 		t.Fatalf("Render returned error: %v", err)
 	}
 	for _, want := range []string{
-		`<span class="math math-inline">\(e^{i\pi} + 1 = 0\)</span>`,
-		`<span class="math math-inline">\(a_1 * b_2\)</span>`,
+		`<span class="math math-inline"><math><mrow><msup><mi>e</mi>`,
+		`<msub><mi>a</mi><mn>1</mn></msub><mo>∗</mo>`,
 		"costs $5 and $10.",
-		`<div class="math math-display">\[\sum_{i=1}^n x_i &lt; y\]</div>`,
-		`<span class="math math-display">\[x^2\]</span>`,
+		`<div class="math math-display"><math display="block"`,
+		`<mo>&lt;</mo><mi>y</mi>`,
+		`<span class="math math-display"><math display="block"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected %q in\n%s", want, got)
 		}
 	}
 
-	plain, err := Render("$a_1$ and $b_1$\n", config.DefaultSiteConfig(), nil)
-	if err != nil {
-		t.Fatalf("Render returned error: %v", err)
+	if _, err := Render("$\\frac{1}{$\n", cfg, nil); err == nil || !strings.Contains(err.Error(), "math $\\frac{1}{$:") {
+		t.Fatalf("expected a math error, got %v", err)
 	}
-	if strings.Contains(plain, "math-inline") {
-		t.Fatalf("math must be opt-in, got %s", plain)
+	if _, err := Render("$$\n\\frac{1}{\n$$\n", cfg, nil); err == nil || !strings.Contains(err.Error(), "math $$\\frac{1}{$$:") {
+		t.Fatalf("expected a display math error with $$, got %v", err)
+	}
+	for _, src := range []string{"$$\nx + 1\n\n## Heading\n", "> $$\n> x\n\nText.\n"} {
+		if _, err := Render(src, cfg, nil); err == nil || !strings.Contains(err.Error(), `starting with "x`) {
+			t.Fatalf("%q: expected an unclosed block error, got %v", src, err)
+		}
+	}
+	if _, err := Render("> $$\n> x\n> $$\n", cfg, nil); err != nil {
+		t.Fatalf("display math in a blockquote: %v", err)
+	}
+}
+
+func TestRenderMathOff(t *testing.T) {
+	cfg := config.DefaultSiteConfig()
+	for _, src := range []string{"Uses $a_1$ here.\n", "$$\nx^2\n$$\n", "Inline $$x$$ display.\n"} {
+		_, err := Render(src, cfg, nil)
+		if err == nil || !strings.Contains(err.Error(), "markdown.math is off") {
+			t.Fatalf("%q: expected TeX to fail while math is off, got %v", src, err)
+		}
+	}
+	got, err := Render("Set $HOME and $PATH, pay $5 or $10, and keep \\$x^2\\$ literal.\n", cfg, nil)
+	if err != nil {
+		t.Fatalf("plain dollar signs must stay text: %v", err)
+	}
+	if !strings.Contains(got, "Set $HOME and $PATH, pay $5 or $10, and keep $x^2$ literal.") || strings.Contains(got, "<math") {
+		t.Fatalf("unexpected output %s", got)
+	}
+	got, err = Render("Between $x and y$ there is text.\n", cfg, nil)
+	if err != nil || !strings.Contains(got, "Between $x and y$ there is text.") {
+		t.Fatalf("prose between dollar signs must stay text, got %s, %v", got, err)
 	}
 }
 
@@ -220,5 +252,42 @@ func TestHeadingIDsKeepUnicodeAndMatchASCIIRules(t *testing.T) {
 		if !strings.Contains(result.HTML, want) {
 			t.Fatalf("expected %s in\n%s", want, result.HTML)
 		}
+	}
+}
+
+func TestSplitSummaryIgnoresMarkersInLongerFences(t *testing.T) {
+	src := "Intro.\n\n````md\n```\n<!-- more -->\n```\n````\n\nAfter.\n\n<!-- more -->\n\nRest.\n"
+	body, summary, found := splitSummary(src)
+	if !found || !strings.Contains(summary, "````md\n```\n<!-- more -->\n```\n````") || !strings.Contains(summary, "After.") {
+		t.Fatalf("expected the marker after the code block, got summary %q", summary)
+	}
+	if strings.Count(body, "<!-- more -->") != 1 {
+		t.Fatalf("expected only the real marker removed, got %q", body)
+	}
+}
+
+func TestHeadingIDsAvoidLaterCustomIDs(t *testing.T) {
+	got, err := Render("# Foo\n\n# Bar {#foo}\n\n## Baz {#baz .wide}\n\n## Baz\n", config.DefaultSiteConfig(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`<h1 id="foo-1">Foo</h1>`, `<h1 id="foo">Bar</h1>`, `id="baz"`, `<h2 id="baz-1">Baz</h2>`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %s in\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderNestedDetails(t *testing.T) {
+	src := "{% details(summary=\"Outer\") %}\nA\n\n{% details(summary=\"Inner\") %}\nB\n{% end %}\n\nC\n{% end %}\n\nAfter.\n"
+	got, err := Render(src, config.DefaultSiteConfig(), nil)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	if strings.Count(got, "<details") != 2 || strings.Count(got, "</details>") != 2 || strings.Contains(got, "{%") {
+		t.Fatalf("expected two nested details blocks, got\n%s", got)
+	}
+	if outer := got[:strings.LastIndex(got, "</details>")]; !strings.Contains(outer, "C") {
+		t.Fatalf("expected C inside the outer block, got\n%s", got)
 	}
 }

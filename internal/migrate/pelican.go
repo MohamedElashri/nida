@@ -169,7 +169,7 @@ func (s pelicanSource) Plan(p *Plan) error {
 	site.planTheme()
 	if site.usesMath {
 		p.Config.Table("markdown").Set("math", true)
-		p.Report.Add(Review, "", 0, "Content uses math, so `markdown.math` is on. It passes TeX through; load KaTeX or MathJax from your templates (the built-in `nida-scripts` partial does).")
+		p.Report.Add(Review, "", 0, "Content uses math, so `markdown.math` is on. TeX renders to MathML at build time; the built-in `nida-scripts` partial adds its stylesheet.")
 	}
 	return nil
 }
@@ -207,7 +207,7 @@ func (s *pelicanSite) list(key string, def []string) []string {
 	if !ok {
 		return def
 	}
-	return pyStrings(v)
+	return stringList(v)
 }
 
 func (s *pelicanSite) setupSlugs() {
@@ -459,7 +459,7 @@ func (s *pelicanSite) planConfig() {
 	}
 
 	if v, ok := s.get("PLUGINS"); ok {
-		if names := pyStrings(v); len(names) > 0 {
+		if names := stringList(v); len(names) > 0 {
 			r.Add(Unsupported, file, 0, "Pelican plugins do not run in Nida: %s.%s", strings.Join(names, ", "), pluginHints(names))
 		}
 	}
@@ -469,7 +469,7 @@ func (s *pelicanSite) planConfig() {
 			if cfg, ok := m["extension_configs"].(map[string]any); ok {
 				exts = append(exts, sortedKeys(cfg)...)
 			}
-			exts = append(exts, pyStrings(m["extensions"])...)
+			exts = append(exts, stringList(m["extensions"])...)
 		}
 		slices.Sort(exts)
 		exts = slices.Compact(exts)
@@ -551,7 +551,7 @@ func pluginHints(names []string) string {
 	hints := map[string]string{
 		"sitemap":               "Nida writes sitemap.xml itself",
 		"neighbors":             "use `.Page.PrevURL` and `.Page.NextURL`",
-		"render_math":           "set `markdown.math` and load KaTeX",
+		"render_math":           "set `markdown.math`",
 		"related_posts":         "use `.Index.Related`",
 		"i18n_subsites":         "Nida sites have one language",
 		"pelican-yaml-metadata": "YAML front matter is read natively",
@@ -664,7 +664,7 @@ func (s *pelicanSite) collect() error {
 			}
 			return nil
 		}
-		kind := ""
+		var kind string
 		switch {
 		case underAny(inner, pagePaths) && !underAnyExcept(inner, pageExcludes, pagePaths):
 			kind = pelicanPage

@@ -30,7 +30,7 @@ Nida has no equivalent for these, so they were dropped or kept only for referenc
 - Category pages were `/category/{slug}.html`; Nida writes `/category/{slug}/`. Add a redirect on your host, such as Netlify's `/category/:slug.html /category/:slug/ 301`. (`pelicanconf.py`)
 - Author pages (`author/{slug}.html`) have no equivalent in Nida. (`pelicanconf.py`)
 - Pelican's index pages `archives.html`, `authors.html`, `categories.html`, `tags.html` have no direct equivalent. Nida lists taxonomies at `/tag/` and `/category/`; build an archive page with `groupByMonth` if you need one. (`pelicanconf.py`)
-- Pelican plugins do not run in Nida: sitemap, neighbors, render_math. Equivalents: sitemap: Nida writes sitemap.xml itself; neighbors: use `.Page.PrevURL` and `.Page.NextURL`; render_math: set `markdown.math` and load KaTeX. (`pelicanconf.py`)
+- Pelican plugins do not run in Nida: sitemap, neighbors, render_math. Equivalents: sitemap: Nida writes sitemap.xml itself; neighbors: use `.Page.PrevURL` and `.Page.NextURL`; render_math: set `markdown.math`. (`pelicanconf.py`)
 - The `MARKDOWN` settings do not carry over (`markdown.extensions.codehilite`, `markdown.extensions.extra`, `markdown.extensions.toc`). Nida renders CommonMark with GFM tables, footnotes, heading ids, and highlighting built in; tables of contents come from `.Page.TOC`. (`pelicanconf.py`)
 - `GITHUB_URL` has no Nida meaning; it is kept as `extra.github_url` for templates. (`pelicanconf.py`)
 - `DISQUS_SITENAME` is not a literal value (it calls os.environ.get()), so it was not read. Set its equivalent by hand if it matters. (`pelicanconf.py`)
@@ -40,7 +40,7 @@ Nida has no equivalent for these, so they were dropped or kept only for referenc
 
 These were converted, but the result may not match the old site exactly.
 
-- Content uses math, so `markdown.math` is on. It passes TeX through; load KaTeX or MathJax from your templates (the built-in `nida-scripts` partial does).
+- Content uses math, so `markdown.math` is on. TeX renders to MathML at build time; the built-in `nida-scripts` partial adds its stylesheet.
 - Content uses raw HTML, so `markdown.unsafe_html` is on. Nida turns it off by default because it lets Markdown authors inject scripts; keep it only if you trust everyone who writes content.
 - The `[TOC]` marker was removed; build a table of contents from `.Page.TOC` in the template. (`content/engines/difference-engine.md:11`)
 - Attribute list `{: .note }` is not supported and was removed. (`content/engines/difference-engine.md:20`)

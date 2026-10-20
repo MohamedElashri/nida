@@ -2,10 +2,11 @@ package assets
 
 import (
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/MohamedElashri/nida/internal/config"
@@ -55,7 +56,7 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 	}
 
 	for _, staticRoot := range staticRoots {
-		if err := copyDir(staticRoot, outputRoot); err != nil {
+		if err := copyDir(staticRoot, outputRoot, cfg); err != nil {
 			return err
 		}
 	}
@@ -63,7 +64,7 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 	return nil
 }
 
-func copyDir(staticRoot, outputRoot string) error {
+func copyDir(staticRoot, outputRoot string, cfg config.SiteConfig) error {
 	if _, err := os.Stat(staticRoot); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -86,6 +87,9 @@ func copyDir(staticRoot, outputRoot string) error {
 		if d.Type()&fs.ModeSymlink != 0 {
 			return fmt.Errorf("refuse static symlink %q", path)
 		}
+		if !d.IsDir() && skipStatic(cfg, rel) {
+			return nil
+		}
 
 		target, err := safepath.Join(outputRoot, rel)
 		if err != nil {
@@ -107,7 +111,7 @@ func copyDir(staticRoot, outputRoot string) error {
 			return fmt.Errorf("stat output path %q: %w", target, err)
 		}
 
-		return copyFile(path, target)
+		return safepath.CopyFile(path, target)
 	})
 }
 
@@ -143,70 +147,108 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 		staticRoots = append(staticRoots, themeStatic[i])
 	}
 
-	for _, staticRoot := range staticRoots {
-		staticPrefix, err := staticRootPrefix(absSiteRoot, staticRoot)
+	prefixes := make([]string, len(staticRoots))
+	for i, root := range staticRoots {
+		if prefixes[i], err = staticRootPrefix(absSiteRoot, root); err != nil {
+			return err
+		}
+	}
+
+	for _, changedPath := range changedPaths {
+		normalized, err := changedPathRelativeToSite(absSiteRoot, changedPath)
 		if err != nil {
 			return err
 		}
-		for _, changedPath := range changedPaths {
-			normalized, err := changedPathRelativeToSite(absSiteRoot, changedPath)
-			if err != nil {
-				return err
+		if normalized == "" || safepath.Escapes(normalized) {
+			continue
+		}
+		rel := ""
+		for _, prefix := range prefixes {
+			if prefix != "" && strings.HasPrefix(normalized, prefix) {
+				rel = strings.TrimPrefix(normalized, prefix)
+				break
 			}
-			if normalized == "" || pathEscapesRoot(normalized) {
-				continue
-			}
-			if staticPrefix != "" && normalized != strings.TrimSuffix(staticPrefix, "/") && !strings.HasPrefix(normalized, staticPrefix) {
-				continue
-			}
-
-			rel := strings.TrimPrefix(normalized, staticPrefix)
-			if rel == normalized && staticPrefix != "" {
-				rel = ""
-			}
-			if strings.TrimSpace(rel) == "" {
-				continue
-			}
-
-			source, err := safepath.Join(staticRoot, rel)
-			if err != nil {
-				return fmt.Errorf("resolve static asset %q: %w", rel, err)
-			}
-			target, err := safepath.Join(outputRoot, rel)
-			if err != nil {
-				return fmt.Errorf("resolve output path %q: %w", rel, err)
-			}
-			if err := safepath.EnsureNoSymlinkPath(outputRoot, target); err != nil {
-				return fmt.Errorf("check output path %q: %w", target, err)
-			}
-
-			info, err := os.Lstat(source)
-			if err != nil {
-				if os.IsNotExist(err) {
-					if removeErr := os.Remove(target); removeErr != nil && !os.IsNotExist(removeErr) {
-						return fmt.Errorf("remove stale asset %q: %w", target, removeErr)
-					}
-					continue
-				}
-				return fmt.Errorf("stat static asset %q: %w", source, err)
-			}
-			if info.Mode()&os.ModeSymlink != 0 {
-				return fmt.Errorf("refuse static symlink %q", source)
-			}
-			if info.IsDir() {
-				if err := os.MkdirAll(target, 0o755); err != nil {
-					return fmt.Errorf("create output directory for %q: %w", target, err)
-				}
-				continue
-			}
-
-			if err := copyFile(source, target); err != nil {
-				return err
-			}
+		}
+		if rel == "" && slices.Contains(prefixes, "") {
+			// static_dir = "." serves the whole site root.
+			rel = normalized
+		}
+		if strings.TrimSpace(rel) == "" || skipStatic(cfg, rel) {
+			continue
+		}
+		if err := syncStatic(staticRoots, outputRoot, rel, cfg); err != nil {
+			return err
 		}
 	}
 
 	return nil
+}
+
+// syncStatic updates one output path from the first static root that has
+// it, so the site overrides its theme as in a full build, and removes the
+// output when no root has it.
+func syncStatic(staticRoots []string, outputRoot, rel string, cfg config.SiteConfig) error {
+	target, err := safepath.Join(outputRoot, rel)
+	if err != nil {
+		return fmt.Errorf("resolve output path %q: %w", rel, err)
+	}
+	if err := safepath.EnsureNoSymlinkPath(outputRoot, target); err != nil {
+		return fmt.Errorf("check output path %q: %w", target, err)
+	}
+	for _, root := range staticRoots {
+		source, err := safepath.Join(root, rel)
+		if err != nil {
+			return fmt.Errorf("resolve static asset %q: %w", rel, err)
+		}
+		info, err := os.Lstat(source)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("stat static asset %q: %w", source, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refuse static symlink %q", source)
+		}
+		if info.IsDir() {
+			// A directory moved in brings files that report no changes
+			// of their own.
+			if err := os.MkdirAll(target, 0o755); err != nil {
+				return fmt.Errorf("create output directory for %q: %w", target, err)
+			}
+			entries, err := os.ReadDir(source)
+			if err != nil {
+				return fmt.Errorf("read static directory %q: %w", source, err)
+			}
+			for _, entry := range entries {
+				child := path.Join(rel, entry.Name())
+				if !entry.IsDir() && skipStatic(cfg, child) {
+					continue
+				}
+				if err := syncStatic(staticRoots, outputRoot, child, cfg); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		return safepath.CopyFile(source, target)
+	}
+	if info, err := os.Lstat(target); err == nil && info.IsDir() {
+		// Rendered pages may share the directory, so only an empty one
+		// is removed; the next full build drops anything left.
+		_ = os.Remove(target)
+		return nil
+	}
+	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove stale asset %q: %w", target, err)
+	}
+	return nil
+}
+
+// skipStatic reports static files that are not published as they are:
+// SCSS sources, which the pipeline compiles.
+func skipStatic(cfg config.SiteConfig, rel string) bool {
+	return cfg.Pipeline.SCSS.Enabled && pipeline.IsSass(rel)
 }
 
 func staticRootPrefix(absSiteRoot, staticRoot string) (string, error) {
@@ -240,11 +282,6 @@ func changedPathRelativeToSite(absSiteRoot, changedPath string) (string, error) 
 	}
 
 	return filepath.ToSlash(clean), nil
-}
-
-func pathEscapesRoot(path string) bool {
-	clean := filepath.Clean(filepath.FromSlash(path))
-	return clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || filepath.IsAbs(clean)
 }
 
 func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage) error {
@@ -303,7 +340,7 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 				return fmt.Errorf("page resource %q of %s would overwrite the one of %s; rename one of them", res, page.URL, other)
 			}
 			written[dst] = page.URL
-			if err := copyFile(src, dst); err != nil {
+			if err := safepath.CopyFile(src, dst); err != nil {
 				return fmt.Errorf("copy page resource %q: %w", res, err)
 			}
 			if cfg.Pipeline.Images.Enabled {
@@ -314,38 +351,5 @@ func CopyPageBundles(siteRoot string, cfg config.SiteConfig, pages []BundlePage)
 		}
 	}
 
-	return nil
-}
-
-func copyFile(src, dst string) error {
-	if err := safepath.RejectSymlink(src); err != nil {
-		return fmt.Errorf("check source file %q: %w", src, err)
-	}
-	if err := safepath.RejectSymlink(dst); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("check output file %q: %w", dst, err)
-	}
-	in, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("open static file %q: %w", src, err)
-	}
-	defer func() { _ = in.Close() }()
-
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return fmt.Errorf("create output directory for %q: %w", dst, err)
-	}
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("create output file %q: %w", dst, err)
-	}
-	defer func() { _ = out.Close() }()
-
-	if _, err := io.Copy(out, in); err != nil {
-		return fmt.Errorf("copy %q to %q: %w", src, dst, err)
-	}
-
-	if err := out.Close(); err != nil {
-		return fmt.Errorf("close output file %q: %w", dst, err)
-	}
 	return nil
 }

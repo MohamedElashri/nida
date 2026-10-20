@@ -54,9 +54,18 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 
 	manifest := make(Manifest)
 
+	// seen holds output paths already written; the first writer wins.
+	seen := map[string]bool{}
 	if cfg.Pipeline.SCSS.Enabled {
-		if err := compileSCSS(absSiteRoot, staticRoot, outputRoot, cfg); err != nil {
+		compiled, err := compileSCSS(absSiteRoot, staticRoot, outputRoot, cfg)
+		if err != nil {
 			return nil, err
+		}
+		for _, rel := range compiled {
+			seen[rel] = true
+			if err := fingerprintCompiled(outputRoot, rel, cfg, manifest); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -72,9 +81,8 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 	for i := len(themeStatic) - 1; i >= 0; i-- {
 		roots = append(roots, themeStatic[i])
 	}
-	seen := map[string]bool{}
 	for _, root := range roots {
-		if err := processStaticFiles(root, outputRoot, "", root, cfg, manifest, seen); err != nil {
+		if err := processStaticFiles(outputRoot, "", root, cfg, manifest, seen); err != nil {
 			return nil, err
 		}
 	}
@@ -88,7 +96,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 	return manifest, nil
 }
 
-func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest, seen map[string]bool) error {
+func processStaticFiles(outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest, seen map[string]bool) error {
 	entries, err := os.ReadDir(absDir)
 	if err != nil {
 		return fmt.Errorf("read dir %q: %w", absDir, err)
@@ -104,7 +112,7 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 		relPath := filepath.ToSlash(filepath.Join(relDir, name))
 
 		if entry.IsDir() {
-			if err := processStaticFiles(staticRoot, outputRoot, relPath, srcPath, cfg, manifest, seen); err != nil {
+			if err := processStaticFiles(outputRoot, relPath, srcPath, cfg, manifest, seen); err != nil {
 				return err
 			}
 			continue
@@ -113,6 +121,10 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 			return fmt.Errorf("refuse static symlink %q", srcPath)
 		}
 		if seen[relPath] {
+			continue
+		}
+		if cfg.Pipeline.SCSS.Enabled && IsSass(name) {
+			// Sources and partials are compiled, not published.
 			continue
 		}
 		seen[relPath] = true
@@ -152,13 +164,41 @@ func processStaticFiles(staticRoot, outputRoot, relDir, absDir string, cfg confi
 			}
 			manifest[relPath] = fpPath
 		} else {
-			if err := copyFile(srcPath, dstPath); err != nil {
+			if err := safepath.CopyFile(srcPath, dstPath); err != nil {
 				return fmt.Errorf("copy %q: %w", relPath, err)
 			}
 		}
 	}
 
 	return nil
+}
+
+// IsSass reports whether a file is an SCSS or Sass source.
+func IsSass(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	return ext == ".scss" || ext == ".sass"
+}
+
+// fingerprintCompiled moves a compiled stylesheet to its fingerprinted
+// name when fingerprinting is on, as static files are written.
+func fingerprintCompiled(outputRoot, rel string, cfg config.SiteConfig, manifest Manifest) error {
+	if !cfg.Pipeline.Fingerprint {
+		return nil
+	}
+	plain, err := safepath.Join(outputRoot, rel)
+	if err != nil {
+		return fmt.Errorf("resolve compiled css %q: %w", rel, err)
+	}
+	data, err := os.ReadFile(plain)
+	if err != nil {
+		return fmt.Errorf("read compiled css %q: %w", rel, err)
+	}
+	fpPath, err := fingerprintData(data, rel, outputRoot)
+	if err != nil {
+		return fmt.Errorf("fingerprint %q: %w", rel, err)
+	}
+	manifest[rel] = fpPath
+	return os.Remove(plain)
 }
 
 // IsImageFile reports whether the pipeline can resize a file. WebP is read

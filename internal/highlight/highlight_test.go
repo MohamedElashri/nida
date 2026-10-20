@@ -32,3 +32,7 @@ func TestRenderUnknownLanguageFallsBack(t *testing.T) {
 		t.Fatalf("expected escaped code output, got %q", html)
 	}
 }
+
+func Render(code, language, theme string) (string, error) {
+	return RenderWithOptions(code, language, theme, Options{})
+}

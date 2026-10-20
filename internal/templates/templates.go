@@ -170,14 +170,6 @@ func (s Set) Execute(name string, data any) (string, error) {
 	return b.String(), nil
 }
 
-func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
-	cfg := config.DefaultSiteConfig()
-	if len(cfgs) > 0 {
-		cfg = cfgs[0]
-	}
-	return funcMapWith(siteRoot, cfg, i18n.Translations{})
-}
-
 func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) template.FuncMap {
 	return template.FuncMap{
 		"t":                 tr.T,
@@ -205,8 +197,8 @@ func funcMapWith(siteRoot string, cfg config.SiteConfig, tr i18n.Translations) t
 		"asset":             assetURLFunc(cfg),
 		"assetURL":          assetURLFunc(cfg),
 		"imageVariant":      imageVariantFunc(cfg),
-		"imageSrcset":       imageSrcsetFunc(cfg),
-		"imagePresetSrcset": imagePresetSrcsetFunc(cfg),
+		"imageSrcset":       imageSrcsetFunc(siteRoot, cfg),
+		"imagePresetSrcset": imagePresetSrcsetFunc(siteRoot, cfg),
 		"imagePresetSizes":  imagePresetSizesFunc(cfg),
 		"readFile":          readFileFunc(siteRoot, cfg),
 		"resizeImage":       resizeImageFunc(siteRoot, cfg),
@@ -417,7 +409,7 @@ func pathUnderAnyRoot(roots []string, path string) bool {
 		if err != nil {
 			continue
 		}
-		if rel == "." || (!strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)) {
+		if !safepath.Escapes(rel) {
 			return true
 		}
 	}
