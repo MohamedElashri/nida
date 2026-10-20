@@ -19,10 +19,10 @@ import (
 	"strconv"
 	"time"
 
-	js_ast "github.com/dop251/goja/ast"
-	"github.com/dop251/goja/file"
-	"github.com/dop251/goja/parser"
-	"github.com/dop251/goja/unistring"
+	js_ast "github.com/MohamedElashri/nida/third_party/goja/ast"
+	"github.com/MohamedElashri/nida/third_party/goja/file"
+	"github.com/MohamedElashri/nida/third_party/goja/parser"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
 const (

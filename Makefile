@@ -130,7 +130,7 @@ vendor: vendor-js vendor-goja ## Regenerate all embedded third-party code
 vendor-js: ## Regenerate embedded Pele and Temml files from third_party/js
 	$(GO) run ./scripts/vendorjs
 
-vendor-goja: ## Rebuild third_party/goja from go.mod's version
+vendor-goja: ## Rebuild third_party/goja from third_party/goja.version
 	$(GO) run ./scripts/vendorgoja
 
 goja-update: ## Move third_party/goja to GOJA (default master)
@@ -142,7 +142,7 @@ vendor-check: ## Verify embedded files and third_party/goja match their pins
 	$(GO) run ./scripts/vendorgoja -check
 
 outdated: ## List Go modules and goja commits with newer versions
-	@$(GO) list -m -u -f '{{if and .Update (not .Indirect)}}{{.Path}} {{.Version}} -> {{.Update.Version}}{{end}}' all | grep -v '^github.com/dop251/goja ' || true
+	@$(GO) list -m -u -f '{{if and .Update (not .Indirect)}}{{.Path}} {{.Version}} -> {{.Update.Version}}{{end}}' all
 	@latest="$$($(GO) run ./scripts/vendorgoja -outdated)"; \
 	if [[ -n "$$latest" ]]; then echo "goja (third_party) -> $$latest: make goja-update GOJA=$$latest"; fi
 	@echo "Pele and Temml: Dependabot opens pull requests for third_party/js"

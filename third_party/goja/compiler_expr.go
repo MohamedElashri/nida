@@ -7,10 +7,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/dop251/goja/ast"
-	"github.com/dop251/goja/file"
-	"github.com/dop251/goja/token"
-	"github.com/dop251/goja/unistring"
+	"github.com/MohamedElashri/nida/third_party/goja/ast"
+	"github.com/MohamedElashri/nida/third_party/goja/file"
+	"github.com/MohamedElashri/nida/third_party/goja/token"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
 type compiledExpr interface {

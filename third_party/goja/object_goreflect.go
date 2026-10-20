@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dop251/goja/parser"
-	"github.com/dop251/goja/unistring"
+	"github.com/MohamedElashri/nida/third_party/goja/parser"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
 // JsonEncodable allows custom JSON encoding by JSON.stringify()

@@ -3,7 +3,7 @@
 
 package goja
 
-import "github.com/dop251/goja/unistring"
+import "github.com/MohamedElashri/nida/third_party/goja/unistring"
 
 var (
 	SymAsyncIterator      = newSymbol(asciiString("Symbol.asyncIterator"))

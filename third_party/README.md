@@ -40,8 +40,18 @@ tests expect.
 
 ## goja: `goja/` and `goja.patch`
 
-`goja/` is upstream goja at the version `go.mod` requires, without tests,
-with `goja.patch` applied. `go.mod` points goja here with a `replace`.
+`goja/` is upstream goja at the version `goja.version` pins, without tests
+or its `go.mod`, with `goja.patch` applied. It is part of the nida module:
+`scripts/vendorgoja` rewrites goja's imports of its own packages, such as
+`github.com/dop251/goja/parser`, to
+`github.com/MohamedElashri/nida/third_party/goja/parser`, and Nida imports
+`github.com/MohamedElashri/nida/third_party/goja`. goja's dependencies
+(`regexp2`, `sourcemap`, `pprof`, `x/text`) are required by nida's `go.mod`.
+
+Do not point `go.mod` at the copy with a `replace` directive instead. Go
+refuses to `go install github.com/MohamedElashri/nida/cmd/nida@latest` from
+a module whose `go.mod` has one; 0.8.1 shipped that way and could not be
+installed.
 
 The patch, described at its top:
 
@@ -67,7 +77,7 @@ convert to smaller integer types on purpose: the specification requires
 the value to wrap around. Dismiss those alerts as false positives rather
 than patching them.
 
-Dependabot cannot update a replaced module, so it ignores goja. Instead
+goja is not in `go.mod`, so Dependabot does not see it. Instead
 `.github/workflows/goja.yml` checks upstream every Monday, tries the patch,
 and opens or updates an "Update vendored goja" issue. To update:
 
@@ -75,6 +85,9 @@ and opens or updates an "Update vendored goja" issue. To update:
 make goja-update               # or GOJA=<commit or pseudo-version>
 go test ./...
 ```
+
+This writes the new version to `goja.version`, rebuilds `goja/`, and runs
+`go mod tidy` in case goja's dependencies changed. Commit all four.
 
 If the patch no longer applies, edit `goja.patch` against the new upstream
 files (it is a plain unified diff with `a/` and `b/` paths, made without the

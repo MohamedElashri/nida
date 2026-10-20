@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dop251/goja/file"
-	"github.com/dop251/goja/token"
+	"github.com/MohamedElashri/nida/third_party/goja/file"
+	"github.com/MohamedElashri/nida/third_party/goja/token"
 )
 
 const (

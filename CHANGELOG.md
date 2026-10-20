@@ -2,6 +2,11 @@
 
 All notable changes to Nida are documented here.
 
+## [0.8.2] - 2026-10-20
+
+### Fixed
+* `go install github.com/MohamedElashri/nida/cmd/nida@latest` works again. 0.8.1 pointed `go.mod` at its patched copy of goja with a `replace` directive, and Go refuses to install a module whose `go.mod` has one. The copy is now part of the nida module, imported as `github.com/MohamedElashri/nida/third_party/goja`, and its version is pinned in `third_party/goja.version`.
+
 ## [0.8.1] - 2026-10-20
 
 ### Added

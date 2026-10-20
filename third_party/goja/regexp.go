@@ -11,8 +11,8 @@ import (
 	"strings"
 	"unicode/utf16"
 
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 	"github.com/dlclark/regexp2/v2"
-	"github.com/dop251/goja/unistring"
 )
 
 type regexp2MatchCache struct {

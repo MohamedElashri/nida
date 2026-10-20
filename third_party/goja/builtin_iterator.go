@@ -6,7 +6,7 @@ package goja
 import (
 	"math"
 
-	"github.com/dop251/goja/unistring"
+	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
 type iteratorHelperState uint8

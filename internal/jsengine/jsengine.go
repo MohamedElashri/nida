@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/MohamedElashri/nida/third_party/goja"
 )
 
 // timeout stops a call that would otherwise hang the build.
