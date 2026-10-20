@@ -60,6 +60,10 @@ func TestTemplateStringFuncs(t *testing.T) {
 		`{{ markdownify "Use *this*" }}`:              "Use <em>this</em>",
 		`{{ absURL "posts/a/" }}`:                     "https://example.com/blog/posts/a/",
 		`{{ relURL "/posts/a/" }}`:                    "/blog/posts/a/",
+		`{{ absURL "page/?x=1#top" }}`:                "https://example.com/blog/page/?x=1#top",
+		`{{ absURL "tags/c%23/" }}`:                   "https://example.com/blog/tags/c%23/",
+		`{{ absURL "" }}`:                             "https://example.com/blog",
+		`{{ relURL "a/?next=../b" }}`:                 "/blog/a/?next=../b",
 		`{{ relURL "https://other.org/x" }}`:          "https://other.org/x",
 		`{{ title "hello wide world" }}`:              "Hello Wide World",
 	}

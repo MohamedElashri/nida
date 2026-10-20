@@ -13,16 +13,19 @@ var summaryMarker = regexp.MustCompile(`^\s*<!--\s*more\s*-->\s*$`)
 // the Markdown before the marker, and whether one was found.
 func splitSummary(source string) (body, summary string, found bool) {
 	lines := strings.SplitAfter(source, "\n")
-	fence := ""
+	// A fence closes with a run of the same character at least as long,
+	// as in codeRanges, so a ``` line inside a ```` block does not.
+	fenceChar, fenceLen := byte(0), 0
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if fence == "" && (strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~")) {
-			fence = trimmed[:3]
+		n := fenceRun(trimmed)
+		if fenceChar == 0 && n >= 3 {
+			fenceChar, fenceLen = trimmed[0], n
 			continue
 		}
-		if fence != "" {
-			if strings.HasPrefix(trimmed, fence) {
-				fence = ""
+		if fenceChar != 0 {
+			if n >= fenceLen && trimmed[0] == fenceChar && strings.TrimSpace(trimmed[n:]) == "" {
+				fenceChar = 0
 			}
 			continue
 		}

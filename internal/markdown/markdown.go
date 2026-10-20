@@ -93,7 +93,7 @@ func newEngine(cfg config.SiteConfig, env Env) goldmark.Markdown {
 func renderMarkdownCore(source string, cfg config.SiteConfig, env Env) (Result, error) {
 	engine := newEngine(cfg, env)
 	src := []byte(source)
-	ctx := parser.NewContext(parser.WithIDs(newHeadingIDs()))
+	ctx := parser.NewContext(parser.WithIDs(newHeadingIDs(src)))
 	doc := engine.Parser().Parse(text.NewReader(src), parser.WithContext(ctx))
 
 	var buf bytes.Buffer
@@ -256,15 +256,11 @@ func RenderItem(item content.Page, cfg config.SiteConfig, env Env) (content.Page
 	return item, nil
 }
 
-// RenderItems renders pages concurrently; results keep the input order.
-func RenderItems(items []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {
-	return parallel.Map(items, func(item content.Page) (content.Page, error) {
-		return RenderItem(item, cfg, env)
-	})
-}
-
+// RenderPages renders pages concurrently; results keep the input order.
 func RenderPages(pages []content.Page, cfg config.SiteConfig, env Env) ([]content.Page, error) {
-	return RenderItems(pages, cfg, env)
+	return parallel.Map(pages, func(page content.Page) (content.Page, error) {
+		return RenderItem(page, cfg, env)
+	})
 }
 
 func RenderSections(sections []content.Section, cfg config.SiteConfig, env Env) ([]content.Section, error) {

@@ -2,6 +2,8 @@ package templates
 
 import (
 	"html/template"
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"slices"
@@ -238,4 +240,39 @@ func funcMap(siteRoot string, cfgs ...config.SiteConfig) template.FuncMap {
 		cfg = cfgs[0]
 	}
 	return funcMapWith(siteRoot, cfg, i18n.Translations{})
+}
+
+func TestImageSrcsetSkipsWidthsWiderThanTheOriginal(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "static", "images", "small.png")
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Create(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, image.NewRGBA(image.Rect(0, 0, 300, 200))); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+
+	cfg := config.DefaultSiteConfig()
+	cfg.BaseURL = "https://example.com/blog/"
+	cfg.Pipeline.Images.Widths = []int{100, 400, 800}
+	got, err := executeTemplateTextWithSiteRoot(`{{ imageSrcset "images/small.png" }}|{{ imageSrcset "images/missing.png" }}|{{ resizeImage "images/small.png" 50 40 "" }}`, nil, dir, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(got, "|")
+	if parts[0] != "/blog/images/small.100w.png 100w, /blog/images/small.png 300w" {
+		t.Errorf("srcset = %q", parts[0])
+	}
+	// Without the file, every configured width is listed.
+	if !strings.Contains(parts[1], "missing.800w.png 800w") {
+		t.Errorf("srcset for a missing image = %q", parts[1])
+	}
+	if !strings.HasPrefix(parts[2], "/blog/processed_images/small.") {
+		t.Errorf("resizeImage = %q, want the base path", parts[2])
+	}
 }

@@ -618,7 +618,7 @@ func TestCleanOldURL(t *testing.T) {
 }
 
 func TestWithinAcceptsNamesStartingWithDots(t *testing.T) {
-	root := filepath.Join("site")
+	root := "site"
 	for path, want := range map[string]bool{
 		filepath.Join("site", "..assets"):  true,
 		filepath.Join("site", "a", "b"):    true,

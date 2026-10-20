@@ -3,6 +3,8 @@ package pipeline
 import (
 	"regexp"
 	"strings"
+
+	"github.com/MohamedElashri/nida/internal/route"
 )
 
 var rewritePatterns = []struct {
@@ -17,7 +19,10 @@ var rewritePatterns = []struct {
 	{regexp.MustCompile(`<link\b[^>]*\bhref="([^"]*(?:\.svg|\.woff2?|\.ttf|\.eot))"`), []int{1}},
 }
 
-func RewriteHTML(html string, manifest Manifest) string {
+// rewriteHTML points asset references at their fingerprinted names.
+// basePath is the base_url path, such as "/blog", that site-relative
+// references start with.
+func rewriteHTML(html string, manifest Manifest, basePath string) string {
 	if len(manifest) == 0 {
 		return html
 	}
@@ -33,11 +38,11 @@ func RewriteHTML(html string, manifest Manifest) string {
 					continue
 				}
 				original := submatches[idx]
-				mapped, ok := lookupManifest(manifest, original)
+				mapped, ok := lookupManifest(manifest, original, basePath)
 				if ok {
 					return strings.Replace(match, original, mapped, 1)
 				}
-				if rewritten, changed := rewriteSrcset(original, manifest); changed {
+				if rewritten, changed := rewriteSrcset(original, manifest, basePath); changed {
 					return strings.Replace(match, original, rewritten, 1)
 				}
 			}
@@ -48,37 +53,26 @@ func RewriteHTML(html string, manifest Manifest) string {
 	return html
 }
 
-func lookupManifest(manifest Manifest, path string) (string, bool) {
-	if isExternalAssetPath(path) {
+func lookupManifest(manifest Manifest, path, basePath string) (string, bool) {
+	if route.IsAbsoluteURL(path) {
 		return "", false
 	}
 
-	suffixIndex := len(path)
-	for _, marker := range []string{"?", "#"} {
-		if index := strings.Index(path, marker); index >= 0 && index < suffixIndex {
-			suffixIndex = index
-		}
-	}
-	suffix := path[suffixIndex:]
-	path = path[:suffixIndex]
-	leadingSlash := strings.HasPrefix(path, "/")
-	path = strings.TrimPrefix(path, "/")
+	path, suffix := route.SplitSuffix(path)
 
+	// Site-relative references carry the base path; others name the
+	// asset directly.
+	prefix := ""
+	if rest, ok := strings.CutPrefix(path, basePath+"/"); ok && strings.HasPrefix(path, "/") {
+		prefix, path = basePath+"/", rest
+	}
 	if mapped, ok := manifest[path]; ok {
-		return leadingAssetSlash(leadingSlash) + mapped + suffix, true
+		return prefix + mapped + suffix, true
 	}
-
-	for original, mapped := range manifest {
-		if strings.HasSuffix(path, original) {
-			prefix := strings.TrimSuffix(path, original)
-			return leadingAssetSlash(leadingSlash) + prefix + mapped + suffix, true
-		}
-	}
-
 	return "", false
 }
 
-func rewriteSrcset(srcset string, manifest Manifest) (string, bool) {
+func rewriteSrcset(srcset string, manifest Manifest, basePath string) (string, bool) {
 	parts := strings.Split(srcset, ",")
 	changed := false
 	for i, part := range parts {
@@ -90,7 +84,7 @@ func rewriteSrcset(srcset string, manifest Manifest) (string, bool) {
 		if len(fields) == 0 {
 			continue
 		}
-		if mapped, ok := lookupManifest(manifest, fields[0]); ok {
+		if mapped, ok := lookupManifest(manifest, fields[0], basePath); ok {
 			fields[0] = mapped
 			parts[i] = strings.Join(fields, " ")
 			changed = true
@@ -100,15 +94,4 @@ func rewriteSrcset(srcset string, manifest Manifest) (string, bool) {
 		return srcset, false
 	}
 	return strings.Join(parts, ", "), true
-}
-
-func isExternalAssetPath(path string) bool {
-	return strings.Contains(path, "://") || strings.HasPrefix(path, "//")
-}
-
-func leadingAssetSlash(leading bool) string {
-	if leading {
-		return "/"
-	}
-	return ""
 }

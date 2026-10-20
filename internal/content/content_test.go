@@ -98,7 +98,10 @@ func TestDeriveSlugNonASCII(t *testing.T) {
 	for in, want := range map[string]string{
 		"البنية":      "البنية",
 		"سلام عليكم":  "سلام-عليكم",
-		"مَرْحَبًا":   "مرحبا",
+		"مَرْحَبًا":   "مَرْحَبًا",
+		"हिंदी":       "हिंदी",
+		"क्या बात":    "क्या-बात",
+		"กิน":         "กิน",
 		"Café Noir":   "café-noir",
 		"日本語":         "日本語",
 		"ϕ-meson ℓ=2": "ph-meson-l-2",

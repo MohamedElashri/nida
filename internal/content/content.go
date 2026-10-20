@@ -346,10 +346,10 @@ func DeriveSlug(value string) string {
 		case unicode.IsLetter(r) || unicode.IsNumber(r):
 			b.WriteRune(unicode.ToLower(r))
 			lastHyphen = false
-		case unicode.Is(unicode.Mn, r):
-			// Combining marks, such as Arabic harakat, belong to the
-			// letter before them, so they are dropped rather than
-			// splitting the word.
+		case unicode.In(r, unicode.Mn, unicode.Mc) && b.Len() > 0 && !lastHyphen:
+			// Marks, such as Devanagari vowel signs or Arabic harakat,
+			// belong to the letter before them, as in heading IDs.
+			b.WriteRune(r)
 		case r == '-' || r == '_' || r == ' ':
 			if !lastHyphen && b.Len() > 0 {
 				b.WriteByte('-')

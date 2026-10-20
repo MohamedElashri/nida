@@ -8,14 +8,17 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MohamedElashri/nida/internal/config"
-	"github.com/MohamedElashri/nida/internal/content"
-	"github.com/MohamedElashri/nida/internal/markdown"
-	"github.com/MohamedElashri/nida/internal/safepath"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/text"
+
+	"github.com/MohamedElashri/nida/internal/config"
+	"github.com/MohamedElashri/nida/internal/content"
+	"github.com/MohamedElashri/nida/internal/markdown"
+	"github.com/MohamedElashri/nida/internal/route"
+	"github.com/MohamedElashri/nida/internal/safepath"
+	"github.com/MohamedElashri/nida/internal/themes"
 )
 
 type Issue struct {
@@ -55,9 +58,20 @@ func Check(siteRoot string, cfg config.SiteConfig, pages []content.Page, section
 		return fmt.Errorf("resolve static dir: %w", err)
 	}
 
+	// Images resolve against the site's static directory, then its
+	// themes', as static files are copied.
+	staticRoots := []string{staticRoot}
+	themeStatic, err := themes.Dirs(absSiteRoot, cfg, "static")
+	if err != nil {
+		return err
+	}
+	for i := len(themeStatic) - 1; i >= 0; i-- {
+		staticRoots = append(staticRoots, themeStatic[i])
+	}
+
 	checker := checker{
 		contentRoot: contentRoot,
-		staticRoot:  staticRoot,
+		staticRoots: staticRoots,
 		lookup:      lookup,
 	}
 	for _, page := range pages {
@@ -87,7 +101,7 @@ func Check(siteRoot string, cfg config.SiteConfig, pages []content.Page, section
 
 type checker struct {
 	contentRoot string
-	staticRoot  string
+	staticRoots []string
 	lookup      markdown.PathLookup
 	issues      []Issue
 }
@@ -120,7 +134,7 @@ func (c *checker) checkInternalReference(relativePath, destination string) {
 		return
 	}
 	withoutPrefix := strings.TrimPrefix(strings.TrimSpace(destination), "@/")
-	target, _ := markdown.SplitReferenceSuffix(withoutPrefix)
+	target, _ := route.SplitSuffix(withoutPrefix)
 	if _, ok := c.lookup[target]; ok {
 		return
 	}
@@ -133,21 +147,33 @@ func (c *checker) checkInternalReference(relativePath, destination string) {
 
 func (c *checker) checkImageAsset(relativePath, sourcePath, destination string) {
 	target := strings.TrimSpace(destination)
-	if target == "" || strings.HasPrefix(target, "@/") || isExternalReference(target) || strings.HasPrefix(target, "#") {
+	if target == "" || strings.HasPrefix(target, "@/") || route.IsAbsoluteURL(target) || strings.HasPrefix(target, "#") {
 		return
 	}
-	target, _ = markdown.SplitReferenceSuffix(target)
+	target, _ = route.SplitSuffix(target)
+	if unescaped, err := url.PathUnescape(target); err == nil {
+		// Markdown links percent-encode spaces and other characters.
+		target = unescaped
+	}
 	if target == "" {
 		return
 	}
 
 	var path string
 	if strings.HasPrefix(target, "/") {
-		path = filepath.Join(c.staticRoot, strings.TrimPrefix(target, "/"))
+		rel := strings.TrimPrefix(target, "/")
+		path = filepath.Join(c.staticRoots[0], filepath.FromSlash(rel))
+		for _, root := range c.staticRoots {
+			candidate := filepath.Join(root, filepath.FromSlash(rel))
+			if _, err := os.Stat(candidate); err == nil {
+				path = candidate
+				break
+			}
+		}
 	} else {
 		path = filepath.Join(filepath.Dir(sourcePath), filepath.FromSlash(target))
 	}
-	if pathEscapes(path, c.contentRoot, c.staticRoot) {
+	if pathEscapes(path, append([]string{c.contentRoot}, c.staticRoots...)...) {
 		c.add(relativePath, fmt.Sprintf("image path escapes site content/static roots: %q", destination))
 		return
 	}
@@ -167,14 +193,6 @@ func (c *checker) checkImageAsset(relativePath, sourcePath, destination string) 
 
 func (c *checker) add(path, message string) {
 	c.issues = append(c.issues, Issue{Path: path, Message: message})
-}
-
-func isExternalReference(value string) bool {
-	if strings.HasPrefix(value, "//") {
-		return true
-	}
-	parsed, err := url.Parse(value)
-	return err == nil && parsed.Scheme != ""
 }
 
 func pathEscapes(path string, roots ...string) bool {

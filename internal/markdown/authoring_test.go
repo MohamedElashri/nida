@@ -254,3 +254,40 @@ func TestHeadingIDsKeepUnicodeAndMatchASCIIRules(t *testing.T) {
 		}
 	}
 }
+
+func TestSplitSummaryIgnoresMarkersInLongerFences(t *testing.T) {
+	src := "Intro.\n\n````md\n```\n<!-- more -->\n```\n````\n\nAfter.\n\n<!-- more -->\n\nRest.\n"
+	body, summary, found := splitSummary(src)
+	if !found || !strings.Contains(summary, "````md\n```\n<!-- more -->\n```\n````") || !strings.Contains(summary, "After.") {
+		t.Fatalf("expected the marker after the code block, got summary %q", summary)
+	}
+	if strings.Count(body, "<!-- more -->") != 1 {
+		t.Fatalf("expected only the real marker removed, got %q", body)
+	}
+}
+
+func TestHeadingIDsAvoidLaterCustomIDs(t *testing.T) {
+	got, err := Render("# Foo\n\n# Bar {#foo}\n\n## Baz {#baz .wide}\n\n## Baz\n", config.DefaultSiteConfig(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`<h1 id="foo-1">Foo</h1>`, `<h1 id="foo">Bar</h1>`, `id="baz"`, `<h2 id="baz-1">Baz</h2>`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %s in\n%s", want, got)
+		}
+	}
+}
+
+func TestRenderNestedDetails(t *testing.T) {
+	src := "{% details(summary=\"Outer\") %}\nA\n\n{% details(summary=\"Inner\") %}\nB\n{% end %}\n\nC\n{% end %}\n\nAfter.\n"
+	got, err := Render(src, config.DefaultSiteConfig(), nil)
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	if strings.Count(got, "<details") != 2 || strings.Count(got, "</details>") != 2 || strings.Contains(got, "{%") {
+		t.Fatalf("expected two nested details blocks, got\n%s", got)
+	}
+	if outer := got[:strings.LastIndex(got, "</details>")]; !strings.Contains(outer, "C") {
+		t.Fatalf("expected C inside the outer block, got\n%s", got)
+	}
+}

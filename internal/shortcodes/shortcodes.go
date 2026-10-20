@@ -90,7 +90,9 @@ func (s *Set) addPartials(roots []string) error {
 				return fmt.Errorf("read partial %q: %w", file, err)
 			}
 			for name, tmpl := range s.templates {
-				if _, err := tmpl.Parse(string(data)); err != nil {
+				// A template of its own, so text outside a define cannot
+				// replace the shortcode's body.
+				if _, err := tmpl.New("partials/" + filepath.Base(file)).Parse(string(data)); err != nil {
 					return fmt.Errorf("parse partial %q for shortcode %q: %w", file, name, err)
 				}
 			}

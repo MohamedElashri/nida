@@ -72,7 +72,7 @@ Rendering takes a `markdown.Env`:
 | `Translate` | UI strings, for default callout titles. |
 | `Page` | The page being rendered, passed to shortcodes and the image resolver. |
 
-`RenderDocument` returns HTML plus the nested `TOC`. `RenderItem` also splits the summary at `<!-- more -->`, falling back to the first paragraph. `RenderItems` renders pages concurrently with `internal/parallel`.
+`RenderDocument` returns HTML plus the nested `TOC`. `RenderItem` also splits the summary at `<!-- more -->`, falling back to the first paragraph. `RenderPages` renders pages concurrently with `internal/parallel`.
 
 ## Shortcodes
 

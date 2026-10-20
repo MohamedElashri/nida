@@ -19,7 +19,7 @@ All notable changes to Nida are documented here.
 * **Breaking**: Mermaid.js is no longer bundled. Diagrams are `<div class="diagram"><svg class="pele …">` instead of `<pre class="mermaid">`, `vendor/mermaid-<version>/` is no longer written, and `bundledScripts` ignores `"mermaid"`. Themes that styled `pre.mermaid` should style `.diagram` and set the `--pele-*` variables instead. Pele follows Mermaid 12.1 syntax with its own layout and style, so diagrams look different from Mermaid's.
 
 ### Fixed
-* Slugs no longer put a hyphen between letters outside ASCII: `سلام عليكم` becomes `/سلام-عليكم/` instead of `/س-ل-ا-م-ع-ل-ي-ك-م/`, `Café` becomes `café` instead of `caf-é`, and combining marks such as Arabic harakat are dropped. This changes the URLs of such pages and taxonomy terms; add `aliases` to keep old links working.
+* Slugs no longer put a hyphen between letters outside ASCII: `سلام عليكم` becomes `/سلام-عليكم/` instead of `/س-ل-ا-م-ع-ل-ي-ك-م/`, `Café` becomes `café` instead of `caf-é`, and vowel signs and other marks stay with their letter, as in heading IDs, so `हिंदी` becomes `हिंदी` instead of `ह-ि-ं-द-ी`. This changes the URLs of such pages and taxonomy terms; add `aliases` to keep old links working.
 * `output_dir` can no longer be, contain, or sit inside the content, template, static, themes, or data directory, or `.git`. Every build empties `output_dir` first, so `output_dir = "content"` deleted the site's content.
 * `home.limit` now limits the homepage. Before, it had no effect.
 * `@/` links to drafts and future-dated pages are no longer resolved to a page the build leaves out; they are reported like any other broken link.
@@ -35,6 +35,21 @@ All notable changes to Nida are documented here.
   * Answers 404 for a directory without an `index.html` instead of listing it.
 * An unclosed `$$` math block fails with an error naming it, instead of passing the rest of the page to Temml. Display math errors show `$$...$$`.
 * A Mermaid error at the end of a diagram says so, instead of pointing past the last line with an empty excerpt.
+* Template and shortcode fixes:
+  * Text outside a `define` in a partial no longer replaces the body of every shortcode.
+  * `absURL` keeps a query, fragment, and percent-escapes: `absURL "page/?x=1"` was `…/page/%3Fx=1`.
+  * `relURL` no longer cleans `..` inside a query.
+  * `imageSrcset` and `imagePresetSrcset` list only the widths the pipeline writes, which are narrower than the original image, and add the original as the widest candidate. Before, they listed variants that were never written.
+  * `resizeImage` returns URLs under the `base_url` path, so sites published under a subpath load resized images.
+* Markdown fixes:
+  * A heading's generated ID no longer duplicates a later custom `{#id}`.
+  * `<!-- more -->` inside a code block opened with four or more backticks no longer splits the summary.
+  * `{% details %}` blocks can be nested.
+* The asset pipeline:
+  * Fingerprints compiled SCSS like other stylesheets, and no longer copies `.scss` and `.sass` sources into the output.
+  * Rewrites only references that start with the `base_url` path. Before, `/sub/css/main.css` could be rewritten to a fingerprinted file that did not exist.
+* With the asset pipeline on, `nida serve` rebuilds after a static file changes, so edited SCSS is recompiled and fingerprinted names stay current.
+* `nida check` finds images in theme `static/` directories and image paths with percent-escapes such as `%20`.
 * `nida migrate`:
   * A Hugo or Zola content file whose front matter does not parse is kept in `_migration/original/` instead of being copied into `content/`, where it stopped the new site from building and skipped the URL checks for every other page.
   * Zola content files without front matter get a title from their file name, as Hugo files already did.

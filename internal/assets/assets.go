@@ -56,7 +56,7 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 	}
 
 	for _, staticRoot := range staticRoots {
-		if err := copyDir(staticRoot, outputRoot); err != nil {
+		if err := copyDir(staticRoot, outputRoot, cfg); err != nil {
 			return err
 		}
 	}
@@ -64,7 +64,7 @@ func Copy(siteRoot string, cfg config.SiteConfig) error {
 	return nil
 }
 
-func copyDir(staticRoot, outputRoot string) error {
+func copyDir(staticRoot, outputRoot string, cfg config.SiteConfig) error {
 	if _, err := os.Stat(staticRoot); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -86,6 +86,9 @@ func copyDir(staticRoot, outputRoot string) error {
 		}
 		if d.Type()&fs.ModeSymlink != 0 {
 			return fmt.Errorf("refuse static symlink %q", path)
+		}
+		if !d.IsDir() && skipStatic(cfg, rel) {
+			return nil
 		}
 
 		target, err := safepath.Join(outputRoot, rel)
@@ -170,10 +173,10 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 			// static_dir = "." serves the whole site root.
 			rel = normalized
 		}
-		if strings.TrimSpace(rel) == "" {
+		if strings.TrimSpace(rel) == "" || skipStatic(cfg, rel) {
 			continue
 		}
-		if err := syncStatic(staticRoots, outputRoot, rel); err != nil {
+		if err := syncStatic(staticRoots, outputRoot, rel, cfg); err != nil {
 			return err
 		}
 	}
@@ -184,7 +187,7 @@ func SyncChanged(siteRoot string, cfg config.SiteConfig, changedPaths []string) 
 // syncStatic updates one output path from the first static root that has
 // it, so the site overrides its theme as in a full build, and removes the
 // output when no root has it.
-func syncStatic(staticRoots []string, outputRoot, rel string) error {
+func syncStatic(staticRoots []string, outputRoot, rel string, cfg config.SiteConfig) error {
 	target, err := safepath.Join(outputRoot, rel)
 	if err != nil {
 		return fmt.Errorf("resolve output path %q: %w", rel, err)
@@ -218,7 +221,11 @@ func syncStatic(staticRoots []string, outputRoot, rel string) error {
 				return fmt.Errorf("read static directory %q: %w", source, err)
 			}
 			for _, entry := range entries {
-				if err := syncStatic(staticRoots, outputRoot, path.Join(rel, entry.Name())); err != nil {
+				child := path.Join(rel, entry.Name())
+				if !entry.IsDir() && skipStatic(cfg, child) {
+					continue
+				}
+				if err := syncStatic(staticRoots, outputRoot, child, cfg); err != nil {
 					return err
 				}
 			}
@@ -236,6 +243,12 @@ func syncStatic(staticRoots []string, outputRoot, rel string) error {
 		return fmt.Errorf("remove stale asset %q: %w", target, err)
 	}
 	return nil
+}
+
+// skipStatic reports static files that are not published as they are:
+// SCSS sources, which the pipeline compiles.
+func skipStatic(cfg config.SiteConfig, rel string) bool {
+	return cfg.Pipeline.SCSS.Enabled && pipeline.IsSass(rel)
 }
 
 func staticRootPrefix(absSiteRoot, staticRoot string) (string, error) {

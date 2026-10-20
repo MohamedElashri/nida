@@ -80,7 +80,7 @@ Use `.BasePath` for route links that need to work under a project path such as G
 <a href="{{ .BasePath }}/guide/">Guide</a>
 ```
 
-For processed responsive images, `imageSrcset` uses `pipeline.images.widths`, while `imagePresetSrcset` and `imagePresetSizes` use a named image preset:
+For processed responsive images, `imageSrcset` uses `pipeline.images.widths`, while `imagePresetSrcset` and `imagePresetSizes` use a named image preset. Widths at or above the original image's are left out, since the pipeline does not upscale, and the original is listed as the widest candidate:
 
 ```html
 <img

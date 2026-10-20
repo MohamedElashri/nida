@@ -361,7 +361,14 @@ func rebuildMode(cfg config.SiteConfig, changedPaths []string) string {
 		case strings.HasPrefix(path, templatePrefix):
 			needsFull = true
 		case staticPrefix != "" && strings.HasPrefix(path, staticPrefix):
-			needsAssets = true
+			// The pipeline compiles, minifies, and fingerprints static
+			// files and rewrites pages to match, so only a build updates
+			// them.
+			if cfg.Pipeline.Active() {
+				needsFull = true
+			} else {
+				needsAssets = true
+			}
 		case strings.HasPrefix(path, contentPrefix):
 			if !strings.HasSuffix(path, ".md") {
 				needsFull = true

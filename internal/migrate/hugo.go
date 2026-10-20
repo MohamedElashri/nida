@@ -231,7 +231,7 @@ func (h *hugoSite) loadConfig() error {
 			if existing, ok := merged[key].(map[string]any); ok {
 				mergeMissing(existing, cfg)
 			} else if _, ok := merged[key]; !ok {
-				merged[key] = map[string]any(cfg)
+				merged[key] = cfg
 			}
 		}
 	}

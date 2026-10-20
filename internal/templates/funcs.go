@@ -15,6 +15,7 @@ import (
 	"github.com/MohamedElashri/nida/internal/config"
 	"github.com/MohamedElashri/nida/internal/highlight"
 	"github.com/MohamedElashri/nida/internal/markdown"
+	"github.com/MohamedElashri/nida/internal/route"
 )
 
 // dict builds a map from alternating keys and values, mainly so partials can
@@ -216,22 +217,19 @@ func markdownifyFunc(cfg config.SiteConfig) func(string) (template.HTML, error) 
 	}
 }
 
-// absURLFunc joins a site-relative path onto base_url.
+// absURLFunc joins a site-relative path onto base_url. Like relURL, it
+// keeps a query, a fragment, and percent-escapes as written.
 func absURLFunc(cfg config.SiteConfig) func(string) string {
+	rel := relURLFunc(cfg)
 	return func(value string) string {
-		if isAbsoluteURL(value) {
+		if route.IsAbsoluteURL(value) {
 			return value
 		}
 		base, err := url.Parse(strings.TrimSpace(cfg.BaseURL))
-		if err != nil {
+		if err != nil || base.Host == "" {
 			return value
 		}
-		joined := path.Join("/", base.Path, value)
-		if strings.HasSuffix(value, "/") && joined != "/" {
-			joined += "/"
-		}
-		base.Path = joined
-		return base.String()
+		return base.Scheme + "://" + base.Host + rel(value)
 	}
 }
 
@@ -240,20 +238,16 @@ func absURLFunc(cfg config.SiteConfig) func(string) string {
 func relURLFunc(cfg config.SiteConfig) func(string) string {
 	basePath := config.BasePath(cfg.BaseURL)
 	return func(value string) string {
-		if isAbsoluteURL(value) {
+		if route.IsAbsoluteURL(value) {
 			return value
 		}
+		value, suffix := route.SplitSuffix(value)
 		joined := path.Join("/", basePath, value)
 		if strings.HasSuffix(value, "/") && joined != "/" {
 			joined += "/"
 		}
-		return joined
+		return joined + suffix
 	}
-}
-
-func isAbsoluteURL(value string) bool {
-	parsed, err := url.Parse(value)
-	return err == nil && (parsed.Scheme != "" || strings.HasPrefix(value, "//"))
 }
 
 // jsonify encodes a value as JSON for use in scripts, such as JSON-LD.

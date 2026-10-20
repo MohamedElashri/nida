@@ -115,8 +115,19 @@ type headingIDs struct {
 	values map[string]bool
 }
 
-func newHeadingIDs() *headingIDs {
-	return &headingIDs{values: map[string]bool{}}
+// explicitHeadingID finds custom IDs such as {#install} or {#install .wide}
+// at the end of ATX heading lines.
+var explicitHeadingID = regexp.MustCompile(`(?m)^ {0,3}#{1,6}[ \t].*\{[^}\n]*#([^\s}#.]+)[^}\n]*\}[ \t]*$`)
+
+// newHeadingIDs reserves the custom IDs in source, which goldmark does not
+// pass to the generator, so an earlier heading's generated ID cannot
+// duplicate a later custom one.
+func newHeadingIDs(source []byte) *headingIDs {
+	ids := &headingIDs{values: map[string]bool{}}
+	for _, m := range explicitHeadingID.FindAllSubmatch(source, -1) {
+		ids.values[string(m[1])] = true
+	}
+	return ids
 }
 
 func (s *headingIDs) Generate(value []byte, kind ast.NodeKind) []byte {

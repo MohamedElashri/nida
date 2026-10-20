@@ -265,9 +265,9 @@ func TestResolveInternalPath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := ResolveInternalPath(tt.path, lookup)
+		got := resolveInternalPath(tt.path, lookup)
 		if got != tt.want {
-			t.Errorf("ResolveInternalPath(%q) = %q, want %q", tt.path, got, tt.want)
+			t.Errorf("resolveInternalPath(%q) = %q, want %q", tt.path, got, tt.want)
 		}
 	}
 }
