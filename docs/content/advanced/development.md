@@ -63,7 +63,7 @@ GOCACHE="$PWD/.gocache" go test ./...
 
 Nida renders math and diagrams at build time with Pele and Temml, JavaScript libraries that run in goja, a JavaScript engine written in Go. All three are pinned in `third_party/`, and generated files are never edited by hand:
 
-- `third_party/js/package-lock.json` pins Pele and Temml. Dependabot opens pull requests that bump it; check out the branch, run `make vendor-js`, and push. CI fails until then.
+- `third_party/js/package-lock.json` pins Pele and Temml. Dependabot opens pull requests that bump it, and CI automatically vendors the updated assets and pushes them back to the PR branch.
 - `third_party/goja/` is upstream goja with `third_party/goja.patch` applied and every file limited to 64-bit platforms. A weekly workflow opens an issue when upstream moves; `make goja-update` applies the patch to the new version.
 
 `third_party/README.md` has the details.

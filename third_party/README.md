@@ -32,11 +32,10 @@ make vendor-js
 go test ./...
 ```
 
-For a Dependabot pull request, check out its branch, run `make vendor-js`,
-and push. CI runs `go run ./scripts/vendorjs -check` and fails until then.
-Read the library's changelog: a new Pele release can change diagram layout,
-and a new Temml release can change MathML output or error messages that
-tests expect.
+For a Dependabot pull request, CI automatically runs `make vendor-js`
+and pushes the updated embedded files to the branch. Read the library's
+changelog: a new Pele release can change diagram layout, and a new Temml
+release can change MathML output or error messages that tests expect.
 
 ## goja: `goja/` and `goja.patch`
 

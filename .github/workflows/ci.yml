@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "**"
+      - "!dependabot/**"
     tags-ignore:
       - "**"
   pull_request:
@@ -14,9 +15,13 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # sanad: ref=v7.0.1
+        with:
+          ref: ${{ github.actor == 'dependabot[bot]' && github.head_ref || '' }}
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # sanad: ref=v7.0.0
@@ -38,6 +43,20 @@ jobs:
 
       - name: Run go vet
         run: go vet ./...
+
+      - name: Vendor JavaScript for Dependabot
+        if: github.actor == 'dependabot[bot]' && github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./scripts/vendorjs
+          git add internal/
+          if ! git diff --staged --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "vendor: update embedded JavaScript assets [dependabot skip]"
+            git push origin "HEAD:${{ github.head_ref }}"
+          fi
 
       - name: Check bundled JavaScript matches third_party/js
         run: go run ./scripts/vendorjs -check
