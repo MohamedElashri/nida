@@ -3,7 +3,7 @@
   "private": true,
   "description": "JavaScript libraries embedded in the nida binary. Dependabot watches this file; after a version change, run `make vendor-js` to regenerate the embedded files.",
   "dependencies": {
-    "pele": "1.6.0",
+    "pele": "1.9.0",
     "temml": "0.14.0"
   }
 }
