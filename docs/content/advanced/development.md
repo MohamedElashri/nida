@@ -137,4 +137,4 @@ Site files override theme files, and a child theme overrides its parent, for tem
 
 `.github/workflows/goja.yml` runs weekly and opens or updates an issue when upstream goja has new commits, saying whether `goja.patch` still applies.
 
-`.github/workflows/pages.yml` checks out full history (for git-based "last updated" dates), regenerates the release notes page from `CHANGELOG.md`, checks and builds the documentation site from `docs/`, and deploys it to GitHub Pages when docs, changelog, or source files change on `main`.
+`.github/workflows/pages.yml` checks out full history (for git-based "last updated" dates), regenerates the release notes page from `CHANGELOG.md`, checks and builds the documentation site from `docs/`, and deploys it to GitHub Pages when documentation or changelog files change on `main`.
