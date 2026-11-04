@@ -5,7 +5,6 @@ package goja
 
 import (
 	"math/big"
-	"strings"
 
 	"github.com/MohamedElashri/nida/third_party/goja/ast"
 	"github.com/MohamedElashri/nida/third_party/goja/file"
@@ -3176,12 +3175,13 @@ func (c *compiler) compileIdentifierExpression(v *ast.Identifier) compiledExpr {
 }
 
 func (c *compiler) compileNumberLiteral(v *ast.NumberLiteral) compiledExpr {
-	if c.scope.strict && len(v.Literal) > 1 && v.Literal[0] == '0' && v.Literal[1] <= '9' && v.Literal[1] >= '0' {
-		if strings.ContainsAny(v.Literal, "89") {
+	if c.scope.strict {
+		switch v.Kind {
+		case ast.NumberLiteralLegacyOctal:
+			c.throwSyntaxError(int(v.Idx)-1, "Octal literals are not allowed in strict mode")
+		case ast.NumberLiteralNonOctalDecimal:
 			c.throwSyntaxError(int(v.Idx)-1, "Decimals with leading zeros are not allowed in strict mode")
 		}
-		c.throwSyntaxError(int(v.Idx)-1, "Octal literals are not allowed in strict mode")
-		panic("Unreachable")
 	}
 	var val Value
 	switch num := v.Value.(type) {
