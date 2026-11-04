@@ -12,9 +12,10 @@ import (
 
 	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 
-	"github.com/MohamedElashri/nida/third_party/goja/parser"
 	"golang.org/x/text/unicode/norm"
 )
+
+const WhitespaceChars = " \f\n\r\t\v\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 
 func toString(arg Value) String {
 	if s, ok := arg.(String); ok {
@@ -465,15 +466,18 @@ func (r *Runtime) stringproto_normalize(call FunctionCall) Value {
 	case asciiString:
 		return s
 	case unicodeString:
-		ss := s.String()
-		return newStringValue(f.String(ss))
+		return s.normalize(f)
 	case *importedString:
 		if s.scanned && s.u == nil {
 			return asciiString(s.s)
 		}
 		return newStringValue(f.String(s.s))
 	case *concatString:
-		return newStringValue(f.String(s.String()))
+		a, u := devirtualizeString(s)
+		if u == nil {
+			return a
+		}
+		return u.normalize(f)
 	default:
 		panic(unknownStringTypeErr(s))
 	}
@@ -1037,27 +1041,46 @@ func (r *Runtime) stringproto_toWellFormed(call FunctionCall) Value {
 }
 
 func (r *Runtime) stringproto_trim(call FunctionCall) Value {
-	r.checkObjectCoercible(call.This)
-	s := call.This.toString()
-
-	// TODO handle invalid UTF-16
-	return newStringValue(strings.Trim(s.String(), parser.WhitespaceChars))
+	return r.trimString(call, true, true)
 }
 
 func (r *Runtime) stringproto_trimEnd(call FunctionCall) Value {
-	r.checkObjectCoercible(call.This)
-	s := call.This.toString()
-
-	// TODO handle invalid UTF-16
-	return newStringValue(strings.TrimRight(s.String(), parser.WhitespaceChars))
+	return r.trimString(call, false, true)
 }
 
 func (r *Runtime) stringproto_trimStart(call FunctionCall) Value {
+	return r.trimString(call, true, false)
+}
+
+func (r *Runtime) trimString(call FunctionCall, left, right bool) Value {
 	r.checkObjectCoercible(call.This)
 	s := call.This.toString()
+	a, u := devirtualizeString(s)
+	if u == nil {
+		if left {
+			a = asciiString(strings.TrimLeft(string(a), WhitespaceChars))
+		}
+		if right {
+			a = asciiString(strings.TrimRight(string(a), WhitespaceChars))
+		}
+		return a
+	}
 
-	// TODO handle invalid UTF-16
-	return newStringValue(strings.TrimLeft(s.String(), parser.WhitespaceChars))
+	start, end := 0, u.Length()
+	if left {
+		for start < end && strings.ContainsRune(WhitespaceChars, rune(u[start+1])) {
+			start++
+		}
+	}
+	if right {
+		for end > start && strings.ContainsRune(WhitespaceChars, rune(u[end])) {
+			end--
+		}
+	}
+	if start == 0 && end == u.Length() {
+		return s
+	}
+	return u.Substring(start, end)
 }
 
 func (r *Runtime) stringproto_substr(call FunctionCall) Value {

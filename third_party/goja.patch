@@ -60,7 +60,7 @@ goja, then limits every file to 64-bit platforms.
  		}
 --- a/builtin_bigint.go
 +++ b/builtin_bigint.go
-@@ -226,10 +226,11 @@
+@@ -258,10 +258,11 @@
  	if radix == _undefined {
  		radixMV = 10
  	} else {
@@ -101,15 +101,15 @@ goja, then limits every file to 64-bit platforms.
  func (r *Runtime) numberproto_toFixed(call FunctionCall) Value {
 --- a/builtin_regexp.go
 +++ b/builtin_regexp.go
-@@ -3,6 +3,7 @@
+@@ -2,6 +2,7 @@
+ 
  import (
- 	"errors"
  	"fmt"
 +	"math"
- 	"regexp"
- 	"regexp/syntax"
  	"strings"
-@@ -1095,7 +1096,12 @@
+ 	"unicode"
+ 	"unicode/utf16"
+@@ -1042,7 +1043,12 @@
  	pattern := search.pattern // toUint32() may recompile the pattern, but we still need to use the original
  	limit := -1
  	if limitValue != _undefined {
@@ -125,15 +125,17 @@ goja, then limits every file to 64-bit platforms.
  	if limit == 0 {
 --- a/builtin_string.go
 +++ b/builtin_string.go
-@@ -10,20 +10,9 @@
+@@ -9,21 +9,10 @@
+ 
  	"github.com/dop251/goja/unistring"
  
- 	"github.com/dop251/goja/parser"
 -	"golang.org/x/text/collate"
 -	"golang.org/x/text/language"
  	"golang.org/x/text/unicode/norm"
  )
  
+ const WhitespaceChars = " \f\n\r\t\v\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+-
 -func (r *Runtime) collator() *collate.Collator {
 -	collator := r._collator
 -	if collator == nil {
@@ -142,11 +144,10 @@ goja, then limits every file to 64-bit platforms.
 -	}
 -	return collator
 -}
--
+ 
  func toString(arg Value) String {
  	if s, ok := arg.(String); ok {
- 		return s
-@@ -375,7 +364,9 @@
+@@ -380,7 +369,9 @@
  	r.checkObjectCoercible(call.This)
  	this := norm.NFD.String(call.This.toString().String())
  	that := norm.NFD.String(call.Argument(0).toString().String())
@@ -188,7 +189,7 @@ goja, then limits every file to 64-bit platforms.
  	js_ast "github.com/dop251/goja/ast"
  	"github.com/dop251/goja/file"
  	"github.com/dop251/goja/parser"
-@@ -188,7 +186,6 @@
+@@ -190,7 +188,6 @@
  	stringSingleton *stringObject
  	rand            RandSource
  	now             Now

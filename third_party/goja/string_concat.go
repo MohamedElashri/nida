@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/MohamedElashri/nida/third_party/goja/parser"
 	"github.com/MohamedElashri/nida/third_party/goja/unistring"
 )
 
@@ -235,5 +234,5 @@ func (s *concatString) toUpper() String {
 }
 
 func (s *concatString) toTrimmedUTF8() string {
-	return strings.Trim(s.String(), parser.WhitespaceChars)
+	return strings.Trim(s.String(), WhitespaceChars)
 }
