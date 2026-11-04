@@ -74,10 +74,16 @@ func TestRenderReportsDiagramErrors(t *testing.T) {
 		t.Fatalf("unexpected message %q", err.Error())
 	}
 
-	// Pele places end-of-input errors past the last line.
-	_, err = Render("flowchart LR\n  A --> B[[\n", Options{})
-	if !errors.As(err, &diagErr) || diagErr.Line != 0 || !strings.HasPrefix(err.Error(), "mermaid diagram: Parse error at the end of the diagram: Expecting") {
-		t.Fatalf("expected an end-of-diagram error, got %#v", err)
+	// End-of-input errors point just after the last content, even when
+	// blank lines or comments follow the incomplete statement.
+	for _, ending := range []string{"\n", "\n\n", "\n%% trailing comment\n\n"} {
+		_, err = Render("flowchart LR\n  A --> B[["+ending, Options{})
+		if !errors.As(err, &diagErr) || diagErr.Code != "syntax" || diagErr.Line != 2 || diagErr.Column != 12 {
+			t.Fatalf("expected a syntax error at line 2, column 12 with ending %q, got %#v", ending, err)
+		}
+		if !strings.Contains(err.Error(), "A --> B[[") || !strings.Contains(err.Error(), "Expecting") {
+			t.Fatalf("unexpected end-of-input message %q", err.Error())
+		}
 	}
 
 	_, err = Render("not a diagram", Options{})
