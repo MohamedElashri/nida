@@ -2,6 +2,17 @@
 
 All notable changes to Nida are documented here.
 
+## [0.8.3] - 2026-11-04
+
+### Fixed
+* Mermaid diagrams use Pele 1.12.0, with fixes for readable labels and arrows on custom fills, percent-escaped links, valid SVG output, and parsing and layout errors. Incomplete diagrams now report the position just after the last content line, including when blank lines or comments follow it.
+* Updated the bundled goja JavaScript engine to `v0.0.0-20261031103838-cf2ff0ec0b31`, retaining Nida's collation and integer-conversion patches.
+* Updated the HTML, CSS, and JavaScript minifier to 2.24.24, including a fix for escaping `</script` in JavaScript embedded in HTML.
+
+### Changed
+* Updated Go dependencies, including regexp2 2.12.0, sourcemap 2.1.4, YAML 3.0.6, and `golang.org/x/image` 0.47.0.
+* CI regenerates embedded JavaScript assets for Dependabot updates. GitHub Actions use the native `actions.lock` lockfile, and release builds use GoReleaser action 7.3.0.
+
 ## [0.8.2] - 2026-10-20
 
 ### Fixed
