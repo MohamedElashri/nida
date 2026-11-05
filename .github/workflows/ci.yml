@@ -13,6 +13,21 @@ permissions:
   contents: read
 
 jobs:
+  macos-watcher:
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test native macOS watcher
+        run: go test -race ./internal/watcher
+
   test:
     runs-on: ubuntu-latest
     permissions:

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -29,36 +30,78 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 
 	type watchEntry struct {
 		fd   int
-		path string
+		info fs.FileInfo
 	}
 
 	watches := map[string]watchEntry{}
-	previous, err := snapshot(opts.SiteRoot, opts.OutputDir)
-	if err != nil {
-		return err
+	defer func() {
+		for _, entry := range watches {
+			_ = syscall.Close(entry.fd)
+		}
+	}()
+	removeWatch := func(path string, entry watchEntry) {
+		_, _ = syscall.Kevent(kq, []syscall.Kevent_t{{
+			Ident:  uint64(entry.fd),
+			Filter: syscall.EVFILT_VNODE,
+			Flags:  syscall.EV_DELETE,
+		}}, nil, nil)
+		_ = syscall.Close(entry.fd)
+		delete(watches, path)
 	}
 
 	syncWatches := func() error {
-		currentDirs := map[string]struct{}{}
+		currentPaths := map[string]struct{}{}
 		err := filepath.WalkDir(absSiteRoot, func(path string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
-			if !d.IsDir() {
-				return nil
-			}
 			path = filepath.Clean(path)
 			if shouldSkipPath(path, outputRoot) {
-				return fs.SkipDir
-			}
-			currentDirs[path] = struct{}{}
-			if _, ok := watches[path]; ok {
+				if d.IsDir() {
+					return fs.SkipDir
+				}
 				return nil
 			}
-
-			fd, err := syscall.Open(path, syscall.O_RDONLY, 0)
+			// Directory vnode events report entry changes, but not writes
+			// to existing files. Watch regular files individually as well.
+			// Do not follow symlinks or open special files.
+			if !d.IsDir() && !d.Type().IsRegular() {
+				return nil
+			}
+			info, err := d.Info()
 			if err != nil {
+				if os.IsNotExist(err) {
+					return nil
+				}
 				return err
+			}
+			currentPaths[path] = struct{}{}
+			if entry, ok := watches[path]; ok {
+				if os.SameFile(entry.info, info) {
+					return nil
+				}
+				// An atomic save or directory replacement leaves the old
+				// descriptor watching an inode no longer at this path.
+				removeWatch(path, entry)
+			}
+
+			fd, err := syscall.Open(path, syscall.O_EVTONLY|syscall.O_NOFOLLOW, 0)
+			if err != nil {
+				if os.IsNotExist(err) || err == syscall.ELOOP {
+					return nil
+				}
+				return err
+			}
+			// If the path changed between stat and open, its parent event
+			// will trigger another pass to register the replacement.
+			var stat syscall.Stat_t
+			if err := syscall.Fstat(fd, &stat); err != nil {
+				_ = syscall.Close(fd)
+				return err
+			}
+			if original, ok := info.Sys().(*syscall.Stat_t); !ok || original.Dev != stat.Dev || original.Ino != stat.Ino {
+				_ = syscall.Close(fd)
+				return nil
 			}
 
 			event := syscall.Kevent_t{
@@ -72,7 +115,7 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 				return err
 			}
 
-			watches[path] = watchEntry{fd: fd, path: path}
+			watches[path] = watchEntry{fd: fd, info: info}
 			return nil
 		})
 		if err != nil {
@@ -80,16 +123,10 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 		}
 
 		for path, entry := range watches {
-			if _, ok := currentDirs[path]; ok {
+			if _, ok := currentPaths[path]; ok {
 				continue
 			}
-			_, _ = syscall.Kevent(kq, []syscall.Kevent_t{{
-				Ident:  uint64(entry.fd),
-				Filter: syscall.EVFILT_VNODE,
-				Flags:  syscall.EV_DELETE,
-			}}, nil, nil)
-			_ = syscall.Close(entry.fd)
-			delete(watches, path)
+			removeWatch(path, entry)
 		}
 
 		return nil
@@ -98,11 +135,10 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 	if err := syncWatches(); err != nil {
 		return err
 	}
-	defer func() {
-		for _, entry := range watches {
-			_ = syscall.Close(entry.fd)
-		}
-	}()
+	previous, err := snapshot(opts.SiteRoot, opts.OutputDir)
+	if err != nil {
+		return err
+	}
 
 	events := make([]syscall.Kevent_t, 64)
 	timeout := syscall.NsecToTimespec((250 * time.Millisecond).Nanoseconds())
@@ -110,6 +146,9 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 	var debounce <-chan time.Time
 
 	flush := func() error {
+		if err := syncWatches(); err != nil {
+			return err
+		}
 		current, err := snapshot(opts.SiteRoot, opts.OutputDir)
 		if err != nil {
 			return err
@@ -119,7 +158,7 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 			opts.OnChange(changed)
 			previous = current
 		}
-		return syncWatches()
+		return nil
 	}
 
 	for {
@@ -148,16 +187,12 @@ func runEventWatcher(ctx context.Context, opts Options) error {
 			continue
 		}
 
-		changedDir := false
 		for _, event := range events[:n] {
 			if event.Flags&syscall.EV_ERROR != 0 {
 				return fmt.Errorf("kqueue watcher error on fd %d: %d", event.Ident, event.Data)
 			}
-			changedDir = true
 		}
-		if changedDir {
-			pending = true
-			debounce = time.After(150 * time.Millisecond)
-		}
+		pending = true
+		debounce = time.After(150 * time.Millisecond)
 	}
 }
