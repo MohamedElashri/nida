@@ -2,6 +2,11 @@
 
 All notable changes to Nida are documented here.
 
+## [0.8.4] - 2026-11-05
+
+### Fixed
+* `nida serve` rebuilds and reloads on macOS after editing existing files, including atomic editor saves.
+
 ## [0.8.3] - 2026-11-04
 
 ### Fixed

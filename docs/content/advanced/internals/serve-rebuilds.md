@@ -29,6 +29,8 @@ The base-path wrapper maps requests for the configured prefix back to files in t
 
 `internal/watcher.Run` prefers native filesystem events on platforms with support and falls back to polling. Polling snapshots file size and modification time.
 
+On macOS, the native watcher monitors both files and directories: directory events alone do not report edits to existing files. Watches are refreshed when files or directories are replaced, including atomic saves by editors.
+
 The watcher skips output directories and VCS directories so generated files do not trigger rebuild loops.
 
 Changed paths are passed back to `internal/cli` as site-relative paths.
