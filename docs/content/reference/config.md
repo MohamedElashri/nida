@@ -296,7 +296,7 @@ entry_dir = "css"
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `pipeline.fingerprint` | boolean | `false` | Fingerprint eligible static assets and rewrite matching HTML references. |
+| `pipeline.fingerprint` | boolean | `false` | Fingerprint eligible static assets and rewrite matching references in HTML and in stylesheets' `url()` and `@import`. |
 | `pipeline.minify_css` | boolean | `false` | Minify CSS assets. |
 | `pipeline.minify_js` | boolean | `false` | Minify JavaScript assets. |
 | `pipeline.images.enabled` | boolean | `false` | Process image assets. |
