@@ -8,7 +8,7 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904
 	github.com/pelletier/go-toml/v2 v2.4.3
-	github.com/tdewolff/minify/v2 v2.24.24
+	github.com/tdewolff/minify/v2 v2.24.25
 	github.com/yuin/goldmark v1.8.7
 	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/image v0.47.0

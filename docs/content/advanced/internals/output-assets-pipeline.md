@@ -92,6 +92,8 @@ style.css -> style.1a2b3c4d.css
 
 The manifest maps original relative paths to fingerprinted relative paths. After processing, `RewriteOutputFiles` rewrites matching references in generated HTML.
 
+Stylesheets are fingerprinted last. Static `.css` files and compiled SCSS are held back until every other asset has its hashed name. Their `url()` and `@import` references are then rewritten, whether they are relative to the stylesheet or site-relative under the `base_url` path, keeping any `?query` or `#fragment`. Only after that is each stylesheet hashed, so a font or image referenced from CSS is served under its fingerprinted name and the stylesheet's hash covers the bytes that are served. A stylesheet that imports another waits for it; an import cycle is written with the references that are already known. `data:` URIs and absolute URLs are left alone.
+
 For example:
 
 ```json

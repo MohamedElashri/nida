@@ -56,6 +56,8 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 
 	// seen holds output paths already written; the first writer wins.
 	seen := map[string]bool{}
+	// Stylesheets wait for the other assets when fingerprinting; see css.go.
+	var pending []pendingStylesheet
 	if cfg.Pipeline.SCSS.Enabled {
 		compiled, err := compileSCSS(absSiteRoot, staticRoot, outputRoot, cfg)
 		if err != nil {
@@ -63,7 +65,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 		}
 		for _, rel := range compiled {
 			seen[rel] = true
-			if err := fingerprintCompiled(outputRoot, rel, cfg, manifest); err != nil {
+			if err := holdCompiled(outputRoot, rel, cfg, &pending); err != nil {
 				return nil, err
 			}
 		}
@@ -82,9 +84,12 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 		roots = append(roots, themeStatic[i])
 	}
 	for _, root := range roots {
-		if err := processStaticFiles(outputRoot, "", root, cfg, manifest, seen); err != nil {
+		if err := processStaticFiles(outputRoot, "", root, cfg, manifest, seen, &pending); err != nil {
 			return nil, err
 		}
+	}
+	if err := finishStylesheets(outputRoot, pending, manifest, config.BasePath(cfg.BaseURL)); err != nil {
+		return nil, err
 	}
 
 	if len(manifest) > 0 {
@@ -96,7 +101,7 @@ func Process(siteRoot string, cfg config.SiteConfig) (Manifest, error) {
 	return manifest, nil
 }
 
-func processStaticFiles(outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest, seen map[string]bool) error {
+func processStaticFiles(outputRoot, relDir, absDir string, cfg config.SiteConfig, manifest Manifest, seen map[string]bool, pending *[]pendingStylesheet) error {
 	entries, err := os.ReadDir(absDir)
 	if err != nil {
 		return fmt.Errorf("read dir %q: %w", absDir, err)
@@ -112,7 +117,7 @@ func processStaticFiles(outputRoot, relDir, absDir string, cfg config.SiteConfig
 		relPath := filepath.ToSlash(filepath.Join(relDir, name))
 
 		if entry.IsDir() {
-			if err := processStaticFiles(outputRoot, relPath, srcPath, cfg, manifest, seen); err != nil {
+			if err := processStaticFiles(outputRoot, relPath, srcPath, cfg, manifest, seen, pending); err != nil {
 				return err
 			}
 			continue
@@ -142,6 +147,17 @@ func processStaticFiles(outputRoot, relDir, absDir string, cfg config.SiteConfig
 		}
 		if err := safepath.EnsureNoSymlinkPath(outputRoot, dstPath); err != nil {
 			return fmt.Errorf("check output path %q: %w", relPath, err)
+		}
+		if cfg.Pipeline.Fingerprint && strings.EqualFold(filepath.Ext(name), ".css") {
+			if err := safepath.RejectSymlink(srcPath); err != nil {
+				return fmt.Errorf("check %q: %w", relPath, err)
+			}
+			data, err := os.ReadFile(srcPath)
+			if err != nil {
+				return fmt.Errorf("read %q: %w", relPath, err)
+			}
+			*pending = append(*pending, pendingStylesheet{rel: relPath, data: minifyAsset(name, data, cfg.Pipeline)})
+			continue
 		}
 		if cfg.Pipeline.MinifyCSS || cfg.Pipeline.MinifyJS {
 			data, err := os.ReadFile(srcPath)
@@ -179,9 +195,10 @@ func IsSass(name string) bool {
 	return ext == ".scss" || ext == ".sass"
 }
 
-// fingerprintCompiled moves a compiled stylesheet to its fingerprinted
-// name when fingerprinting is on, as static files are written.
-func fingerprintCompiled(outputRoot, rel string, cfg config.SiteConfig, manifest Manifest) error {
+// holdCompiled takes a compiled stylesheet out of the output when
+// fingerprinting is on, so it is rewritten and fingerprinted with the
+// static stylesheets once every other asset has its hashed name.
+func holdCompiled(outputRoot, rel string, cfg config.SiteConfig, pending *[]pendingStylesheet) error {
 	if !cfg.Pipeline.Fingerprint {
 		return nil
 	}
@@ -193,11 +210,7 @@ func fingerprintCompiled(outputRoot, rel string, cfg config.SiteConfig, manifest
 	if err != nil {
 		return fmt.Errorf("read compiled css %q: %w", rel, err)
 	}
-	fpPath, err := fingerprintData(data, rel, outputRoot)
-	if err != nil {
-		return fmt.Errorf("fingerprint %q: %w", rel, err)
-	}
-	manifest[rel] = fpPath
+	*pending = append(*pending, pendingStylesheet{rel: rel, data: data})
 	return os.Remove(plain)
 }
 
