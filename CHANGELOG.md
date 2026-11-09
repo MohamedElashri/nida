@@ -2,6 +2,14 @@
 
 All notable changes to Nida are documented here.
 
+## [0.8.5] - 2026-11-09
+
+### Fixed
+* With `pipeline.fingerprint` enabled, static CSS and compiled SCSS now point font, image, and stylesheet references at fingerprinted files. Stylesheets are hashed after rewriting, so their hashes match the served bytes and font preloads use the same URL as the stylesheet.
+* Updated the HTML, CSS, and JavaScript minifier to 2.24.25, preserving side effects in JavaScript `return void(...)` expressions and limiting nested CSS functions.
+* Updated the Markdown parser to Goldmark 1.8.7, including parser and linkification fixes and search performance improvements.
+* Mermaid diagrams use Pele 1.13.0, with fixes for palette colors and label contrast, subgraph edge layout, spanning block labels, and quadrant chart font sizes and label wrapping.
+
 ## [0.8.4] - 2026-11-05
 
 ### Fixed
